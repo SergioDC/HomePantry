@@ -1,3 +1,44 @@
 <resources>
     <string name="app_name">Lista de la Casa</string>
+
+    <!-- JoinHouseholdScreen -->
+    <string name="join_title">Bienvenido/a</string>
+    <string name="join_subtitle">Une tu móvil a la lista compartida de tu casa</string>
+    <string name="join_name_label">Tu nombre</string>
+    <string name="join_code_label">Código de casa</string>
+    <string name="join_create_code">Crear código nuevo</string>
+    <string name="join_code_invalid">El código debe tener el formato CASA-1234</string>
+    <string name="join_continue">Continuar</string>
+
+    <!-- MainListScreen -->
+    <string name="main_empty_list">No hay productos todavía. Toca + para añadir el primero.</string>
+    <string name="main_clear_done">Vaciar comprados</string>
+    <string name="main_all_zones_tab">Todos</string>
+    <string name="main_error_generic">No se pudo sincronizar. Comprueba tu conexión.</string>
+    <string name="main_settings_cd">Ajustes</string>
+    <string name="main_add_item_cd">Añadir producto</string>
+    <string name="main_delete_item_cd">Eliminar producto</string>
+
+    <!-- AddItemSheet -->
+    <string name="add_item_title">Añadir producto</string>
+    <string name="add_item_name">Nombre</string>
+    <string name="add_item_qty">Cantidad</string>
+    <string name="add_item_unit">Unidad</string>
+    <string name="add_item_note">Nota (opcional)</string>
+    <string name="add_item_photo">📷 Foto</string>
+    <string name="add_item_scan">📊 Escanear</string>
+    <string name="add_item_new_zone">+ nueva zona</string>
+    <string name="add_item_save">Guardar</string>
+    <string name="add_item_barcode_not_found">No se encontró el producto. Completa el nombre a mano.</string>
+    <string name="add_item_scanning_hint">Apunta la cámara al código de barras</string>
+    <string name="add_item_camera_permission_needed">Se necesita permiso de cámara para escanear</string>
+
+    <!-- ManageZonesScreen -->
+    <string name="zones_title">Gestionar zonas</string>
+    <string name="zones_delete_confirm_title">Eliminar zona</string>
+    <string name="zones_delete_confirm_message">%1$d producto(s) se moverán a \"Otros\". ¿Continuar?</string>
+    <string name="zones_new_zone_hint">Nombre de la nueva zona</string>
+    <string name="zones_add_cd">Añadir zona</string>
+    <string name="zones_delete_cd">Eliminar zona</string>
+    <string name="zones_back_cd">Volver</string>
 </resources>
