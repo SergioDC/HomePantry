@@ -124,20 +124,24 @@ service cloud.firestore {
 ```
 
 ## 5. Qué falta por hacer (checklist para Claude Code)
-- [ ] Crear proyecto Firebase (o dejar instrucciones claras para que el usuario lo
-      cree y pegue su `google-services.json`, ver README.md)
-- [ ] Implementar `JoinHouseholdScreen` (ingresar/crear código de casa + nombre)
-- [ ] Implementar `MainListScreen` (Compose) según sección 1.4
-- [ ] Implementar `AddItemSheet` según sección 1.5, incluyendo CameraX + ML Kit
-- [ ] Implementar `ManageZonesScreen` según sección 1.6
-- [ ] Conectar `ItemsRepository` y `ZonesRepository` a Firestore con listeners en
+- [x] Crear proyecto Firebase (instrucciones en README.md; el usuario debe crear
+      su propio proyecto y pegar su `google-services.json` real — el que hay en
+      el repo local ahora es un placeholder solo para poder compilar)
+- [x] Implementar `JoinHouseholdScreen` (ingresar/crear código de casa + nombre)
+- [x] Implementar `MainListScreen` (Compose) según sección 1.4
+- [x] Implementar `AddItemSheet` según sección 1.5, incluyendo CameraX + ML Kit
+- [x] Implementar `ManageZonesScreen` según sección 1.6
+- [x] Conectar `ItemsRepository` y `ZonesRepository` a Firestore con listeners en
       tiempo real
-- [ ] Manejo de estados vacíos, errores de red, y permisos de cámara (runtime
+- [x] Manejo de estados vacíos, errores de red, y permisos de cámara (runtime
       permissions)
-- [ ] Ícono de app y nombre "Lista de la Casa"
-- [ ] Verificar que compila con `./gradlew assembleDebug`
-- [ ] Crear repo en GitHub y subir el proyecto
-- [ ] Documentar en el README los pasos para generar el `.apk` firmado si el
+- [x] Ícono de app y nombre "Lista de la Casa"
+- [x] Verificar que compila con `./gradlew assembleDebug` (BUILD SUCCESSFUL,
+      `app/build/outputs/apk/debug/app-debug.apk` generado)
+- [ ] Crear repo en GitHub y subir el proyecto (el remoto `origin` ya existe y
+      tenía commits previos; el trabajo de esta sesión está commiteado en local,
+      pendiente de `git push` con confirmación del usuario)
+- [x] Documentar en el README los pasos para generar el `.apk` firmado si el
       usuario quiere instalarlo fuera de modo debug
 
 ## 6. Paleta de colores (mantener consistencia con el prototipo web validado)
