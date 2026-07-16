@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lista de la Casa</title>
+<style>
+  :root{
+    --bg: #F4F8F5;
+    --card: #FFFFFF;
+    --ink: #16261F;
+    --ink-soft: #6E8079;
+    --line: #E3EEE7;
+    --primary: #0F6E56;
+    --primary-soft: #E1F5EE;
+    --lime: #639922;
+    --lime-soft: #EAF3DE;
+    --coral: #D85A30;
+    --coral-soft: #FAECE7;
+    --success: #1D9E75;
+    --shadow: 0 6px 20px rgba(15,110,86,0.08);
+    --shadow-lift: 0 10px 30px rgba(15,110,86,0.18);
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body{
+    margin:0;
+    background: var(--bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    padding-bottom: 100px;
+  }
+  .topbar{
+    position:sticky; top:0; z-index:5;
+    background: linear-gradient(135deg, #0F6E56 0%, #1D9E75 55%, #639922 130%);
+    color:#fff;
+    padding: 22px 18px 26px;
+    border-radius: 0 0 28px 28px;
+    box-shadow: var(--shadow-lift);
+  }
+  .topbar-row{ display:flex; justify-content:space-between; align-items:flex-start; }
+  .topbar h1{ font-size:21px; margin:0 0 2px; letter-spacing:-0.3px; }
+  .topbar .date{ font-size:12.5px; opacity:0.85; text-transform:capitalize; }
+  .avatar-chip{
+    background:rgba(255,255,255,0.22);
+    backdrop-filter: blur(4px);
+    border-radius:20px;
+    padding:7px 12px;
+    font-size:12.5px;
+    font-weight:600;
+    border:none;
+    color:#fff;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .progress-wrap{ margin-top:16px; }
+  .progress-label{ font-size:12px; opacity:0.9; margin-bottom:6px; display:flex; justify-content:space-between; }
+  .progress-bar{
+    height:8px; border-radius:20px; background:rgba(255,255,255,0.25); overflow:hidden;
+  }
+  .progress-fill{
+    height:100%; background:#fff; border-radius:20px;
+    transition: width 0.35s ease;
+  }
+
+  .wrap{ max-width:480px; margin:0 auto; padding: 18px 16px 0; }
+
+  .zone-tabs{
+    display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px;
+    scrollbar-width:none;
+  }
+  .zone-tabs::-webkit-scrollbar{ display:none; }
+  .zone-tab{
+    flex-shrink:0;
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:8px 14px; border-radius:20px; border:none;
+    background:var(--card); color:var(--ink-soft);
+    box-shadow: var(--shadow);
+    cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+    white-space:nowrap;
+  }
+  .zone-tab .dot{ width:8px; height:8px; border-radius:50%; }
+  .zone-tab.active{ background:var(--ink); color:#fff; }
+  .zone-tab.active .dot{ background:#fff !important; }
+
+  .zone-group{ margin-bottom:20px; }
+  .zone-header{
+    display:flex; align-items:center; gap:8px;
+    font-size:13px; font-weight:700; color:var(--ink-soft);
+    margin-bottom:10px; padding-left:2px;
+  }
+  .zone-header .dot{ width:9px; height:9px; border-radius:50%; }
+  .zone-header .count{ margin-left:auto; font-weight:600; }
+
+  .items{ list-style:none; margin:0; padding:0; }
+  .item{
+    display:flex; align-items:flex-start; gap:12px;
+    background:var(--card);
+    border-radius:16px;
+    padding:13px 14px;
+    margin-bottom:9px;
+    box-shadow: var(--shadow);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .check{
+    width:24px; height:24px; border-radius:50%;
+    border:2px solid var(--line);
+    flex-shrink:0; margin-top:1px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    font-size:13px; color:#fff; font-weight:700;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .check.checked{ background: var(--success); border-color: var(--success); }
+  .item-body{ flex:1; min-width:0; }
+  .item-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .item-name{ font-size:15px; font-weight:700; }
+  .item-qty{
+    font-size:12px; font-weight:700; color:var(--primary);
+    background:var(--primary-soft);
+    padding:2px 9px; border-radius:20px; white-space:nowrap;
+  }
+  .item-note{ font-size:12.5px; color:var(--ink-soft); margin-top:3px; font-style:italic; }
+  .item-meta{ font-size:11px; color:var(--ink-soft); margin-top:3px; }
+  .item.done{ opacity:0.55; }
+  .item.done .item-name{ text-decoration:line-through; }
+  .del{
+    background:none; border:none; color:var(--ink-soft);
+    font-size:16px; cursor:pointer; padding:4px; flex-shrink:0;
+  }
+  .del:hover{ color:var(--coral); }
+
+  .empty{
+    text-align:center; padding:60px 20px; color:var(--ink-soft); font-size:14px;
+  }
+  .empty .big{ font-size:38px; display:block; margin-bottom:10px; }
+
+  .footer-bar{
+    display:flex; justify-content:center; margin: 6px 0 4px;
+  }
+  .clear-btn{
+    font-family:inherit; font-size:13px; font-weight:600;
+    background:none; border:none; color:var(--coral); cursor:pointer;
+  }
+
+  .fab{
+    position:fixed; right:20px; bottom:26px;
+    width:58px; height:58px; border-radius:50%;
+    background: linear-gradient(135deg, var(--primary), var(--lime));
+    color:#fff; font-size:28px; font-weight:400;
+    border:none; box-shadow: var(--shadow-lift);
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    z-index:8;
+  }
+  .fab:active{ transform: scale(0.94); }
+
+  .sheet-overlay{
+    display:none; position:fixed; inset:0; background:rgba(20,18,40,0.45);
+    align-items:flex-end; justify-content:center; z-index:20;
+  }
+  .sheet-overlay.open{ display:flex; }
+  .sheet{
+    background:#fff; width:100%; max-width:480px;
+    border-radius:24px 24px 0 0;
+    padding: 10px 20px 24px;
+    max-height:85vh; overflow-y:auto;
+  }
+  .sheet-handle{
+    width:40px; height:5px; background:var(--line); border-radius:10px;
+    margin: 8px auto 14px;
+  }
+  .sheet h3{ margin:0 0 14px; font-size:17px; }
+  .field-label{ font-size:12.5px; font-weight:600; color:var(--ink-soft); margin: 12px 0 6px; }
+  .field-label:first-of-type{ margin-top:0; }
+  input[type=text], input[type=number], select, textarea{
+    font-family:inherit; font-size:15px; width:100%;
+    padding:11px 13px; border-radius:12px; border:1.5px solid var(--line);
+    background:#FAFAFB; color:var(--ink);
+  }
+  textarea{ resize:none; min-height:44px; }
+  .qty-unit-row{ display:flex; gap:8px; }
+  .qty-unit-row input{ flex:1; }
+  .qty-unit-row select{ flex:1.3; }
+  .zone-picker-row{ display:flex; flex-wrap:wrap; gap:8px; }
+  .zone-pill{
+    font-family:inherit; font-size:13px; font-weight:600;
+    padding:8px 13px; border-radius:20px; border:1.5px solid var(--line);
+    background:#fff; color:var(--ink-soft); cursor:pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  .zone-pill.selected{ border-color:var(--primary); background:var(--primary-soft); color:var(--primary); }
+  .zone-pill .dot{ width:7px; height:7px; border-radius:50%; }
+  .zone-pill.add-new{ border-style:dashed; }
+
+  .sheet-actions{ display:flex; gap:10px; margin-top:18px; }
+  .sheet-actions button{
+    flex:1; font-family:inherit; font-size:15px; font-weight:700;
+    padding:13px; border-radius:14px; border:none; cursor:pointer;
+  }
+  .sheet-cancel{ background:var(--line); color:var(--ink); }
+  .sheet-save{ background: linear-gradient(135deg, var(--primary), var(--lime)); color:#fff; }
+
+  .mini-input-row{ display:flex; gap:8px; margin-top:4px; }
+  .mini-input-row input{ flex:1; }
+  .mini-input-row button{
+    font-family:inherit; font-weight:700; font-size:14px;
+    padding:0 16px; border-radius:12px; border:none;
+    background:var(--primary); color:#fff; cursor:pointer;
+  }
+
+  .manage-row{
+    display:flex; align-items:center; gap:10px;
+    padding:10px 0; border-bottom:1px solid var(--line);
+  }
+  .manage-row .dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+  .manage-row input[type=text]{
+    flex:1; padding:8px 10px; font-size:14px; border-radius:10px;
+  }
+  .manage-row .item-count{ font-size:11.5px; color:var(--ink-soft); white-space:nowrap; }
+  .manage-row .icon-btn{
+    background:none; border:none; font-size:16px; cursor:pointer; padding:4px; color:var(--ink-soft);
+  }
+  .manage-row .icon-btn:hover{ color:var(--coral); }
+
+  .capture-row{ display:flex; gap:8px; margin-top:8px; }
+  .capture-btn{
+    flex:1; font-family:inherit; font-size:13px; font-weight:600;
+    padding:9px 8px; border-radius:12px; border:1.5px solid var(--line);
+    background:#FAFAFB; color:var(--ink); cursor:pointer;
+  }
+  .capture-btn:active{ background:var(--primary-soft); border-color:var(--primary); }
+  #photoPreviewWrap{
+    margin-top:10px; display:flex; align-items:center; gap:10px;
+  }
+  #photoPreview{
+    width:56px; height:56px; object-fit:cover; border-radius:10px; border:1px solid var(--line);
+  }
+  #photoRemove{
+    font-family:inherit; font-size:12.5px; color:var(--coral); background:none; border:none; cursor:pointer;
+    text-decoration:underline;
+  }
+
+  .scan-overlay{
+    display:none; position:fixed; inset:0; background:#000; z-index:30;
+    flex-direction:column; align-items:center; justify-content:center;
+  }
+  .scan-overlay.open{ display:flex; }
+  .scan-overlay video{ width:100%; max-width:480px; }
+  .scan-status{
+    color:#fff; font-size:14px; padding:16px; text-align:center;
+  }
+  .scan-frame{
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    width:70%; max-width:320px; height:120px;
+    border:3px solid var(--success); border-radius:12px;
+    box-shadow:0 0 0 2000px rgba(0,0,0,0.4);
+  }
+  .scan-close{
+    position:absolute; top:18px; right:18px;
+    background:rgba(255,255,255,0.15); color:#fff; border:none;
+    width:38px; height:38px; border-radius:50%; font-size:18px; cursor:pointer;
+  }
+  .item-thumb{
+    width:38px; height:38px; object-fit:cover; border-radius:9px; flex-shrink:0; margin-top:1px;
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-row">
+    <div>
+      <h1>Lista de la casa</h1>
+      <div class="date" id="dateLine"></div>
+    </div>
+    <div style="display:flex; gap:8px;">
+      <button class="avatar-chip" id="settingsBtn">⚙️</button>
+      <button class="avatar-chip" id="whoBtn">👤 ...</button>
+    </div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-label">
+      <span id="progressText">0 de 0 listos</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="zone-tabs" id="zoneTabs"></div>
+
+  <div id="groups"></div>
+
+  <div id="emptyState" class="empty" style="display:none;">
+    <span class="big">🧺</span>
+    Todo listo por aquí.<br>Toca el botón + para añadir algo.
+  </div>
+
+  <div class="footer-bar">
+    <button class="clear-btn" id="clearBtn">Vaciar comprados</button>
+  </div>
+</div>
+
+<button class="fab" id="fabBtn">+</button>
+
+<div class="sheet-overlay" id="sheetOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Añadir producto</h3>
+
+    <div class="field-label">¿Qué falta?</div>
+    <input type="text" id="itemName" placeholder="ej. Tomates" autocomplete="off">
+
+    <div class="capture-row">
+      <button type="button" class="capture-btn" id="photoBtn">📷 Foto</button>
+      <button type="button" class="capture-btn" id="scanBtn">📊 Escanear código</button>
+    </div>
+    <input type="file" id="photoInput" accept="image/*" capture="environment" style="display:none;">
+    <div id="photoPreviewWrap" style="display:none;">
+      <img id="photoPreview" alt="Vista previa">
+      <button type="button" id="photoRemove">Quitar foto</button>
+    </div>
+
+    <div class="field-label">Cantidad</div>
+    <div class="qty-unit-row">
+      <input type="number" id="itemQty" min="0" step="0.5" value="1">
+      <select id="itemUnit">
+        <option value="ud">unidad(es)</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="l">litro(s)</option>
+        <option value="ml">ml</option>
+        <option value="paquete">paquete(s)</option>
+        <option value="docena">docena</option>
+      </select>
+    </div>
+
+    <div class="field-label">Zona de la casa</div>
+    <div class="zone-picker-row" id="zonePickerRow"></div>
+    <div class="mini-input-row" id="newZoneRow" style="display:none;">
+      <input type="text" id="newZoneInput" placeholder="Nombre de la zona">
+      <button id="newZoneSave">Crear</button>
+    </div>
+
+    <div class="field-label">Nota (opcional)</div>
+    <textarea id="itemNote" placeholder="ej. de la marca X, sin gluten..."></textarea>
+
+    <div class="sheet-actions">
+      <button class="sheet-cancel" id="sheetCancel">Cancelar</button>
+      <button class="sheet-save" id="sheetSave">Añadir a la lista</button>
+    </div>
+  </div>
+</div>
+
+<div class="scan-overlay" id="scanOverlay">
+  <button class="scan-close" id="scanClose">✕</button>
+  <video id="scanVideo" autoplay playsinline muted></video>
+  <div class="scan-frame"></div>
+  <div class="scan-status" id="scanStatus">Apuntá al código de barras...</div>
+</div>
+
+<div class="sheet-overlay" id="settingsOverlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <h3>Gestionar zonas de la despensa</h3>
+    <div id="zoneManageList"></div>
+    <div class="mini-input-row" style="margin-top:14px;">
+      <input type="text" id="manageNewZoneInput" placeholder="Nueva zona (ej. Especiero)">
+      <button id="manageNewZoneSave">Crear</button>
+    </div>
+    <div class="sheet-actions">
+      <button class="sheet-cancel" id="settingsCancel">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const ITEMS_KEY = 'shopping-items';
+const ZONES_KEY = 'shopping-zones';
+const NAME_KEY = 'my-name';
+
+const DEFAULT_ZONES = ['Nevera','Congelador','Despensa','Otros'];
+const ZONE_COLORS = ['#1D9E75','#639922','#D85A30','#0F6E56','#97C459','#993C1D','#5DCAA5'];
+
+let items = [];
+let zones = [...DEFAULT_ZONES];
+let myName = null;
+let activeTab = 'Todos';
+let selectedZoneInSheet = DEFAULT_ZONES[0];
+
+function zoneColor(zone){
+  const idx = zones.indexOf(zone);
+  return ZONE_COLORS[(idx>=0?idx:0) % ZONE_COLORS.length];
+}
+function unitLabel(unit){
+  return {ud:'ud', kg:'kg', g:'g', l:'L', ml:'ml', paquete:'paq', docena:'doc'}[unit] || unit;
+}
+function fmtDate(){
+  return new Date().toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+}
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+async function loadName(){
+  try{
+    const res = await window.storage.get(NAME_KEY, false);
+    if(res && res.value) myName = res.value;
+  }catch(e){ myName = null; }
+  renderWho();
+}
+function renderWho(){
+  document.getElementById('whoBtn').textContent = myName ? `👤 ${myName}` : '👤 Poner nombre';
+}
+document.getElementById('whoBtn').addEventListener('click', async ()=>{
+  const name = prompt('¿Cómo te llamas?', myName || '');
+  if(name && name.trim()){
+    myName = name.trim().slice(0,20);
+    try{ await window.storage.set(NAME_KEY, myName, false); }catch(e){ console.error(e); }
+    renderWho();
+  }
+});
+
+async function loadZones(){
+  try{
+    const res = await window.storage.get(ZONES_KEY, true);
+    zones = res && res.value ? JSON.parse(res.value) : [...DEFAULT_ZONES];
+  }catch(e){
+    zones = [...DEFAULT_ZONES];
+  }
+  selectedZoneInSheet = zones[0];
+}
+async function saveZones(){
+  try{ await window.storage.set(ZONES_KEY, JSON.stringify(zones), true); }
+  catch(e){ console.error('Error guardando zonas', e); }
+}
+
+async function loadItems(){
+  try{
+    const res = await window.storage.get(ITEMS_KEY, true);
+    items = res && res.value ? JSON.parse(res.value) : [];
+  }catch(e){
+    items = [];
+  }
+  renderAll();
+}
+async function saveItems(){
+  try{
+    const result = await window.storage.set(ITEMS_KEY, JSON.stringify(items), true);
+    if(!result) console.error('No se pudo guardar');
+  }catch(e){
+    console.error('Error guardando items', e);
+  }
+}
+
+function renderAll(){
+  renderZoneTabs();
+  renderGroups();
+  renderProgress();
+}
+
+function renderZoneTabs(){
+  const el = document.getElementById('zoneTabs');
+  const present = ['Todos', ...zones.filter(z => items.some(it=>it.zone===z))];
+  const allZones = present.length > 1 ? present : ['Todos', ...zones];
+  el.innerHTML = allZones.map(z => `
+    <button class="zone-tab ${z===activeTab?'active':''}" data-zone="${escapeHtml(z)}">
+      ${z!=='Todos' ? `<span class="dot" style="background:${zoneColor(z)}"></span>` : ''} ${escapeHtml(z)}
+    </button>
+  `).join('');
+  el.querySelectorAll('.zone-tab').forEach(btn=>{
+    btn.onclick = ()=>{ activeTab = btn.dataset.zone; renderAll(); };
+  });
+}
+
+function renderGroups(){
+  const groupsEl = document.getElementById('groups');
+  const empty = document.getElementById('emptyState');
+
+  let visibleItems = items.filter(it => activeTab==='Todos' || it.zone===activeTab);
+
+  if(items.length===0){
+    groupsEl.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const byZone = {};
+  visibleItems.forEach(it=>{
+    if(!byZone[it.zone]) byZone[it.zone] = [];
+    byZone[it.zone].push(it);
+  });
+
+  const orderedZoneNames = [
+    ...zones.filter(z => byZone[z]),
+    ...Object.keys(byZone).filter(z => !zones.includes(z))
+  ];
+
+  if(orderedZoneNames.length === 0){
+    groupsEl.innerHTML = `<div class="empty"><span class="big">🔍</span>Nada en esta zona todavía.</div>`;
+    return;
+  }
+
+  groupsEl.innerHTML = orderedZoneNames.map(zone=>{
+    const zoneItems = byZone[zone].slice().sort((a,b)=>{
+      if(a.done !== b.done) return a.done ? 1 : -1;
+      return b.addedAt - a.addedAt;
+    });
+    const pendingInZone = zoneItems.filter(it=>!it.done).length;
+    return `
+      <div class="zone-group">
+        <div class="zone-header">
+          <span class="dot" style="background:${zoneColor(zone)}"></span>
+          ${escapeHtml(zone)}
+          <span class="count">${pendingInZone} pend.</span>
+        </div>
+        <ul class="items">
+          ${zoneItems.map(it => `
+            <li class="item ${it.done?'done':''}">
+              <div class="check ${it.done?'checked':''}" data-action="toggle" data-id="${it.id}">${it.done?'✓':''}</div>
+              ${it.photo ? `<img class="item-thumb" src="${it.photo}" alt="">` : ''}
+              <div class="item-body">
+                <div class="item-top">
+                  <span class="item-name">${escapeHtml(it.name)}</span>
+                  <span class="item-qty">${escapeHtml(String(it.qty))} ${unitLabel(it.unit)}</span>
+                </div>
+                ${it.note ? `<div class="item-note">${escapeHtml(it.note)}</div>` : ''}
+                ${it.addedBy ? `<div class="item-meta">pedido por ${escapeHtml(it.addedBy)}</div>` : ''}
+              </div>
+              <button class="del" data-action="delete" data-id="${it.id}" aria-label="Eliminar">✕</button>
+            </li>
+          `).join('')}
+        </ul>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderProgress(){
+  const total = items.length;
+  const done = items.filter(it=>it.done).length;
+  document.getElementById('progressText').textContent = total===0 ? '0 de 0 listos' : `${done} de ${total} listos`;
+  const pct = total===0 ? 0 : Math.round((done/total)*100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+document.getElementById('groups').addEventListener('click', async (e)=>{
+  const target = e.target.closest('[data-action]');
+  if(!target) return;
+  const id = target.dataset.id;
+  const action = target.dataset.action;
+  const idx = items.findIndex(it=>it.id===id);
+  if(idx===-1) return;
+
+  if(action==='toggle'){
+    items[idx].done = !items[idx].done;
+    renderAll();
+    await saveItems();
+  } else if(action==='delete'){
+    items.splice(idx,1);
+    renderAll();
+    await saveItems();
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', async ()=>{
+  const hadDone = items.some(it=>it.done);
+  if(!hadDone) return;
+  items = items.filter(it=>!it.done);
+  renderAll();
+  await saveItems();
+});
+
+// ---- Bottom sheet ----
+const sheetOverlay = document.getElementById('sheetOverlay');
+const fabBtn = document.getElementById('fabBtn');
+const newZoneRow = document.getElementById('newZoneRow');
+
+function renderZonePickerRow(){
+  const el = document.getElementById('zonePickerRow');
+  el.innerHTML = zones.map(z => `
+    <button type="button" class="zone-pill ${z===selectedZoneInSheet?'selected':''}" data-zone="${escapeHtml(z)}">
+      <span class="dot" style="background:${zoneColor(z)}"></span>${escapeHtml(z)}
+    </button>
+  `).join('') + `<button type="button" class="zone-pill add-new" id="addZonePill">+ nueva</button>`;
+
+  el.querySelectorAll('.zone-pill[data-zone]').forEach(btn=>{
+    btn.onclick = ()=>{
+      selectedZoneInSheet = btn.dataset.zone;
+      newZoneRow.style.display = 'none';
+      renderZonePickerRow();
+    };
+  });
+  document.getElementById('addZonePill').onclick = ()=>{
+    newZoneRow.style.display = 'flex';
+    document.getElementById('newZoneInput').focus();
+  };
+}
+
+function openSheet(){
+  document.getElementById('itemName').value = '';
+  document.getElementById('itemQty').value = '1';
+  document.getElementById('itemUnit').value = 'ud';
+  document.getElementById('itemNote').value = '';
+  pendingPhoto = null;
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+  newZoneRow.style.display = 'none';
+  renderZonePickerRow();
+  sheetOverlay.classList.add('open');
+  setTimeout(()=>document.getElementById('itemName').focus(), 100);
+}
+function closeSheet(){ sheetOverlay.classList.remove('open'); }
+
+fabBtn.addEventListener('click', openSheet);
+document.getElementById('sheetCancel').addEventListener('click', closeSheet);
+sheetOverlay.addEventListener('click', (e)=>{ if(e.target === sheetOverlay) closeSheet(); });
+
+document.getElementById('newZoneSave').addEventListener('click', async ()=>{
+  const val = document.getElementById('newZoneInput').value.trim();
+  if(val && !zones.includes(val)){
+    zones.push(val);
+    await saveZones();
+    selectedZoneInSheet = val;
+    newZoneRow.style.display = 'none';
+    renderZonePickerRow();
+  }
+});
+document.getElementById('newZoneInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('newZoneSave').click();
+});
+
+document.getElementById('sheetSave').addEventListener('click', async ()=>{
+  const name = document.getElementById('itemName').value.trim();
+  if(!name){ document.getElementById('itemName').focus(); return; }
+  const qty = document.getElementById('itemQty').value || '1';
+  const unit = document.getElementById('itemUnit').value;
+  const note = document.getElementById('itemNote').value.trim();
+
+  items.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    name, qty, unit, note,
+    photo: pendingPhoto || null,
+    zone: selectedZoneInSheet,
+    done: false,
+    addedBy: myName || null,
+    addedAt: Date.now()
+  });
+
+  closeSheet();
+  renderAll();
+  await saveItems();
+});
+
+// ---- Foto ----
+let pendingPhoto = null; // base64 comprimido
+const photoInput = document.getElementById('photoInput');
+document.getElementById('photoBtn').addEventListener('click', ()=> photoInput.click());
+
+photoInput.addEventListener('change', ()=>{
+  const file = photoInput.files[0];
+  if(!file) return;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    img.onload = ()=>{
+      const maxSize = 220;
+      let w = img.width, h = img.height;
+      if(w > h){ if(w > maxSize){ h = Math.round(h * maxSize/w); w = maxSize; } }
+      else { if(h > maxSize){ w = Math.round(w * maxSize/h); h = maxSize; } }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      pendingPhoto = canvas.toDataURL('image/jpeg', 0.6);
+      document.getElementById('photoPreview').src = pendingPhoto;
+      document.getElementById('photoPreviewWrap').style.display = 'flex';
+    };
+    img.src = e.target.result;
+  };
+  reader.onerror = ()=> alert('No se pudo leer la imagen.');
+  reader.readAsDataURL(file);
+  photoInput.value = '';
+});
+document.getElementById('photoRemove').addEventListener('click', ()=>{
+  pendingPhoto = null;
+  document.getElementById('photoPreviewWrap').style.display = 'none';
+});
+
+// ---- Escaneo de código de barras ----
+const scanOverlay = document.getElementById('scanOverlay');
+const scanVideo = document.getElementById('scanVideo');
+const scanStatus = document.getElementById('scanStatus');
+let scanStream = null;
+let scanLoopId = null;
+
+async function openScanner(){
+  scanStatus.textContent = 'Apuntá al código de barras...';
+  scanOverlay.classList.add('open');
+
+  if(!('BarcodeDetector' in window)){
+    scanStatus.textContent = 'Tu navegador no soporta escaneo en vivo. Cerrá esto y escribí el nombre a mano.';
+    return;
+  }
+  try{
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    scanVideo.srcObject = scanStream;
+    const detector = new BarcodeDetector();
+    const loop = async ()=>{
+      if(!scanOverlay.classList.contains('open')) return;
+      try{
+        const codes = await detector.detect(scanVideo);
+        if(codes && codes.length > 0){
+          const code = codes[0].rawValue;
+          closeScanner();
+          await handleScannedCode(code);
+          return;
+        }
+      }catch(err){ /* frame no válido todavía, seguir */ }
+      scanLoopId = requestAnimationFrame(loop);
+    };
+    scanLoopId = requestAnimationFrame(loop);
+  }catch(err){
+    scanStatus.textContent = 'No se pudo acceder a la cámara. Revisá los permisos o escribí el nombre a mano.';
+  }
+}
+
+function closeScanner(){
+  scanOverlay.classList.remove('open');
+  if(scanLoopId) cancelAnimationFrame(scanLoopId);
+  if(scanStream){ scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+async function handleScannedCode(code){
+  document.getElementById('itemName').value = `Producto (código ${code})`;
+  try{
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${code}.json`);
+    const data = await res.json();
+    if(data && data.status === 1 && data.product && data.product.product_name){
+      document.getElementById('itemName').value = data.product.product_name;
+    }
+  }catch(err){
+    // sin conexión a la base de datos: se deja el código para editar a mano
+  }
+  document.getElementById('itemName').focus();
+}
+
+document.getElementById('scanBtn').addEventListener('click', openScanner);
+document.getElementById('scanClose').addEventListener('click', closeScanner);
+
+// ---- Gestionar zonas ----
+const settingsOverlay = document.getElementById('settingsOverlay');
+
+function renderZoneManageList(){
+  const el = document.getElementById('zoneManageList');
+  el.innerHTML = zones.map((z, i) => {
+    const count = items.filter(it => it.zone === z).length;
+    return `
+      <div class="manage-row" data-idx="${i}">
+        <span class="dot" style="background:${zoneColor(z)}"></span>
+        <input type="text" value="${escapeHtml(z)}" data-original="${escapeHtml(z)}">
+        <span class="item-count">${count} prod.</span>
+        <button class="icon-btn" data-action="delete-zone" data-zone="${escapeHtml(z)}" title="Eliminar zona">🗑️</button>
+      </div>
+    `;
+  }).join('');
+
+  el.querySelectorAll('input[type=text]').forEach(input=>{
+    input.addEventListener('change', async ()=>{
+      const original = input.dataset.original;
+      const newVal = input.value.trim();
+      if(!newVal || newVal === original) { input.value = original; return; }
+      if(zones.includes(newVal)){
+        alert('Ya existe una zona con ese nombre.');
+        input.value = original;
+        return;
+      }
+      const idx = zones.indexOf(original);
+      if(idx !== -1) zones[idx] = newVal;
+      items.forEach(it => { if(it.zone === original) it.zone = newVal; });
+      if(activeTab === original) activeTab = newVal;
+      if(selectedZoneInSheet === original) selectedZoneInSheet = newVal;
+      await saveZones();
+      await saveItems();
+      renderZoneManageList();
+      renderAll();
+    });
+  });
+
+  el.querySelectorAll('[data-action="delete-zone"]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const zone = btn.dataset.zone;
+      if(zones.length <= 1){ alert('Necesitás al menos una zona.'); return; }
+      const count = items.filter(it => it.zone === zone).length;
+      const msg = count > 0
+        ? `"${zone}" tiene ${count} producto(s). Se moverán a "Otros". ¿Eliminar la zona?`
+        : `¿Eliminar la zona "${zone}"?`;
+      if(!confirm(msg)) return;
+
+      zones = zones.filter(z => z !== zone);
+      if(!zones.includes('Otros')) zones.push('Otros');
+      items.forEach(it => { if(it.zone === zone) it.zone = 'Otros'; });
+      if(activeTab === zone) activeTab = 'Todos';
+      if(selectedZoneInSheet === zone) selectedZoneInSheet = zones[0];
+
+      await saveZones();
+      await saveItems();
+      renderZoneManageList();
+      renderAll();
+    });
+  });
+}
+
+document.getElementById('settingsBtn').addEventListener('click', ()=>{
+  renderZoneManageList();
+  settingsOverlay.classList.add('open');
+});
+document.getElementById('settingsCancel').addEventListener('click', ()=>{
+  settingsOverlay.classList.remove('open');
+});
+settingsOverlay.addEventListener('click', (e)=>{ if(e.target === settingsOverlay) settingsOverlay.classList.remove('open'); });
+
+document.getElementById('manageNewZoneSave').addEventListener('click', async ()=>{
+  const input = document.getElementById('manageNewZoneInput');
+  const val = input.value.trim();
+  if(val && !zones.includes(val)){
+    zones.push(val);
+    await saveZones();
+    input.value = '';
+    renderZoneManageList();
+    renderAll();
+  }
+});
+document.getElementById('manageNewZoneInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('manageNewZoneSave').click();
+});
+
+document.getElementById('dateLine').textContent = fmtDate();
+loadName();
+(async ()=>{
+  await loadZones();
+  await loadItems();
+})();
+</script>
+</body>
+</html>
