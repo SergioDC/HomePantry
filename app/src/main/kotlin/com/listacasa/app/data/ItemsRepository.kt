@@ -10,10 +10,6 @@ import kotlinx.coroutines.tasks.await
  * Repositorio de productos, sincronizado en tiempo real con Firestore.
  * Equivalente al `window.storage` compartido (shared=true) del prototipo web,
  * pero con Firestore en vez del storage de Artifacts.
- *
- * TODO (Claude Code): completar según el checklist de SPEC.md sección 5.
- * - injectar `householdCode` desde DataStore (ver JoinHouseholdScreen)
- * - subir fotos a Firebase Storage antes de guardar `photoUrl`
  */
 class ItemsRepository(
     private val firestore: FirebaseFirestore,
@@ -35,12 +31,18 @@ class ItemsRepository(
         awaitClose { registration.remove() }
     }
 
-    suspend fun addItem(item: Item) {
-        collection().add(item).await()
+    /** @return el id generado por Firestore para el nuevo producto. */
+    suspend fun addItem(item: Item): String {
+        val ref = collection().add(item).await()
+        return ref.id
     }
 
     suspend fun updateItem(item: Item) {
         collection().document(item.id).set(item).await()
+    }
+
+    suspend fun updatePhotoUrl(itemId: String, photoUrl: String) {
+        collection().document(itemId).update("photoUrl", photoUrl).await()
     }
 
     suspend fun deleteItem(itemId: String) {

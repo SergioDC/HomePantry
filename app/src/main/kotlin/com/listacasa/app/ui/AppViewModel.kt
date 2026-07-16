@@ -66,8 +66,14 @@ class AppViewModel(
         _state.value = _state.value.copy(selectedZoneId = zoneId)
     }
 
-    fun addItem(item: Item) = viewModelScope.launch {
+    /** @return el id Firestore del producto creado, para poder subir su foto después. */
+    suspend fun addItem(item: Item): String =
         itemsRepository.addItem(item.copy(addedBy = userName))
+
+    /** Sube la foto y adjunta su URL al producto ya creado. */
+    fun attachPhoto(itemId: String, localUri: android.net.Uri) = viewModelScope.launch {
+        val url = storageRepository.uploadPhoto(itemId, localUri)
+        itemsRepository.updatePhotoUrl(itemId, url)
     }
 
     fun toggleDone(item: Item) = viewModelScope.launch {
