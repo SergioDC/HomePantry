@@ -23,11 +23,66 @@ README es solo la puesta en marcha del entorno.
      - **Storage** (para las fotos de productos)
 
 ## Compilar
+El wrapper de Gradle ya está incluido en el repo. Antes de compilar, crea
+`local.properties` (no se sube a git) apuntando a tu SDK de Android, por ejemplo:
+```properties
+sdk.dir=/ruta/a/tu/Android/Sdk
+```
+En Windows, escapa las barras y los dos puntos: `sdk.dir=C\:\\Android`.
+
 ```bash
 ./gradlew assembleDebug
 ```
 El APK generado queda en `app/build/outputs/apk/debug/app-debug.apk`, instalable
 directamente en un móvil Android (activando "orígenes desconocidos").
+
+## Generar APK firmado (release)
+Para instalar fuera de modo debug (por ejemplo, para repartir el APK a los
+miembros de la casa sin pasar por Play Store) hace falta firmarlo:
+
+1. Generar un keystore (una sola vez, guárdalo en un sitio seguro, **no** en el repo):
+   ```bash
+   keytool -genkey -v -keystore release.keystore -alias listacasa \
+     -keyalg RSA -keysize 2048 -validity 10000
+   ```
+2. Añadir la ruta y contraseñas a tu `local.properties` local (nunca se commitea):
+   ```properties
+   RELEASE_STORE_FILE=/ruta/a/release.keystore
+   RELEASE_STORE_PASSWORD=tu_password
+   RELEASE_KEY_ALIAS=listacasa
+   RELEASE_KEY_PASSWORD=tu_password
+   ```
+3. Añadir un `signingConfigs` en `app/build.gradle.kts` que lea esas propiedades:
+   ```kotlin
+   import java.util.Properties
+
+   val localProps = Properties().apply {
+       val f = rootProject.file("local.properties")
+       if (f.exists()) load(f.inputStream())
+   }
+
+   android {
+       signingConfigs {
+           create("release") {
+               storeFile = localProps.getProperty("RELEASE_STORE_FILE")?.let { file(it) }
+               storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD")
+               keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS")
+               keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD")
+           }
+       }
+       buildTypes {
+           release {
+               signingConfig = signingConfigs.getByName("release")
+               // ... resto de la config existente
+           }
+       }
+   }
+   ```
+4. Compilar:
+   ```bash
+   ./gradlew assembleRelease
+   ```
+   El APK firmado queda en `app/build/outputs/apk/release/app-release.apk`.
 
 ## Estructura
 ```
