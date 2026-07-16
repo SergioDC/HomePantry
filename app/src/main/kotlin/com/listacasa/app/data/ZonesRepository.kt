@@ -4,6 +4,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * Repositorio de zonas configurables (Nevera, Despensa, Congelador, Otros...).
@@ -47,5 +48,11 @@ class ZonesRepository(
         DEFAULT_ZONE_NAMES.forEachIndexed { index, name ->
             addZone(name, index)
         }
+    }
+
+    /** Sembrar zonas por defecto solo si la casa todavía no tiene ninguna. */
+    suspend fun seedIfEmpty() {
+        val existing = collection().limit(1).get().await()
+        if (existing.isEmpty) seedDefaultZones()
     }
 }

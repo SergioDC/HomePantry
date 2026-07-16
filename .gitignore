@@ -8,6 +8,7 @@
 .externalNativeBuild
 .cxx
 *.apk
+/app/build
 
 # Firebase config con datos del proyecto del usuario: no se sube al repo público
 app/google-services.json

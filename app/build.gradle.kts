@@ -76,4 +76,9 @@ dependencies {
     implementation("com.google.accompanist:accompanist-permissions:0.34.0")
 
     implementation("androidx.core:core-ktx:1.13.1")
+
+    // Bridge Firebase Tasks -> coroutines (.await())
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+
+    testImplementation("junit:junit:4.13.2")
 }

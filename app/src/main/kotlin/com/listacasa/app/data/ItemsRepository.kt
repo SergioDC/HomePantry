@@ -4,6 +4,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
 /**
  * Repositorio de productos, sincronizado en tiempo real con Firestore.
@@ -55,11 +56,9 @@ class ItemsRepository(
     suspend fun reassignZone(fromZone: String, toZone: String) {
         val toReassign = collection().whereEqualTo("zone", fromZone).get().await()
         val batch = firestore.batch()
-        toReassign.documents.forEach { doc -> batch.update(doc.reference, "zone", toZone) }
+        toReassign.documents.forEach { doc: com.google.firebase.firestore.DocumentSnapshot ->
+            batch.update(doc.reference, "zone", toZone)
+        }
         batch.commit().await()
     }
 }
-
-// Nota: requiere kotlinx-coroutines-play-services para `.await()` en Tasks de Firebase,
-// o reemplazar por `kotlinx.coroutines.tasks.await`. Añadir dependencia:
-// implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
