@@ -96,7 +96,7 @@ fun ListaDeLaCasaApp() {
                     return AppViewModel(
                         itemsRepository = ItemsRepository(firestore, code),
                         zonesRepository = ZonesRepository(firestore, code),
-                        storageRepository = StorageRepository(storage, code),
+                        storageRepository = StorageRepository(storage, code, context),
                         userName = name
                     ) as T
                 }
