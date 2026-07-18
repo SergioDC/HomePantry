@@ -24,3 +24,8 @@ val ZONE_COLORS = listOf(
 )
 
 fun zoneColorFor(index: Int): String = ZONE_COLORS[index % ZONE_COLORS.size]
+
+const val PROTECTED_ZONE_NAME = "Otros"
+
+/** "Otros" es la zona de reserva de reasignación y no se puede renombrar/eliminar (cierre de huecos §4). */
+fun isProtectedZone(zone: Zone): Boolean = zone.name.equals(PROTECTED_ZONE_NAME, ignoreCase = true)
