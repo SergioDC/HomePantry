@@ -1,6 +1,7 @@
 package com.listacasa.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,8 +29,9 @@ import com.listacasa.app.R
 import com.listacasa.app.data.Item
 import com.listacasa.app.data.Unit as ItemUnit
 
+/** Tocar el nombre/detalles del producto abre el formulario en modo edición (cierre de huecos §1). */
 @Composable
-fun ProductCard(item: Item, onToggleDone: () -> Unit, onDelete: () -> Unit) {
+fun ProductCard(item: Item, onToggleDone: () -> Unit, onDelete: () -> Unit, onEdit: () -> Unit = {}) {
     val alpha = if (item.done) 0.5f else 1f
     val unitLabel = runCatching { ItemUnit.valueOf(item.unit).label }.getOrDefault(item.unit)
 
@@ -56,7 +58,12 @@ fun ProductCard(item: Item, onToggleDone: () -> Unit, onDelete: () -> Unit) {
                 )
             }
 
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .weight(1f)
+                    .clickable(onClick = onEdit)
+            ) {
                 Text(
                     text = item.name,
                     style = MaterialTheme.typography.bodyLarge,
