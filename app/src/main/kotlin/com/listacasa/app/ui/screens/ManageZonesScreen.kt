@@ -1,5 +1,6 @@
 package com.listacasa.app.ui.screens
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,9 +33,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.listacasa.app.R
 import com.listacasa.app.data.Zone
+import com.listacasa.app.data.isProtectedZone
 import com.listacasa.app.ui.AppViewModel
 
-/** SPEC.md sec 1.6: crear, renombrar y eliminar zonas. */
+/** SPEC.md sec 1.6: crear, renombrar y eliminar zonas. "Otros" está protegida (cierre de huecos §4). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManageZonesScreen(viewModel: AppViewModel, onBack: () -> Unit) {
@@ -59,35 +61,47 @@ fun ManageZonesScreen(viewModel: AppViewModel, onBack: () -> Unit) {
             items(zones, key = { it.id }) { zone ->
                 var editedName by remember(zone.id) { mutableStateOf(zone.name) }
                 val itemCount = state.items.count { it.zone == zone.id }
+                val protected = isProtectedZone(zone)
 
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = editedName,
-                        onValueChange = { editedName = it },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
-                    )
-                    Text(
-                        text = "$itemCount",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(horizontal = 8.dp)
-                    )
-                    if (editedName != zone.name && editedName.isNotBlank()) {
-                        TextButton(onClick = { viewModel.renameZone(zone.id, editedName.trim()) }) {
-                            Text("OK")
+                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = editedName,
+                            onValueChange = { editedName = it },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            readOnly = protected
+                        )
+                        Text(
+                            text = "$itemCount",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 8.dp)
+                        )
+                        if (!protected && editedName != zone.name && editedName.isNotBlank()) {
+                            TextButton(onClick = { viewModel.renameZone(zone.id, editedName.trim()) }) {
+                                Text("OK")
+                            }
+                        }
+                        if (!protected && zones.size > 1) {
+                            IconButton(onClick = { zoneToDelete = zone }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = stringResource(R.string.zones_delete_cd),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
-                    if (zones.size > 1) {
-                        IconButton(onClick = { zoneToDelete = zone }) {
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = stringResource(R.string.zones_delete_cd),
-                                tint = MaterialTheme.colorScheme.error
-                            )
-                        }
+                    if (protected) {
+                        Text(
+                            text = stringResource(R.string.zones_protected_hint),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
                     }
                 }
             }
@@ -120,7 +134,7 @@ fun ManageZonesScreen(viewModel: AppViewModel, onBack: () -> Unit) {
 
     val pendingZone = zoneToDelete
     if (pendingZone != null) {
-        val otros = zones.firstOrNull { it.name.equals("Otros", ignoreCase = true) && it.id != pendingZone.id }
+        val otros = zones.firstOrNull { isProtectedZone(it) && it.id != pendingZone.id }
             ?: zones.firstOrNull { it.id != pendingZone.id }
         val affectedCount = state.items.count { it.zone == pendingZone.id }
         AlertDialog(
