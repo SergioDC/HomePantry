@@ -270,12 +270,7 @@ fun AddItemSheet(
                                 zone = zoneToUse,
                                 barcode = barcode
                             )
-                            scope.launch {
-                                viewModel.editItem(updated).join()
-                                if (localPhotoUri != null) {
-                                    runCatching { viewModel.attachPhoto(updated.id, localPhotoUri) }
-                                }
-                            }
+                            viewModel.editItem(updated, localPhotoUri)
                         } else {
                             val newItem = Item(
                                 name = name.trim(),
@@ -285,12 +280,7 @@ fun AddItemSheet(
                                 zone = zoneToUse,
                                 barcode = barcode
                             )
-                            scope.launch {
-                                val newItemId = viewModel.addItem(newItem)
-                                if (localPhotoUri != null) {
-                                    runCatching { viewModel.attachPhoto(newItemId, localPhotoUri) }
-                                }
-                            }
+                            viewModel.createItem(newItem, localPhotoUri)
                         }
                         onDismiss()
                     },

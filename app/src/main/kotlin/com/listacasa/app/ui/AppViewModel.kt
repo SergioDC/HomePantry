@@ -77,24 +77,37 @@ class AppViewModel(
         _state.value = _state.value.copy(sortMode = mode)
     }
 
-    /** @return el id Firestore del producto creado, para poder subir su foto después. */
-    suspend fun addItem(item: Item): String =
-        itemsRepository.addItem(item.copy(addedBy = userName))
+    private suspend fun uploadAndAttachPhoto(itemId: String, localUri: android.net.Uri) {
+        val url = storageRepository.uploadPhoto(itemId, localUri)
+        itemsRepository.updatePhotoUrl(itemId, url)
+    }
 
-    /** Guarda los cambios de un producto ya existente (cierre de huecos §1: edición completa). */
-    fun editItem(item: Item) = viewModelScope.launch {
+    /**
+     * Crea el producto y, si hay foto local, la sube y adjunta -- todo en
+     * viewModelScope para que sobreviva aunque AddItemSheet se cierre antes de
+     * terminar (evita perder la foto al guardar offline).
+     */
+    fun createItem(item: Item, localPhotoUri: android.net.Uri?) = viewModelScope.launch {
+        val newItemId = itemsRepository.addItem(item.copy(addedBy = userName))
+        if (localPhotoUri != null) {
+            runCatching { uploadAndAttachPhoto(newItemId, localPhotoUri) }
+        }
+    }
+
+    /**
+     * Guarda los cambios de un producto ya existente y, si hay foto nueva, la
+     * sube y adjunta -- mismo motivo que createItem: todo en viewModelScope.
+     */
+    fun editItem(item: Item, localPhotoUri: android.net.Uri? = null) = viewModelScope.launch {
         itemsRepository.updateItem(item)
+        if (localPhotoUri != null) {
+            runCatching { uploadAndAttachPhoto(item.id, localPhotoUri) }
+        }
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
     fun incrementQty(item: Item, addQty: Double) = viewModelScope.launch {
         itemsRepository.updateItem(item.copy(qty = item.qty + addQty))
-    }
-
-    /** Sube la foto y adjunta su URL al producto ya creado. */
-    fun attachPhoto(itemId: String, localUri: android.net.Uri) = viewModelScope.launch {
-        val url = storageRepository.uploadPhoto(itemId, localUri)
-        itemsRepository.updatePhotoUrl(itemId, url)
     }
 
     fun toggleDone(item: Item) = viewModelScope.launch {

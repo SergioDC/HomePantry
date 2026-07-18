@@ -102,7 +102,7 @@ fun ListaDeLaCasaApp() {
                     return AppViewModel(
                         itemsRepository = ItemsRepository(firestore, code),
                         zonesRepository = ZonesRepository(firestore, code),
-                        storageRepository = StorageRepository(storage, code, context),
+                        storageRepository = StorageRepository(storage, code, context.applicationContext),
                         userName = name
                     ) as T
                 }
