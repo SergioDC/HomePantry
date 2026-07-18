@@ -25,12 +25,15 @@ import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.listacasa.app.data.ConnectivityObserver
+import com.listacasa.app.data.Item
 import com.listacasa.app.data.ItemsRepository
 import com.listacasa.app.data.StorageRepository
 import com.listacasa.app.data.UserPrefs
 import com.listacasa.app.data.ZonesRepository
 import com.listacasa.app.ui.AppViewModel
 import com.listacasa.app.ui.screens.AddItemSheet
+import com.listacasa.app.ui.screens.EditNameDialog
 import com.listacasa.app.ui.screens.JoinHouseholdScreen
 import com.listacasa.app.ui.screens.MainListScreen
 import com.listacasa.app.ui.screens.ManageZonesScreen
@@ -87,6 +90,9 @@ fun ListaDeLaCasaApp() {
 
     val firestore = remember { FirebaseFirestore.getInstance() }
     val storage = remember { FirebaseStorage.getInstance() }
+    val connectivityObserver = remember { ConnectivityObserver(context) }
+    val isOnline by connectivityObserver.observe().collectAsState(initial = true)
+
     val viewModel: AppViewModel = viewModel(
         key = code,
         factory = remember(code, name) {
@@ -105,14 +111,19 @@ fun ListaDeLaCasaApp() {
     )
 
     var showAddItem by remember { mutableStateOf(false) }
+    var itemBeingEdited by remember { mutableStateOf<Item?>(null) }
+    var showEditName by remember { mutableStateOf(false) }
     val navController = rememberNavController()
 
     NavHost(navController = navController, startDestination = "mainList") {
         composable("mainList") {
             MainListScreen(
                 viewModel = viewModel,
+                isOnline = isOnline,
                 onAddItem = { showAddItem = true },
-                onManageZones = { navController.navigate("manageZones") }
+                onEditItem = { item -> itemBeingEdited = item },
+                onManageZones = { navController.navigate("manageZones") },
+                onEditName = { showEditName = true }
             )
         }
         composable("manageZones") {
@@ -120,12 +131,20 @@ fun ListaDeLaCasaApp() {
         }
     }
 
-    if (showAddItem) {
+    if (showAddItem || itemBeingEdited != null) {
         val state by viewModel.state.collectAsState()
         AddItemSheet(
             viewModel = viewModel,
             initialZoneId = state.selectedZoneId,
-            onDismiss = { showAddItem = false }
+            itemToEdit = itemBeingEdited,
+            onDismiss = {
+                showAddItem = false
+                itemBeingEdited = null
+            }
         )
+    }
+
+    if (showEditName) {
+        EditNameDialog(userPrefs = userPrefs, currentName = name, onDismiss = { showEditName = false })
     }
 }
