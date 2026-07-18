@@ -47,4 +47,64 @@ class ItemListLogicTest {
         val sections = groupAndSort(items, listOf(nevera, despensa), filterZoneId = "ALL")
         assertEquals(listOf("z1"), sections.map { it.zone.id })
     }
+
+    @Test fun `sort mode newest first orders by addedAt descending within a group`() {
+        val older = Item(id = "1", name = "Leche", zone = "z1", addedAt = java.util.Date(1000))
+        val newer = Item(id = "2", name = "Pan", zone = "z1", addedAt = java.util.Date(2000))
+        val sections = groupAndSort(
+            listOf(older, newer), listOf(nevera), filterZoneId = "ALL", sortMode = SortMode.NEWEST_FIRST
+        )
+        assertEquals(listOf("2", "1"), sections.first().items.map { it.id })
+    }
+
+    @Test fun `sort mode oldest first orders by addedAt ascending within a group`() {
+        val older = Item(id = "1", name = "Leche", zone = "z1", addedAt = java.util.Date(1000))
+        val newer = Item(id = "2", name = "Pan", zone = "z1", addedAt = java.util.Date(2000))
+        val sections = groupAndSort(
+            listOf(older, newer), listOf(nevera), filterZoneId = "ALL", sortMode = SortMode.OLDEST_FIRST
+        )
+        assertEquals(listOf("1", "2"), sections.first().items.map { it.id })
+    }
+
+    @Test fun `sort mode alphabetical orders by name case-insensitively`() {
+        val zebra = Item(id = "1", name = "zanahoria", zone = "z1")
+        val apple = Item(id = "2", name = "Arroz", zone = "z1")
+        val sections = groupAndSort(
+            listOf(zebra, apple), listOf(nevera), filterZoneId = "ALL", sortMode = SortMode.ALPHABETICAL
+        )
+        assertEquals(listOf("2", "1"), sections.first().items.map { it.id })
+    }
+
+    @Test fun `pending items always precede done items regardless of sort mode`() {
+        val doneOld = Item(id = "1", name = "A", zone = "z1", done = true, addedAt = java.util.Date(5000))
+        val pendingNew = Item(id = "2", name = "B", zone = "z1", done = false, addedAt = java.util.Date(1000))
+        val sections = groupAndSort(
+            listOf(doneOld, pendingNew), listOf(nevera), filterZoneId = "ALL", sortMode = SortMode.OLDEST_FIRST
+        )
+        assertEquals(listOf("2", "1"), sections.first().items.map { it.id })
+    }
+
+    @Test fun `filterItemsByQuery matches case-insensitive partial names`() {
+        val items = listOf(
+            Item(id = "1", name = "Leche entera"),
+            Item(id = "2", name = "Pan de molde"),
+            Item(id = "3", name = "Leche de avena")
+        )
+        val result = filterItemsByQuery(items, "leche")
+        assertEquals(listOf("1", "3"), result.map { it.id })
+    }
+
+    @Test fun `filterItemsByQuery with blank query returns all items unchanged`() {
+        val items = listOf(Item(id = "1", name = "Leche"), Item(id = "2", name = "Pan"))
+        assertEquals(items, filterItemsByQuery(items, "  "))
+    }
+
+    @Test fun `findPendingDuplicateByBarcode matches only pending items with same barcode`() {
+        val pendingMatch = Item(id = "1", name = "Leche", barcode = "123", done = false)
+        val doneMatch = Item(id = "2", name = "Leche vieja", barcode = "123", done = true)
+        val items = listOf(pendingMatch, doneMatch)
+        assertEquals(pendingMatch, findPendingDuplicateByBarcode(items, "123"))
+        assertEquals(null, findPendingDuplicateByBarcode(listOf(doneMatch), "123"))
+        assertEquals(null, findPendingDuplicateByBarcode(items, "999"))
+    }
 }
