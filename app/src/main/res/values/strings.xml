@@ -18,9 +18,22 @@
     <string name="main_settings_cd">Ajustes</string>
     <string name="main_add_item_cd">Añadir producto</string>
     <string name="main_delete_item_cd">Eliminar producto</string>
+    <string name="main_search_cd">Buscar</string>
+    <string name="main_search_hint">Buscar producto…</string>
+    <string name="main_sort_cd">Ordenar</string>
+    <string name="main_sort_newest">Más reciente primero</string>
+    <string name="main_sort_oldest">Más antiguo primero</string>
+    <string name="main_sort_alpha">Alfabético A-Z</string>
+    <string name="main_offline_indicator">Sin conexión — los cambios se sincronizarán al reconectar</string>
+    <string name="main_clear_done_confirm_title">Vaciar comprados</string>
+    <string name="main_clear_done_confirm_message">¿Borrar %1$d producto(s) comprados? Esta acción no se puede deshacer.</string>
+    <string name="main_edit_name">Cambiar nombre</string>
+    <string name="main_edit_name_title">Tu nombre</string>
+    <string name="main_edit_name_save">Guardar</string>
 
     <!-- AddItemSheet -->
     <string name="add_item_title">Añadir producto</string>
+    <string name="add_item_edit_title">Editar producto</string>
     <string name="add_item_name">Nombre</string>
     <string name="add_item_qty">Cantidad</string>
     <string name="add_item_unit">Unidad</string>
@@ -29,9 +42,15 @@
     <string name="add_item_scan">📊 Escanear</string>
     <string name="add_item_new_zone">+ nueva zona</string>
     <string name="add_item_save">Guardar</string>
+    <string name="add_item_save_edit">Guardar cambios</string>
     <string name="add_item_barcode_not_found">No se encontró el producto. Completa el nombre a mano.</string>
     <string name="add_item_scanning_hint">Apunta la cámara al código de barras</string>
     <string name="add_item_camera_permission_needed">Se necesita permiso de cámara para escanear</string>
+    <string name="add_item_existing_photo_cd">Foto actual del producto</string>
+    <string name="add_item_duplicate_title">Producto ya en la lista</string>
+    <string name="add_item_duplicate_message">Ya tienes \"%1$s\" en la lista. ¿Qué quieres hacer?</string>
+    <string name="add_item_duplicate_sum">Sumar cantidad</string>
+    <string name="add_item_duplicate_new">Añadir como nuevo</string>
 
     <!-- ManageZonesScreen -->
     <string name="zones_title">Gestionar zonas</string>
@@ -41,4 +60,5 @@
     <string name="zones_add_cd">Añadir zona</string>
     <string name="zones_delete_cd">Eliminar zona</string>
     <string name="zones_back_cd">Volver</string>
+    <string name="zones_protected_hint">Zona de reserva, no se puede modificar.</string>
 </resources>
