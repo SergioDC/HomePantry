@@ -16,11 +16,14 @@ data class UiState(
     val items: List<Item> = emptyList(),
     val zones: List<Zone> = emptyList(),
     val selectedZoneId: String = "ALL",
+    val searchQuery: String = "",
+    val sortMode: SortMode = SortMode.NEWEST_FIRST,
     val loading: Boolean = true,
     val error: String? = null
 ) {
     val progress: String get() = progressText(items)
-    val sections: List<ZoneSection> get() = groupAndSort(items, zones, selectedZoneId)
+    val sections: List<ZoneSection> get() =
+        groupAndSort(filterItemsByQuery(items, searchQuery), zones, selectedZoneId, sortMode)
 }
 
 /**
@@ -66,9 +69,27 @@ class AppViewModel(
         _state.value = _state.value.copy(selectedZoneId = zoneId)
     }
 
+    fun setSearchQuery(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
+    }
+
+    fun setSortMode(mode: SortMode) {
+        _state.value = _state.value.copy(sortMode = mode)
+    }
+
     /** @return el id Firestore del producto creado, para poder subir su foto después. */
     suspend fun addItem(item: Item): String =
         itemsRepository.addItem(item.copy(addedBy = userName))
+
+    /** Guarda los cambios de un producto ya existente (cierre de huecos §1: edición completa). */
+    fun editItem(item: Item) = viewModelScope.launch {
+        itemsRepository.updateItem(item)
+    }
+
+    /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
+    fun incrementQty(item: Item, addQty: Double) = viewModelScope.launch {
+        itemsRepository.updateItem(item.copy(qty = item.qty + addQty))
+    }
 
     /** Sube la foto y adjunta su URL al producto ya creado. */
     fun attachPhoto(itemId: String, localUri: android.net.Uri) = viewModelScope.launch {
