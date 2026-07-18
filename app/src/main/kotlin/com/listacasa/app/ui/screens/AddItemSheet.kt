@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -12,11 +13,14 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -27,6 +31,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -39,38 +44,57 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.listacasa.app.R
 import com.listacasa.app.data.Item
 import com.listacasa.app.data.OpenFoodFactsClient
+import com.listacasa.app.data.parseQtyOrDefault
 import com.listacasa.app.data.zoneColorFor
 import com.listacasa.app.data.Unit as ItemUnit
 import com.listacasa.app.ui.AppViewModel
 import com.listacasa.app.ui.components.BarcodeScannerView
 import com.listacasa.app.ui.components.ZoneChip
+import com.listacasa.app.ui.findPendingDuplicateByBarcode
 import kotlinx.coroutines.launch
 
-/** SPEC.md sec 1.5: añadir producto, con foto y escaneo de código de barras. */
+/**
+ * SPEC.md sec 1.5: añadir producto, con foto y escaneo de código de barras.
+ * Si `itemToEdit` no es null, el formulario se precarga y "Guardar" actualiza
+ * ese producto en vez de crear uno nuevo (cierre de huecos §1: edición completa).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () -> Unit) {
+fun AddItemSheet(
+    viewModel: AppViewModel,
+    initialZoneId: String?,
+    itemToEdit: Item? = null,
+    onDismiss: () -> Unit
+) {
     val state by viewModel.state.collectAsState()
     val zones = state.zones.sortedBy { it.order }
+    val isEditing = itemToEdit != null
 
-    var name by remember { mutableStateOf("") }
-    var qtyText by remember { mutableStateOf("1") }
-    var unit by remember { mutableStateOf(ItemUnit.UD) }
+    var name by remember(itemToEdit) { mutableStateOf(itemToEdit?.name ?: "") }
+    var qtyText by remember(itemToEdit) { mutableStateOf(itemToEdit?.qty?.toString() ?: "1") }
+    var unit by remember(itemToEdit) {
+        mutableStateOf(
+            itemToEdit?.let { runCatching { ItemUnit.valueOf(it.unit) }.getOrDefault(ItemUnit.UD) } ?: ItemUnit.UD
+        )
+    }
     var unitMenuExpanded by remember { mutableStateOf(false) }
-    var note by remember { mutableStateOf("") }
-    var selectedZoneId by remember(zones) {
-        mutableStateOf(initialZoneId?.takeIf { it != "ALL" } ?: zones.firstOrNull()?.id ?: "")
+    var note by remember(itemToEdit) { mutableStateOf(itemToEdit?.note ?: "") }
+    var selectedZoneId by remember(zones, itemToEdit) {
+        mutableStateOf(itemToEdit?.zone ?: initialZoneId?.takeIf { it != "ALL" } ?: zones.firstOrNull()?.id ?: "")
     }
     var newZoneName by remember { mutableStateOf("") }
-    var photoUri by remember { mutableStateOf<Uri?>(null) }
-    var barcode by remember { mutableStateOf<String?>(null) }
+    var photoUri by remember(itemToEdit) { mutableStateOf<Uri?>(null) }
+    var barcode by remember(itemToEdit) { mutableStateOf(itemToEdit?.barcode) }
     var barcodeNotFound by remember { mutableStateOf(false) }
     var showScanner by remember { mutableStateOf(false) }
+    var duplicateItem by remember { mutableStateOf<Item?>(null) }
 
     val scope = rememberCoroutineScope()
+    val qty = parseQtyOrDefault(qtyText)
 
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         photoUri = uri
@@ -83,7 +107,10 @@ fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () 
                 .padding(16.dp)
         ) {
             item {
-                Text(stringResource(R.string.add_item_title), style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = if (isEditing) stringResource(R.string.add_item_edit_title) else stringResource(R.string.add_item_title),
+                    style = MaterialTheme.typography.titleLarge
+                )
             }
             item {
                 OutlinedTextField(
@@ -116,6 +143,7 @@ fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () 
                         value = qtyText,
                         onValueChange = { qtyText = it },
                         label = { Text(stringResource(R.string.add_item_qty)) },
+                        isError = qty == null,
                         modifier = Modifier.weight(1f)
                     )
                     Box(modifier = Modifier.weight(1f).padding(start = 8.dp)) {
@@ -203,6 +231,16 @@ fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () 
                 )
             }
             item {
+                if (isEditing && photoUri == null && !itemToEdit?.photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = itemToEdit?.photoUrl,
+                        contentDescription = stringResource(R.string.add_item_existing_photo_cd),
+                        modifier = Modifier
+                            .padding(top = 12.dp)
+                            .size(56.dp)
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
+                    )
+                }
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
                     OutlinedButton(
                         onClick = {
@@ -219,28 +257,48 @@ fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () 
             item {
                 Button(
                     onClick = {
-                        val qty = qtyText.toDoubleOrNull() ?: 1.0
+                        val validQty = qty ?: return@Button
                         val zoneToUse = selectedZoneId
                         val localPhotoUri = photoUri
-                        val newItem = Item(
-                            name = name.trim(),
-                            qty = qty,
-                            unit = unit.name,
-                            note = note.trim().ifBlank { null },
-                            zone = zoneToUse,
-                            barcode = barcode
-                        )
-                        scope.launch {
-                            val newItemId = viewModel.addItem(newItem)
-                            if (localPhotoUri != null) {
-                                runCatching { viewModel.attachPhoto(newItemId, localPhotoUri) }
+                        val existing = itemToEdit
+                        if (existing != null) {
+                            val updated = existing.copy(
+                                name = name.trim(),
+                                qty = validQty,
+                                unit = unit.name,
+                                note = note.trim().ifBlank { null },
+                                zone = zoneToUse,
+                                barcode = barcode
+                            )
+                            scope.launch {
+                                viewModel.editItem(updated)
+                                if (localPhotoUri != null) {
+                                    runCatching { viewModel.attachPhoto(updated.id, localPhotoUri) }
+                                }
+                            }
+                        } else {
+                            val newItem = Item(
+                                name = name.trim(),
+                                qty = validQty,
+                                unit = unit.name,
+                                note = note.trim().ifBlank { null },
+                                zone = zoneToUse,
+                                barcode = barcode
+                            )
+                            scope.launch {
+                                val newItemId = viewModel.addItem(newItem)
+                                if (localPhotoUri != null) {
+                                    runCatching { viewModel.attachPhoto(newItemId, localPhotoUri) }
+                                }
                             }
                         }
                         onDismiss()
                     },
-                    enabled = name.isNotBlank() && selectedZoneId.isNotBlank(),
+                    enabled = name.isNotBlank() && selectedZoneId.isNotBlank() && qty != null,
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp)
-                ) { Text(stringResource(R.string.add_item_save)) }
+                ) {
+                    Text(if (isEditing) stringResource(R.string.add_item_save_edit) else stringResource(R.string.add_item_save))
+                }
             }
         }
     }
@@ -265,9 +323,31 @@ fun AddItemSheet(viewModel: AppViewModel, initialZoneId: String?, onDismiss: () 
                                 }
                                 .onFailure { barcodeNotFound = true }
                         }
+                        if (!isEditing) {
+                            duplicateItem = findPendingDuplicateByBarcode(state.items, detected)
+                        }
                     }
                 )
             }
         }
+    }
+
+    val pendingDuplicate = duplicateItem
+    if (pendingDuplicate != null) {
+        AlertDialog(
+            onDismissRequest = { duplicateItem = null },
+            title = { Text(stringResource(R.string.add_item_duplicate_title)) },
+            text = { Text(stringResource(R.string.add_item_duplicate_message, pendingDuplicate.name)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.incrementQty(pendingDuplicate, qty ?: 1.0)
+                    duplicateItem = null
+                    onDismiss()
+                }) { Text(stringResource(R.string.add_item_duplicate_sum)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { duplicateItem = null }) { Text(stringResource(R.string.add_item_duplicate_new)) }
+            }
+        )
     }
 }
