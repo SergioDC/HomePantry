@@ -271,7 +271,7 @@ fun AddItemSheet(
                                 barcode = barcode
                             )
                             scope.launch {
-                                viewModel.editItem(updated)
+                                viewModel.editItem(updated).join()
                                 if (localPhotoUri != null) {
                                     runCatching { viewModel.attachPhoto(updated.id, localPhotoUri) }
                                 }
