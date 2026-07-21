@@ -122,7 +122,6 @@ fun ListaDeLaCasaApp() {
                 isOnline = isOnline,
                 onAddItem = { showAddItem = true },
                 onEditItem = { item -> itemBeingEdited = item },
-                onManageZones = { navController.navigate("manageZones") },
                 onEditName = { showEditName = true }
             )
         }

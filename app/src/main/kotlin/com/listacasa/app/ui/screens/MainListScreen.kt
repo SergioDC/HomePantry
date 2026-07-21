@@ -1,33 +1,29 @@
 package com.listacasa.app.ui.screens
 
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.ScrollableTabRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -43,15 +39,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.listacasa.app.R
 import com.listacasa.app.data.Item
+import com.listacasa.app.data.zoneColorFor
 import com.listacasa.app.ui.AppViewModel
+import com.listacasa.app.ui.ListViewMode
 import com.listacasa.app.ui.SortMode
-import com.listacasa.app.ui.components.ProductCard
+import com.listacasa.app.ui.components.ItemPillRow
+import com.listacasa.app.ui.components.NocturneFab
 import com.listacasa.app.ui.components.ProgressBar
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import com.listacasa.app.ui.components.SegmentedToggle
+import com.listacasa.app.ui.components.ZoneChip
 
-/** SPEC.md sec 1.4: pantalla principal. */
+/** Pestaña "Lista": la lista de la compra (SPEC.md sec 1.4, restyle Nocturne). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainListScreen(
@@ -59,53 +57,29 @@ fun MainListScreen(
     isOnline: Boolean = true,
     onAddItem: () -> Unit,
     onEditItem: (Item) -> Unit = {},
-    onManageZones: () -> Unit,
     onEditName: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var menuExpanded by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    var showSearchBar by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
-    val today = remember { SimpleDateFormat("EEEE d MMMM", Locale("es", "ES")).format(Date()) }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text(stringResource(R.string.app_name))
-                        Text(today.replaceFirstChar { it.uppercase() }, style = MaterialTheme.typography.bodySmall)
-                    }
-                },
+                title = { Text(stringResource(R.string.main_title)) },
                 actions = {
-                    IconButton(onClick = { showSearchBar = !showSearchBar }) {
-                        Icon(Icons.Filled.Search, contentDescription = stringResource(R.string.main_search_cd))
-                    }
-                    IconButton(onClick = { sortMenuExpanded = true }) {
-                        Icon(Icons.Filled.Sort, contentDescription = stringResource(R.string.main_sort_cd))
-                    }
-                    DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.main_sort_newest)) },
-                            onClick = { viewModel.setSortMode(SortMode.NEWEST_FIRST); sortMenuExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.main_sort_oldest)) },
-                            onClick = { viewModel.setSortMode(SortMode.OLDEST_FIRST); sortMenuExpanded = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.main_sort_alpha)) },
-                            onClick = { viewModel.setSortMode(SortMode.ALPHABETICAL); sortMenuExpanded = false }
-                        )
-                    }
-                    IconButton(onClick = onManageZones) {
-                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.main_settings_cd))
-                    }
                     IconButton(onClick = { menuExpanded = true }) {
-                        Icon(Icons.Filled.MoreVert, contentDescription = null)
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.main_overflow_cd))
                     }
                     DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.main_sort_cd)) },
+                            onClick = {
+                                menuExpanded = false
+                                sortMenuExpanded = true
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.main_clear_done)) },
                             onClick = {
@@ -121,13 +95,25 @@ fun MainListScreen(
                             }
                         )
                     }
+                    DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.main_sort_newest)) },
+                            onClick = { viewModel.setSortMode(SortMode.NEWEST_FIRST); sortMenuExpanded = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.main_sort_oldest)) },
+                            onClick = { viewModel.setSortMode(SortMode.OLDEST_FIRST); sortMenuExpanded = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.main_sort_alpha)) },
+                            onClick = { viewModel.setSortMode(SortMode.ALPHABETICAL); sortMenuExpanded = false }
+                        )
+                    }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddItem) {
-                Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.main_add_item_cd))
-            }
+            NocturneFab(onClick = onAddItem, contentDescription = stringResource(R.string.main_add_item_cd))
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
@@ -142,28 +128,37 @@ fun MainListScreen(
                 }
             }
 
-            if (showSearchBar) {
-                OutlinedTextField(
-                    value = state.searchQuery,
-                    onValueChange = { viewModel.setSearchQuery(it) },
-                    placeholder = { Text(stringResource(R.string.main_search_hint)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-            }
-
             ProgressBar(items = state.items, modifier = Modifier.padding(16.dp))
 
-            val allTabs = listOf("ALL" to stringResource(R.string.main_all_zones_tab)) +
-                state.zones.sortedBy { it.order }.map { it.id to it.name }
-            val selectedIndex = allTabs.indexOfFirst { it.first == state.selectedZoneId }.coerceAtLeast(0)
+            SegmentedToggle(
+                options = listOf(
+                    ListViewMode.GROUPED to stringResource(R.string.main_view_grouped),
+                    ListViewMode.FLAT to stringResource(R.string.main_view_flat)
+                ),
+                selected = state.listViewMode,
+                onSelect = { viewModel.setListViewMode(it) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
 
-            ScrollableTabRow(selectedTabIndex = selectedIndex) {
-                allTabs.forEachIndexed { index, (id, label) ->
-                    Tab(
-                        selected = index == selectedIndex,
-                        onClick = { viewModel.selectZone(id) },
-                        text = { Text(label) }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                ZoneChip(
+                    label = stringResource(R.string.main_all_zones_tab),
+                    colorHex = null,
+                    selected = state.selectedZoneId == "ALL",
+                    onClick = { viewModel.selectZone("ALL") }
+                )
+                state.zones.sortedBy { it.order }.forEachIndexed { index, zone ->
+                    ZoneChip(
+                        zone = zone,
+                        colorHex = zoneColorFor(index),
+                        selected = state.selectedZoneId == zone.id,
+                        onClick = { viewModel.selectZone(zone.id) }
                     )
                 }
             }
@@ -178,6 +173,23 @@ fun MainListScreen(
                 state.items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.main_empty_list))
                 }
+                state.listViewMode == ListViewMode.FLAT -> LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp)
+                ) {
+                    items(state.flatRows, key = { it.item.id }) { row ->
+                        ItemPillRow(
+                            item = row.item,
+                            zoneName = row.zoneName,
+                            updatedInZoneLabel = if (row.item.done) {
+                                stringResource(R.string.main_updated_in_zone, row.zoneName)
+                            } else null,
+                            onToggleDone = { viewModel.toggleDone(row.item) },
+                            onDelete = { viewModel.deleteItem(row.item.id) },
+                            onEdit = { onEditItem(row.item) }
+                        )
+                    }
+                }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp)
@@ -191,14 +203,12 @@ fun MainListScreen(
                             )
                         }
                         items(section.items, key = { it.id }) { product ->
-                            Box(modifier = Modifier.padding(vertical = 4.dp)) {
-                                ProductCard(
-                                    item = product,
-                                    onToggleDone = { viewModel.toggleDone(product) },
-                                    onDelete = { viewModel.deleteItem(product.id) },
-                                    onEdit = { onEditItem(product) }
-                                )
-                            }
+                            ItemPillRow(
+                                item = product,
+                                onToggleDone = { viewModel.toggleDone(product) },
+                                onDelete = { viewModel.deleteItem(product.id) },
+                                onEdit = { onEditItem(product) }
+                            )
                         }
                     }
                 }
