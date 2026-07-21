@@ -18,12 +18,17 @@ data class UiState(
     val selectedZoneId: String = "ALL",
     val searchQuery: String = "",
     val sortMode: SortMode = SortMode.NEWEST_FIRST,
+    val listViewMode: ListViewMode = ListViewMode.GROUPED,
     val loading: Boolean = true,
     val error: String? = null
 ) {
     val progress: String get() = progressText(items)
-    val sections: List<ZoneSection> get() =
-        groupAndSort(filterItemsByQuery(items, searchQuery), zones, selectedZoneId, sortMode)
+    val sections: List<ZoneSection> get() = groupAndSort(items, zones, selectedZoneId, sortMode)
+    val flatRows: List<FlatRow> get() {
+        val zoneFiltered = if (selectedZoneId == "ALL") items else items.filter { it.zone == selectedZoneId }
+        return flattenAndSort(zoneFiltered, zones, sortMode)
+    }
+    val zoneCards: List<ZoneSummary> get() = zoneSummaries(items, zones)
 }
 
 /**
@@ -75,6 +80,10 @@ class AppViewModel(
 
     fun setSortMode(mode: SortMode) {
         _state.value = _state.value.copy(sortMode = mode)
+    }
+
+    fun setListViewMode(mode: ListViewMode) {
+        _state.value = _state.value.copy(listViewMode = mode)
     }
 
     private suspend fun uploadAndAttachPhoto(itemId: String, localUri: android.net.Uri) {
