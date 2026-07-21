@@ -29,3 +29,6 @@ const val PROTECTED_ZONE_NAME = "Otros"
 
 /** "Otros" es la zona de reserva de reasignación y no se puede renombrar/eliminar (cierre de huecos §4). */
 fun isProtectedZone(zone: Zone): Boolean = zone.name.equals(PROTECTED_ZONE_NAME, ignoreCase = true)
+
+/** Icono auto-derivado: primera letra del nombre en mayúscula (Nocturne redesign, sin campo de icono editable). */
+fun zoneIconLetter(zone: Zone): String = zone.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
