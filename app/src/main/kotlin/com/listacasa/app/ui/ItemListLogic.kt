@@ -77,3 +77,12 @@ fun filterItemsByQuery(items: List<Item>, query: String): List<Item> {
  */
 fun findPendingDuplicateByBarcode(items: List<Item>, barcode: String): Item? =
     items.firstOrNull { it.barcode == barcode && !it.done }
+
+data class ZoneSummary(val zone: Zone, val itemCount: Int, val pendingCount: Int)
+
+/** Resumen por zona para las tarjetas del dashboard "Almacén" (Nocturne). */
+fun zoneSummaries(items: List<Item>, zones: List<Zone>): List<ZoneSummary> =
+    zones.sortedBy { it.order }.map { zone ->
+        val zoneItems = items.filter { it.zone == zone.id }
+        ZoneSummary(zone = zone, itemCount = zoneItems.size, pendingCount = zoneItems.count { !it.done })
+    }

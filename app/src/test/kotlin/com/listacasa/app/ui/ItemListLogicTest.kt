@@ -135,4 +135,29 @@ class ItemListLogicTest {
         val rows = flattenAndSort(listOf(zebra, apple), listOf(nevera, despensa), SortMode.ALPHABETICAL)
         assertEquals(listOf("2", "1"), rows.map { it.item.id })
     }
+
+    @Test fun `zoneSummaries counts total and pending items per zone, in zone order`() {
+        val items = listOf(
+            Item(id = "1", name = "Leche", zone = "z1", done = false),
+            Item(id = "2", name = "Pan", zone = "z1", done = true),
+            Item(id = "3", name = "Arroz", zone = "z2", done = false)
+        )
+        val summaries = zoneSummaries(items, listOf(despensa, nevera))
+        assertEquals(listOf("z1", "z2"), summaries.map { it.zone.id })
+        assertEquals(2, summaries[0].itemCount)
+        assertEquals(1, summaries[0].pendingCount)
+        assertEquals(1, summaries[1].itemCount)
+        assertEquals(1, summaries[1].pendingCount)
+    }
+
+    @Test fun `zoneSummaries reports zero pending for a zone with only done items`() {
+        val items = listOf(Item(id = "1", name = "Leche", zone = "z1", done = true))
+        val summaries = zoneSummaries(items, listOf(nevera))
+        assertEquals(0, summaries.single().pendingCount)
+    }
+
+    @Test fun `zoneSummaries includes zones with no items at all`() {
+        val summaries = zoneSummaries(emptyList(), listOf(nevera, despensa))
+        assertEquals(listOf(0, 0), summaries.map { it.itemCount })
+    }
 }
