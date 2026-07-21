@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
@@ -158,7 +159,7 @@ fun ListaDeLaCasaApp() {
         NavHost(
             navController = navController,
             startDestination = "mainList",
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         ) {
             composable("mainList") {
                 MainListScreen(
