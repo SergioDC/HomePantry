@@ -61,4 +61,32 @@
     <string name="zones_delete_cd">Eliminar zona</string>
     <string name="zones_back_cd">Volver</string>
     <string name="zones_protected_hint">Zona de reserva, no se puede modificar.</string>
+
+    <!-- Bottom navigation (Nocturne) -->
+    <string name="nav_lista">Lista</string>
+    <string name="nav_almacen">Almacén</string>
+    <string name="nav_buscar">Buscar</string>
+
+    <!-- ZonesDashboardScreen -->
+    <string name="dashboard_title">Alacena</string>
+    <string name="dashboard_greeting">Hola, %1$s</string>
+    <string name="dashboard_summary_up_to_date">%1$d productos · al día</string>
+    <string name="dashboard_summary_pending">%1$d productos · %2$d pendientes</string>
+    <string name="dashboard_new_zone">+ Nueva zona</string>
+
+    <!-- ZoneDetailScreen -->
+    <string name="zone_detail_back_cd">Volver</string>
+    <string name="zone_detail_edit_cd">Editar zona</string>
+
+    <!-- SearchScreen -->
+    <string name="search_hint">Buscar producto…</string>
+    <string name="search_results_count">%1$d resultados</string>
+    <string name="search_empty">Escribe para buscar productos</string>
+
+    <!-- MainListScreen (Nocturne restyle) -->
+    <string name="main_title">Lista de la compra</string>
+    <string name="main_view_grouped">Agrupado</string>
+    <string name="main_view_flat">Todo</string>
+    <string name="main_updated_in_zone">Actualizado en %1$s</string>
+    <string name="main_overflow_cd">Más opciones</string>
 </resources>
