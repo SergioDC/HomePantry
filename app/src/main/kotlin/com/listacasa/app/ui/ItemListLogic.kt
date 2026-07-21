@@ -7,10 +7,21 @@ data class ZoneSection(val zone: Zone, val items: List<Item>)
 
 enum class SortMode { NEWEST_FIRST, OLDEST_FIRST, ALPHABETICAL }
 
+/** Vista Lista: agrupada por zona (hoy) o plana (Nocturne, cierre de huecos §Nocturne). */
+enum class ListViewMode { GROUPED, FLAT }
+
+data class FlatRow(val item: Item, val zoneName: String)
+
 /** "X de Y listos" — comprados vs total (SPEC.md sec 1.4). */
 fun progressText(items: List<Item>): String {
     val done = items.count { it.done }
     return "$done de ${items.size} listos"
+}
+
+private fun withinGroupComparator(sortMode: SortMode): Comparator<Item> = when (sortMode) {
+    SortMode.NEWEST_FIRST -> compareByDescending { it.addedAt }
+    SortMode.OLDEST_FIRST -> compareBy { it.addedAt }
+    SortMode.ALPHABETICAL -> compareBy { it.name.lowercase() }
 }
 
 /**
@@ -30,17 +41,27 @@ fun groupAndSort(
     val relevantZones = zones.sortedBy { it.order }
         .filter { !isFiltered || it.id == filterZoneId }
 
-    val withinGroupComparator: Comparator<Item> = when (sortMode) {
-        SortMode.NEWEST_FIRST -> compareByDescending { it.addedAt }
-        SortMode.OLDEST_FIRST -> compareBy { it.addedAt }
-        SortMode.ALPHABETICAL -> compareBy { it.name.lowercase() }
-    }
+    val comparator = compareBy<Item> { it.done }.then(withinGroupComparator(sortMode))
 
     return relevantZones.mapNotNull { zone ->
-        val zoneItems = items.filter { it.zone == zone.id }
-            .sortedWith(compareBy<Item> { it.done }.then(withinGroupComparator))
+        val zoneItems = items.filter { it.zone == zone.id }.sortedWith(comparator)
         if (zoneItems.isEmpty() && !isFiltered) null else ZoneSection(zone, zoneItems)
     }
+}
+
+/**
+ * Igual que `groupAndSort` pero sin agrupar: una única lista con pendientes
+ * antes que comprados, cada fila con el nombre de su zona para el chip de
+ * etiqueta (pantalla "Todo" de Nocturne).
+ */
+fun flattenAndSort(
+    items: List<Item>,
+    zones: List<Zone>,
+    sortMode: SortMode = SortMode.NEWEST_FIRST
+): List<FlatRow> {
+    val zoneNameById = zones.associate { it.id to it.name }
+    val comparator = compareBy<Item> { it.done }.then(withinGroupComparator(sortMode))
+    return items.sortedWith(comparator).map { FlatRow(item = it, zoneName = zoneNameById[it.zone] ?: "") }
 }
 
 /** Filtro de búsqueda por texto, client-side (cierre de huecos §11). */

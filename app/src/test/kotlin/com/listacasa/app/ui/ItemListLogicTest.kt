@@ -107,4 +107,32 @@ class ItemListLogicTest {
         assertEquals(null, findPendingDuplicateByBarcode(listOf(doneMatch), "123"))
         assertEquals(null, findPendingDuplicateByBarcode(items, "999"))
     }
+
+    @Test fun `flattenAndSort orders pending before done, ungrouped across zones`() {
+        val items = listOf(
+            Item(id = "1", name = "Leche", zone = "z1", done = true),
+            Item(id = "2", name = "Pan", zone = "z2", done = false)
+        )
+        val rows = flattenAndSort(items, listOf(nevera, despensa), SortMode.NEWEST_FIRST)
+        assertEquals(listOf("2", "1"), rows.map { it.item.id })
+    }
+
+    @Test fun `flattenAndSort attaches the zone name to each row`() {
+        val items = listOf(Item(id = "1", name = "Leche", zone = "z1"))
+        val rows = flattenAndSort(items, listOf(nevera, despensa), SortMode.NEWEST_FIRST)
+        assertEquals("Nevera", rows.single().zoneName)
+    }
+
+    @Test fun `flattenAndSort leaves the zone name blank when the zone is unknown`() {
+        val items = listOf(Item(id = "1", name = "Leche", zone = "missing"))
+        val rows = flattenAndSort(items, listOf(nevera, despensa), SortMode.NEWEST_FIRST)
+        assertEquals("", rows.single().zoneName)
+    }
+
+    @Test fun `flattenAndSort respects sort mode within the pending and done groups`() {
+        val zebra = Item(id = "1", name = "zanahoria", zone = "z1")
+        val apple = Item(id = "2", name = "Arroz", zone = "z2")
+        val rows = flattenAndSort(listOf(zebra, apple), listOf(nevera, despensa), SortMode.ALPHABETICAL)
+        assertEquals(listOf("2", "1"), rows.map { it.item.id })
+    }
 }
