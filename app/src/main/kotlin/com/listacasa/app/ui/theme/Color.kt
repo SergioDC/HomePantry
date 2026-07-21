@@ -36,3 +36,24 @@ val ZoneColors = listOf(
     Color(0xFF993C1D),
     Mint400
 )
+
+// Nocturne (tema oscuro del rediseño de navegación). El Mint/Lime de arriba
+// queda sin usar mientras no haya alternancia claro/oscuro.
+val NocturneBackground = Color(0xFF161826)
+val NocturneSurface = Color(0xFF232532)
+val NocturneSurfaceVariant = Color(0xFF2A2C3C)
+val NocturnePrimary = Color(0xFF9184D9)
+val NocturneOnPrimary = Color(0xFF161826)
+val NocturnePrimaryContainer = Color(0xFF2E2A44)
+val NocturneOnPrimaryContainer = Color(0xFFE9E9ED)
+val NocturneSecondary = Color(0xFF716A9E)
+val NocturneOnSecondary = Color(0xFFE9E9ED)
+val NocturneSecondaryContainer = Color(0xFF2E2A44)
+val NocturneOnSecondaryContainer = Color(0xFFE9E9ED)
+val NocturneError = Color(0xFFD85A30)
+val NocturneOnError = Color(0xFF161826)
+val NocturneErrorContainer = Color(0xFF4A2A22)
+val NocturneOnErrorContainer = Color(0xFFE9E9ED)
+val NocturneOnSurface = Color(0xFFE9E9ED)
+val NocturneOnSurfaceVariant = Color(0xFFB8B8C4)
+val NocturneOutline = Color(0xFFE9E9ED).copy(alpha = 0.16f)

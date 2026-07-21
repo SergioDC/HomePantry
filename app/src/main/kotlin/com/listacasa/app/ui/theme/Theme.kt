@@ -2,35 +2,35 @@ package com.listacasa.app.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val ListaDeLaCasaColorScheme = lightColorScheme(
-    primary = MintPrimary,
-    onPrimary = CardColor,
-    primaryContainer = Mint100,
-    onPrimaryContainer = Ink,
-    secondary = LimeSecondary,
-    onSecondary = CardColor,
-    secondaryContainer = Lime100,
-    onSecondaryContainer = Ink,
-    error = CoralError,
-    onError = CardColor,
-    errorContainer = CoralSoft,
-    onErrorContainer = Ink,
-    background = Background,
-    onBackground = Ink,
-    surface = CardColor,
-    onSurface = Ink,
-    surfaceVariant = Mint100,
-    onSurfaceVariant = InkSoft,
-    outline = Line
+private val ListaDeLaCasaColorScheme = darkColorScheme(
+    primary = NocturnePrimary,
+    onPrimary = NocturneOnPrimary,
+    primaryContainer = NocturnePrimaryContainer,
+    onPrimaryContainer = NocturneOnPrimaryContainer,
+    secondary = NocturneSecondary,
+    onSecondary = NocturneOnSecondary,
+    secondaryContainer = NocturneSecondaryContainer,
+    onSecondaryContainer = NocturneOnSecondaryContainer,
+    error = NocturneError,
+    onError = NocturneOnError,
+    errorContainer = NocturneErrorContainer,
+    onErrorContainer = NocturneOnErrorContainer,
+    background = NocturneBackground,
+    onBackground = NocturneOnSurface,
+    surface = NocturneSurface,
+    onSurface = NocturneOnSurface,
+    surfaceVariant = NocturneSurfaceVariant,
+    onSurfaceVariant = NocturneOnSurfaceVariant,
+    outline = NocturneOutline
 )
 
 @Composable
 fun ListaDeLaCasaTheme(content: @Composable () -> Unit) {
-    // Prototipo web validado usa siempre esquema claro; se mantiene consistente
-    // en la app nativa independientemente del tema del sistema.
+    // Nocturne: la app siempre usa este esquema oscuro, sin seguir el tema
+    // del sistema (docs/superpowers/specs/2026-07-20-nocturne-redesign-design.md).
     MaterialTheme(
         colorScheme = ListaDeLaCasaColorScheme,
         typography = Typography(),
