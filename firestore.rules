@@ -1,0 +1,14 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // HomePantry no tiene sistema de cuentas por usuario: cada "casa" se
+    // identifica por un código compartido (CASA-1234, ver JoinHouseholdScreen)
+    // y cualquier persona autenticada (incluye usuarios anónimos, ver
+    // signInAnonymously en MainActivity) que conozca el código puede
+    // leer/escribir sus productos, zonas y demás datos de esa casa.
+    match /households/{householdCode}/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
