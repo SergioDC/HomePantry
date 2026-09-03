@@ -1,4 +1,4 @@
-package com.listacasa.app.data
+package com.homepantry.app.data
 
 import com.google.gson.annotations.SerializedName
 import retrofit2.Retrofit

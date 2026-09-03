@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.components
+package com.homepantry.app.ui.components
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -7,8 +7,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.listacasa.app.data.Item
-import com.listacasa.app.ui.progressText
+import com.homepantry.app.data.Item
+import com.homepantry.app.ui.progressText
 
 @Composable
 fun ProgressBar(items: List<Item>, modifier: Modifier = Modifier) {

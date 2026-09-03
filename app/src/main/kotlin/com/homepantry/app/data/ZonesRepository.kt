@@ -1,4 +1,4 @@
-package com.listacasa.app.data
+package com.homepantry.app.data
 
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose

@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -35,11 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.R
-import com.listacasa.app.data.zoneColorFor
-import com.listacasa.app.data.zoneIconLetter
-import com.listacasa.app.ui.AppViewModel
-import com.listacasa.app.ui.components.ZoneCard
+import com.homepantry.app.R
+import com.homepantry.app.data.zoneColorFor
+import com.homepantry.app.data.zoneIconLetter
+import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.ZoneCard
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

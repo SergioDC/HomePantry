@@ -1,4 +1,4 @@
-package com.listacasa.app.data
+package com.homepantry.app.data
 
 import com.google.gson.Gson
 import org.junit.Assert.assertEquals

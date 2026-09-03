@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.components
+package com.homepantry.app.ui.components
 
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape

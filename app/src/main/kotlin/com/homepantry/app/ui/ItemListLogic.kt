@@ -1,7 +1,7 @@
-package com.listacasa.app.ui
+package com.homepantry.app.ui
 
-import com.listacasa.app.data.Item
-import com.listacasa.app.data.Zone
+import com.homepantry.app.data.Item
+import com.homepantry.app.data.Zone
 
 data class ZoneSection(val zone: Zone, val items: List<Item>)
 

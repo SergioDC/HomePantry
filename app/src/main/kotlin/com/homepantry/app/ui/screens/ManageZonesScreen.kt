@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,10 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.R
-import com.listacasa.app.data.Zone
-import com.listacasa.app.data.isProtectedZone
-import com.listacasa.app.ui.AppViewModel
+import com.homepantry.app.R
+import com.homepantry.app.data.Zone
+import com.homepantry.app.data.isProtectedZone
+import com.homepantry.app.ui.AppViewModel
 
 /** SPEC.md sec 1.6: crear, renombrar y eliminar zonas. "Otros" está protegida (cierre de huecos §4). */
 @OptIn(ExperimentalMaterial3Api::class)

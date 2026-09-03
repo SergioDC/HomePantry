@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.components
+package com.homepantry.app.ui.components
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -23,9 +23,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.R
-import com.listacasa.app.data.Item
-import com.listacasa.app.data.Unit as ItemUnit
+import com.homepantry.app.R
+import com.homepantry.app.data.Item
+import com.homepantry.app.data.Unit as ItemUnit
 
 /**
  * Fila de producto estilo "pill" (Nocturne), reemplaza ProductCard en Lista,

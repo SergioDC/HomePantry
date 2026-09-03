@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,10 +20,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.R
-import com.listacasa.app.data.UserPrefs
-import com.listacasa.app.data.generateHouseholdCode
-import com.listacasa.app.data.isValidHouseholdCode
+import com.homepantry.app.R
+import com.homepantry.app.data.UserPrefs
+import com.homepantry.app.data.generateHouseholdCode
+import com.homepantry.app.data.isValidHouseholdCode
 import kotlinx.coroutines.launch
 
 /** SPEC.md sec 1.1: pedir/crear código de casa + nombre, una sola vez. */

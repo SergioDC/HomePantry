@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.components
+package com.homepantry.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.size
@@ -10,7 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.data.Zone
+import com.homepantry.app.data.Zone
 
 @Composable
 fun ZoneChip(

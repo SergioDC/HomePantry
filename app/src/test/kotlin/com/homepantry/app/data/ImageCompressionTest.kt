@@ -1,4 +1,4 @@
-package com.listacasa.app.data
+package com.homepantry.app.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Test

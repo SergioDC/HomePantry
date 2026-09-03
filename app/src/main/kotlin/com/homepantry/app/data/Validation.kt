@@ -1,4 +1,4 @@
-package com.listacasa.app.data
+package com.homepantry.app.data
 
 /**
  * Valida el campo de cantidad de AddItemSheet (cierre de huecos §9): vacío se

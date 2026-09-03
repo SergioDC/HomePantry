@@ -13,7 +13,7 @@ README es solo la puesta en marcha del entorno.
    - Kotlin plugin actualizado
 2. **Un proyecto Firebase** (gratis):
    - Ir a https://console.firebase.google.com → crear proyecto
-   - Añadir una app Android con el `applicationId`: `com.listacasa.app`
+   - Añadir una app Android con el `applicationId`: `com.homepantry.app`
    - Descargar el archivo `google-services.json` generado y colocarlo en
      `app/google-services.json` (NO se sube a git, ver `.gitignore`)
    - Activar en la consola de Firebase:
@@ -42,14 +42,14 @@ miembros de la casa sin pasar por Play Store) hace falta firmarlo:
 
 1. Generar un keystore (una sola vez, guárdalo en un sitio seguro, **no** en el repo):
    ```bash
-   keytool -genkey -v -keystore release.keystore -alias listacasa \
+   keytool -genkey -v -keystore release.keystore -alias homepantry \
      -keyalg RSA -keysize 2048 -validity 10000
    ```
 2. Añadir la ruta y contraseñas a tu `local.properties` local (nunca se commitea):
    ```properties
    RELEASE_STORE_FILE=/ruta/a/release.keystore
    RELEASE_STORE_PASSWORD=tu_password
-   RELEASE_KEY_ALIAS=listacasa
+   RELEASE_KEY_ALIAS=homepantry
    RELEASE_KEY_PASSWORD=tu_password
    ```
 3. Añadir un `signingConfigs` en `app/build.gradle.kts` que lea esas propiedades:
@@ -86,7 +86,7 @@ miembros de la casa sin pasar por Play Store) hace falta firmarlo:
 
 ## Estructura
 ```
-app/src/main/kotlin/com/listacasa/app/
+app/src/main/kotlin/com/homepantry/app/
   data/          -> modelos (Item, Zone, Household) y repositorios Firebase
   ui/screens/    -> pantallas Compose (lista principal, añadir producto, zonas)
   ui/components/ -> componentes reutilizables (tarjeta de producto, chips de zona...)

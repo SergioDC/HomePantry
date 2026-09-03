@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -45,16 +45,16 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
-import com.listacasa.app.R
-import com.listacasa.app.data.Item
-import com.listacasa.app.data.OpenFoodFactsClient
-import com.listacasa.app.data.parseQtyOrDefault
-import com.listacasa.app.data.zoneColorFor
-import com.listacasa.app.data.Unit as ItemUnit
-import com.listacasa.app.ui.AppViewModel
-import com.listacasa.app.ui.components.BarcodeScannerView
-import com.listacasa.app.ui.components.ZoneChip
-import com.listacasa.app.ui.findPendingDuplicateByBarcode
+import com.homepantry.app.R
+import com.homepantry.app.data.Item
+import com.homepantry.app.data.OpenFoodFactsClient
+import com.homepantry.app.data.parseQtyOrDefault
+import com.homepantry.app.data.zoneColorFor
+import com.homepantry.app.data.Unit as ItemUnit
+import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.BarcodeScannerView
+import com.homepantry.app.ui.components.ZoneChip
+import com.homepantry.app.ui.findPendingDuplicateByBarcode
 import kotlinx.coroutines.launch
 
 /**

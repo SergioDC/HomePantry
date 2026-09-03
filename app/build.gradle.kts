@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "com.listacasa.app"
-    compileSdk = 34
+    namespace = "com.homepantry.app"
+    compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.listacasa.app"
-        minSdk = 26
-        targetSdk = 34
+        applicationId = "com.homepantry.app"
+        minSdk = 36
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
     }
@@ -57,10 +57,10 @@ dependencies {
     implementation("com.google.firebase:firebase-storage-ktx")
 
     // Cámara + escaneo de código de barras
-    implementation("androidx.camera:camera-core:1.3.4")
-    implementation("androidx.camera:camera-camera2:1.3.4")
-    implementation("androidx.camera:camera-lifecycle:1.3.4")
-    implementation("androidx.camera:camera-view:1.3.4")
+    implementation("androidx.camera:camera-core:1.5.1")
+    implementation("androidx.camera:camera-camera2:1.5.1")
+    implementation("androidx.camera:camera-lifecycle:1.5.1")
+    implementation("androidx.camera:camera-view:1.5.1")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("com.google.guava:guava:33.2.1-android")
 

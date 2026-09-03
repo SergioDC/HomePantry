@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
@@ -11,8 +11,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
-import com.listacasa.app.R
-import com.listacasa.app.data.UserPrefs
+import com.homepantry.app.R
+import com.homepantry.app.data.UserPrefs
 import kotlinx.coroutines.launch
 
 /** Permite corregir el nombre local guardado en DataStore (cierre de huecos §5). */

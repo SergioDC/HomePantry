@@ -1,12 +1,12 @@
-package com.listacasa.app.ui
+package com.homepantry.app.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.listacasa.app.data.Item
-import com.listacasa.app.data.ItemsRepository
-import com.listacasa.app.data.StorageRepository
-import com.listacasa.app.data.Zone
-import com.listacasa.app.data.ZonesRepository
+import com.homepantry.app.data.Item
+import com.homepantry.app.data.ItemsRepository
+import com.homepantry.app.data.StorageRepository
+import com.homepantry.app.data.Zone
+import com.homepantry.app.data.ZonesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -97,10 +97,12 @@ class AppViewModel(
      * terminar (evita perder la foto al guardar offline).
      */
     fun createItem(item: Item, localPhotoUri: android.net.Uri?) = viewModelScope.launch {
-        val newItemId = itemsRepository.addItem(item.copy(addedBy = userName))
-        if (localPhotoUri != null) {
-            runCatching { uploadAndAttachPhoto(newItemId, localPhotoUri) }
-        }
+        runCatching {
+            val newItemId = itemsRepository.addItem(item.copy(addedBy = userName))
+            if (localPhotoUri != null) {
+                runCatching { uploadAndAttachPhoto(newItemId, localPhotoUri) }
+            }
+        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     /**
@@ -108,46 +110,56 @@ class AppViewModel(
      * sube y adjunta -- mismo motivo que createItem: todo en viewModelScope.
      */
     fun editItem(item: Item, localPhotoUri: android.net.Uri? = null) = viewModelScope.launch {
-        itemsRepository.updateItem(item)
-        if (localPhotoUri != null) {
-            runCatching { uploadAndAttachPhoto(item.id, localPhotoUri) }
-        }
+        runCatching {
+            itemsRepository.updateItem(item)
+            if (localPhotoUri != null) {
+                runCatching { uploadAndAttachPhoto(item.id, localPhotoUri) }
+            }
+        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
     fun incrementQty(item: Item, addQty: Double) = viewModelScope.launch {
-        itemsRepository.updateItem(item.copy(qty = item.qty + addQty))
+        runCatching { itemsRepository.updateItem(item.copy(qty = item.qty + addQty)) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun toggleDone(item: Item) = viewModelScope.launch {
-        itemsRepository.updateItem(item.copy(done = !item.done))
+        runCatching { itemsRepository.updateItem(item.copy(done = !item.done)) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun deleteItem(itemId: String) = viewModelScope.launch {
-        itemsRepository.deleteItem(itemId)
+        runCatching { itemsRepository.deleteItem(itemId) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun clearDone() = viewModelScope.launch {
         val doneIds = _state.value.items.filter { it.done }.map { it.id }
-        itemsRepository.clearDone(doneIds)
+        runCatching { itemsRepository.clearDone(doneIds) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun createZone(name: String) = viewModelScope.launch {
         val nextOrder = (_state.value.zones.maxOfOrNull { it.order } ?: -1) + 1
-        zonesRepository.addZone(name, nextOrder)
+        runCatching { zonesRepository.addZone(name, nextOrder) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun renameZone(zoneId: String, newName: String) = viewModelScope.launch {
-        zonesRepository.renameZone(zoneId, newName)
+        runCatching { zonesRepository.renameZone(zoneId, newName) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     /** Reasigna los productos de la zona eliminada a "Otros" antes de borrarla (SPEC.md sec 1.3). */
     fun deleteZone(zoneId: String, otrosZoneId: String) = viewModelScope.launch {
         if (_state.value.zones.size <= 1) return@launch
-        itemsRepository.reassignZone(zoneId, otrosZoneId)
-        zonesRepository.deleteZone(zoneId)
-        if (_state.value.selectedZoneId == zoneId) {
-            _state.value = _state.value.copy(selectedZoneId = "ALL")
-        }
+        runCatching {
+            itemsRepository.reassignZone(zoneId, otrosZoneId)
+            zonesRepository.deleteZone(zoneId)
+            if (_state.value.selectedZoneId == zoneId) {
+                _state.value = _state.value.copy(selectedZoneId = "ALL")
+            }
+        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 }

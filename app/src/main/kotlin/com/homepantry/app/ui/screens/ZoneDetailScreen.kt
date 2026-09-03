@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.screens
+package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,12 +22,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.listacasa.app.R
-import com.listacasa.app.data.Item
-import com.listacasa.app.ui.AppViewModel
-import com.listacasa.app.ui.components.ItemPillRow
-import com.listacasa.app.ui.components.NocturneFab
-import com.listacasa.app.ui.groupAndSort
+import com.homepantry.app.R
+import com.homepantry.app.data.Item
+import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.ItemPillRow
+import com.homepantry.app.ui.components.NocturneFab
+import com.homepantry.app.ui.groupAndSort
 
 /** Pantalla de detalle de una zona, abierta desde el dashboard "Almacén" (Nocturne). */
 @OptIn(ExperimentalMaterial3Api::class)

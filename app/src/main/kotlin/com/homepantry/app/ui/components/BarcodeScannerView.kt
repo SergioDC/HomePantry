@@ -1,4 +1,4 @@
-package com.listacasa.app.ui.components
+package com.homepantry.app.ui.components
 
 import android.Manifest
 import android.annotation.SuppressLint
@@ -28,7 +28,7 @@ import com.google.mlkit.vision.common.InputImage
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
-import com.listacasa.app.R
+import com.homepantry.app.R
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**

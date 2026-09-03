@@ -1,4 +1,4 @@
-package com.listacasa.app
+package com.homepantry.app
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -31,24 +31,24 @@ import androidx.navigation.compose.rememberNavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
-import com.listacasa.app.data.ConnectivityObserver
-import com.listacasa.app.data.Item
-import com.listacasa.app.data.ItemsRepository
-import com.listacasa.app.data.StorageRepository
-import com.listacasa.app.data.UserPrefs
-import com.listacasa.app.data.ZonesRepository
-import com.listacasa.app.ui.AppViewModel
-import com.listacasa.app.ui.components.BottomNavBar
-import com.listacasa.app.ui.components.BottomNavItem
-import com.listacasa.app.ui.screens.AddItemSheet
-import com.listacasa.app.ui.screens.EditNameDialog
-import com.listacasa.app.ui.screens.JoinHouseholdScreen
-import com.listacasa.app.ui.screens.MainListScreen
-import com.listacasa.app.ui.screens.ManageZonesScreen
-import com.listacasa.app.ui.screens.SearchScreen
-import com.listacasa.app.ui.screens.ZoneDetailScreen
-import com.listacasa.app.ui.screens.ZonesDashboardScreen
-import com.listacasa.app.ui.theme.ListaDeLaCasaTheme
+import com.homepantry.app.data.ConnectivityObserver
+import com.homepantry.app.data.Item
+import com.homepantry.app.data.ItemsRepository
+import com.homepantry.app.data.StorageRepository
+import com.homepantry.app.data.UserPrefs
+import com.homepantry.app.data.ZonesRepository
+import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.BottomNavBar
+import com.homepantry.app.ui.components.BottomNavItem
+import com.homepantry.app.ui.screens.AddItemSheet
+import com.homepantry.app.ui.screens.EditNameDialog
+import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.MainListScreen
+import com.homepantry.app.ui.screens.ManageZonesScreen
+import com.homepantry.app.ui.screens.SearchScreen
+import com.homepantry.app.ui.screens.ZoneDetailScreen
+import com.homepantry.app.ui.screens.ZonesDashboardScreen
+import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
 import kotlinx.coroutines.tasks.await
 
 /**
