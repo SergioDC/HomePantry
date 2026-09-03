@@ -86,6 +86,10 @@ class AppViewModel(
         _state.value = _state.value.copy(listViewMode = mode)
     }
 
+    fun clearError() {
+        _state.value = _state.value.copy(error = null)
+    }
+
     private suspend fun uploadAndAttachPhoto(itemId: String, localUri: android.net.Uri) {
         val url = storageRepository.uploadPhoto(itemId, localUri)
         itemsRepository.updatePhotoUrl(itemId, url)
@@ -101,6 +105,7 @@ class AppViewModel(
             val newItemId = itemsRepository.addItem(item.copy(addedBy = userName))
             if (localPhotoUri != null) {
                 runCatching { uploadAndAttachPhoto(newItemId, localPhotoUri) }
+                    .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
             }
         }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
@@ -114,6 +119,7 @@ class AppViewModel(
             itemsRepository.updateItem(item)
             if (localPhotoUri != null) {
                 runCatching { uploadAndAttachPhoto(item.id, localPhotoUri) }
+                    .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
             }
         }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }

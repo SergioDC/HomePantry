@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -83,8 +86,8 @@ fun AddItemSheet(
     }
     var unitMenuExpanded by remember { mutableStateOf(false) }
     var note by remember(itemToEdit) { mutableStateOf(itemToEdit?.note ?: "") }
-    var selectedZoneId by remember(zones, itemToEdit) {
-        mutableStateOf(itemToEdit?.zone ?: initialZoneId?.takeIf { it != "ALL" } ?: zones.firstOrNull()?.id ?: "")
+    var selectedZoneId by remember(itemToEdit) {
+        mutableStateOf(itemToEdit?.zone ?: initialZoneId?.takeIf { it != "ALL" } ?: "")
     }
     var newZoneName by remember { mutableStateOf("") }
     var photoUri by remember(itemToEdit) { mutableStateOf<Uri?>(null) }
@@ -96,6 +99,16 @@ fun AddItemSheet(
     val scope = rememberCoroutineScope()
     val qty = parseQtyOrDefault(qtyText)
 
+    // Rellena la zona por defecto en cuanto llegan las zonas (pueden no estar cargadas
+    // todavía al abrir la modal) sin pisar una selección manual del usuario -- p.ej. al
+    // crear una zona nueva desde el "+" de abajo, la lista de zonas cambia pero la
+    // selección actual debe conservarse.
+    LaunchedEffect(zones) {
+        if (selectedZoneId.isBlank() || zones.none { it.id == selectedZoneId }) {
+            zones.firstOrNull()?.let { selectedZoneId = it.id }
+        }
+    }
+
     val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         photoUri = uri
     }
@@ -105,6 +118,8 @@ fun AddItemSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp)
+                .imePadding()
+                .navigationBarsPadding()
         ) {
             item {
                 Text(
@@ -220,6 +235,17 @@ fun AddItemSheet(
                         },
                         modifier = Modifier.padding(start = 8.dp)
                     ) { Text("+") }
+                }
+            }
+            item {
+                val error = state.error
+                if (error != null) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
             item {
