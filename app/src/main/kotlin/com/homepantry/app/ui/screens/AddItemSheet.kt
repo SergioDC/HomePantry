@@ -1,6 +1,7 @@
 package com.homepantry.app.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,10 +32,12 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,11 +48,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import coil.compose.AsyncImage
 import com.homepantry.app.R
+import com.homepantry.app.data.DEFAULT_PRODUCTS
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.OpenFoodFactsClient
 import com.homepantry.app.data.parseQtyOrDefault
@@ -60,6 +69,8 @@ import com.homepantry.app.ui.components.ZoneChip
 import com.homepantry.app.ui.findPendingDuplicateByBarcode
 import kotlinx.coroutines.launch
 
+private data class NameSuggestion(val name: String, val unit: ItemUnit?)
+
 /**
  * SPEC.md sec 1.5: añadir producto, con foto y escaneo de código de barras.
  * Si `itemToEdit` no es null, el formulario se precarga y "Guardar" actualiza
@@ -70,6 +81,7 @@ import kotlinx.coroutines.launch
 fun AddItemSheet(
     viewModel: AppViewModel,
     initialZoneId: String?,
+    isFromZone: Boolean = false,
     itemToEdit: Item? = null,
     onDismiss: () -> Unit
 ) {
@@ -86,6 +98,7 @@ fun AddItemSheet(
     }
     var unitMenuExpanded by remember { mutableStateOf(false) }
     var note by remember(itemToEdit) { mutableStateOf(itemToEdit?.note ?: "") }
+    var store by remember(itemToEdit) { mutableStateOf(itemToEdit?.store ?: "") }
     var selectedZoneId by remember(itemToEdit) {
         mutableStateOf(itemToEdit?.zone ?: initialZoneId?.takeIf { it != "ALL" } ?: "")
     }
@@ -98,6 +111,46 @@ fun AddItemSheet(
 
     val scope = rememberCoroutineScope()
     val qty = parseQtyOrDefault(qtyText)
+
+    // Autocompletar mientras se escribe: primero productos que ya existen en el hogar (para no
+    // crear duplicados con variaciones de nombre), y de no haber suficientes, del catálogo de
+    // productos habituales (DEFAULT_PRODUCTS). Al elegir una sugerencia también se rellena la
+    // unidad conocida de ese producto. Lista inline (no popup) para no depender del anclaje de
+    // un DropdownMenu dentro del LazyColumn del sheet.
+    val existingSuggestions = remember(state.items) {
+        state.items.distinctBy { it.name.lowercase() }
+            .map { NameSuggestion(it.name, runCatching { ItemUnit.valueOf(it.unit) }.getOrNull()) }
+    }
+    val defaultSuggestions = remember {
+        DEFAULT_PRODUCTS.map { NameSuggestion(it.name, runCatching { ItemUnit.valueOf(it.unit) }.getOrNull()) }
+    }
+    val nameSuggestions = remember(name, existingSuggestions, isEditing) {
+        if (isEditing || name.isBlank()) {
+            emptyList()
+        } else {
+            fun matches(suggestion: NameSuggestion) =
+                suggestion.name.contains(name, ignoreCase = true) && !suggestion.name.equals(name, ignoreCase = true)
+
+            val fromExisting = existingSuggestions.filter(::matches)
+            val existingNamesLower = existingSuggestions.map { it.name.lowercase() }.toSet()
+            val fromDefaults = defaultSuggestions.filter { matches(it) && it.name.lowercase() !in existingNamesLower }
+            (fromExisting + fromDefaults).take(6)
+        }
+    }
+
+    // Autocompletar la tienda contra las que ya has usado antes (versión ligera: texto
+    // libre, sin pantalla de gestión de tiendas propia).
+    val existingStores = remember(state.items) {
+        state.items.mapNotNull { it.store }.distinct()
+    }
+    val storeSuggestions = remember(store, existingStores) {
+        if (store.isBlank()) {
+            emptyList()
+        } else {
+            existingStores.filter { it.contains(store, ignoreCase = true) && !it.equals(store, ignoreCase = true) }
+                .take(5)
+        }
+    }
 
     // Rellena la zona por defecto en cuanto llegan las zonas (pueden no estar cargadas
     // todavía al abrir la modal) sin pisar una selección manual del usuario -- p.ej. al
@@ -113,7 +166,33 @@ fun AddItemSheet(
         photoUri = uri
     }
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    // El formulario es largo (nombre, cantidad, zonas, nota, foto...) -- si el
+    // sheet abre solo "parcialmente expandido" (comportamiento por defecto de
+    // Material3) se ve a medias y hay que arrastrarlo; lo abrimos siempre a
+    // pantalla completa.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        // El manejo de "atrás" propio del sheet cierra la hoja entera incluso
+        // con el teclado abierto (p.ej. al pulsar el botón de cerrar teclado,
+        // que también manda un evento atrás) -- lo desactivamos y llevamos el
+        // control nosotros abajo: si hay teclado, solo se oculta; si no, se
+        // cierra la hoja.
+        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
+    ) {
+        // El WindowInsets.ime "reactivo" leído en composición no reflejaba bien
+        // el estado real del teclado dentro de la ventana propia del sheet (por
+        // eso atrás no hacía nada). Consultamos la vista directamente, en el
+        // momento del propio evento, para tener el estado real del teclado.
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val view = LocalView.current
+        BackHandler {
+            val imeVisible = ViewCompat.getRootWindowInsets(view)?.isVisible(WindowInsetsCompat.Type.ime()) == true
+            if (imeVisible) keyboardController?.hide() else onDismiss()
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -133,6 +212,20 @@ fun AddItemSheet(
                     onValueChange = { name = it },
                     label = { Text(stringResource(R.string.add_item_name)) },
                     modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                )
+            }
+            items(nameSuggestions, key = { "suggestion/${it.name}" }) { suggestion ->
+                Text(
+                    text = suggestion.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            name = suggestion.name
+                            suggestion.unit?.let { unit = it }
+                        }
+                        .padding(vertical = 8.dp)
                 )
             }
             item {
@@ -215,26 +308,28 @@ fun AddItemSheet(
                     }
                 }
             }
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = newZoneName,
-                        onValueChange = { newZoneName = it },
-                        label = { Text(stringResource(R.string.add_item_new_zone)) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedButton(
-                        onClick = {
-                            if (newZoneName.isNotBlank()) {
-                                viewModel.createZone(newZoneName.trim())
-                                newZoneName = ""
-                            }
-                        },
-                        modifier = Modifier.padding(start = 8.dp)
-                    ) { Text("+") }
+            if (isFromZone) {
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = newZoneName,
+                            onValueChange = { newZoneName = it },
+                            label = { Text(stringResource(R.string.add_item_new_zone)) },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                if (newZoneName.isNotBlank()) {
+                                    viewModel.createZone(newZoneName.trim())
+                                    newZoneName = ""
+                                }
+                            },
+                            modifier = Modifier.padding(start = 8.dp)
+                        ) { Text("+") }
+                    }
                 }
             }
             item {
@@ -247,6 +342,25 @@ fun AddItemSheet(
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
+            }
+            item {
+                OutlinedTextField(
+                    value = store,
+                    onValueChange = { store = it },
+                    label = { Text(stringResource(R.string.add_item_store)) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                )
+            }
+            items(storeSuggestions, key = { "store-suggestion/$it" }) { suggestion ->
+                Text(
+                    text = suggestion,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { store = suggestion }
+                        .padding(vertical = 8.dp)
+                )
             }
             item {
                 OutlinedTextField(
@@ -287,26 +401,49 @@ fun AddItemSheet(
                         val zoneToUse = selectedZoneId
                         val localPhotoUri = photoUri
                         val existing = itemToEdit
+                        // Añadido desde una Zona = ya está en el inventario (no pendiente de compra);
+                        // añadido desde la Lista = falta por comprar.
                         if (existing != null) {
                             val updated = existing.copy(
                                 name = name.trim(),
                                 qty = validQty,
                                 unit = unit.name,
                                 note = note.trim().ifBlank { null },
+                                store = store.trim().ifBlank { null },
                                 zone = zoneToUse,
                                 barcode = barcode
                             )
                             viewModel.editItem(updated, localPhotoUri)
                         } else {
-                            val newItem = Item(
-                                name = name.trim(),
-                                qty = validQty,
-                                unit = unit.name,
-                                note = note.trim().ifBlank { null },
-                                zone = zoneToUse,
-                                barcode = barcode
-                            )
-                            viewModel.createItem(newItem, localPhotoUri)
+                            // Si ya existe un producto con este nombre (p.ej. estaba en una Zona
+                            // como "tienes" y ahora te has quedado sin él), reutilizarlo en vez de
+                            // crear un duplicado: se actualiza con los datos del formulario y pasa
+                            // a pendiente/tienes según desde dónde se añade.
+                            val duplicate = state.items.firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
+                            if (duplicate != null) {
+                                val reactivated = duplicate.copy(
+                                    qty = validQty,
+                                    unit = unit.name,
+                                    note = note.trim().ifBlank { null },
+                                    store = store.trim().ifBlank { null },
+                                    zone = zoneToUse,
+                                    barcode = barcode,
+                                    done = isFromZone
+                                )
+                                viewModel.editItem(reactivated, localPhotoUri)
+                            } else {
+                                val newItem = Item(
+                                    name = name.trim(),
+                                    qty = validQty,
+                                    unit = unit.name,
+                                    note = note.trim().ifBlank { null },
+                                    store = store.trim().ifBlank { null },
+                                    zone = zoneToUse,
+                                    barcode = barcode,
+                                    done = isFromZone
+                                )
+                                viewModel.createItem(newItem, localPhotoUri)
+                            }
                         }
                         onDismiss()
                     },

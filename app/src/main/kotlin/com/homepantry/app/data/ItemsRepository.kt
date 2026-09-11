@@ -49,9 +49,11 @@ class ItemsRepository(
         collection().document(itemId).delete().await()
     }
 
-    suspend fun clearDone(doneItemIds: List<String>) {
+    /** Alta masiva (p.ej. productos habituales seleccionados en DefaultProductsSheet). */
+    suspend fun addItems(items: List<Item>) {
+        if (items.isEmpty()) return
         val batch = firestore.batch()
-        doneItemIds.forEach { id -> batch.delete(collection().document(id)) }
+        items.forEach { item -> batch.set(collection().document(), item) }
         batch.commit().await()
     }
 

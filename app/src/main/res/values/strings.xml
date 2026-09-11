@@ -12,7 +12,6 @@
 
     <!-- MainListScreen -->
     <string name="main_empty_list">No hay productos todavía. Toca + para añadir el primero.</string>
-    <string name="main_clear_done">Vaciar comprados</string>
     <string name="main_all_zones_tab">Todos</string>
     <string name="main_error_generic">No se pudo sincronizar. Comprueba tu conexión.</string>
     <string name="main_settings_cd">Ajustes</string>
@@ -25,8 +24,6 @@
     <string name="main_sort_oldest">Más antiguo primero</string>
     <string name="main_sort_alpha">Alfabético A-Z</string>
     <string name="main_offline_indicator">Sin conexión — los cambios se sincronizarán al reconectar</string>
-    <string name="main_clear_done_confirm_title">Vaciar comprados</string>
-    <string name="main_clear_done_confirm_message">¿Borrar %1$d producto(s) comprados? Esta acción no se puede deshacer.</string>
     <string name="main_edit_name">Cambiar nombre</string>
     <string name="main_edit_name_title">Tu nombre</string>
     <string name="main_edit_name_save">Guardar</string>
@@ -38,6 +35,7 @@
     <string name="add_item_qty">Cantidad</string>
     <string name="add_item_unit">Unidad</string>
     <string name="add_item_note">Nota (opcional)</string>
+    <string name="add_item_store">Tienda (opcional)</string>
     <string name="add_item_photo">📷 Foto</string>
     <string name="add_item_scan">📊 Escanear</string>
     <string name="add_item_new_zone">+ nueva zona</string>
@@ -52,15 +50,20 @@
     <string name="add_item_duplicate_sum">Sumar cantidad</string>
     <string name="add_item_duplicate_new">Añadir como nuevo</string>
 
-    <!-- ManageZonesScreen -->
-    <string name="zones_title">Gestionar zonas</string>
+    <!-- ManageZonesScreen (Ajustes) -->
+    <string name="zones_title">Ajustes</string>
     <string name="zones_delete_confirm_title">Eliminar zona</string>
     <string name="zones_delete_confirm_message">%1$d producto(s) se moverán a \"Otros\". ¿Continuar?</string>
     <string name="zones_new_zone_hint">Nombre de la nueva zona</string>
-    <string name="zones_add_cd">Añadir zona</string>
     <string name="zones_delete_cd">Eliminar zona</string>
     <string name="zones_back_cd">Volver</string>
-    <string name="zones_protected_hint">Zona de reserva, no se puede modificar.</string>
+    <string name="zones_household_code_label">Código de tu casa</string>
+    <string name="zones_household_code_copy_cd">Copiar código</string>
+    <string name="zones_household_code_copied">Código copiado</string>
+    <string name="zones_members_title">Miembros de la casa</string>
+    <string name="zones_leave_household">Salir de esta casa</string>
+    <string name="zones_leave_household_confirm_message">Dejarás de ver los productos y zonas de esta casa en este dispositivo. Podrás volver a unirte más tarde con el código.</string>
+    <string name="zones_build_info">v%1$s · build %2$s</string>
 
     <!-- Bottom navigation (Nocturne) -->
     <string name="nav_lista">Lista</string>
@@ -77,16 +80,31 @@
     <!-- ZoneDetailScreen -->
     <string name="zone_detail_back_cd">Volver</string>
     <string name="zone_detail_edit_cd">Editar zona</string>
+    <string name="zone_detail_remove_title">Quitar \"%1$s\"</string>
+    <string name="zone_detail_remove_message">¿Lo añadimos a la lista de la compra o lo eliminamos del todo?</string>
+    <string name="zone_detail_remove_to_list">Añadir a la lista</string>
+    <string name="zone_detail_remove_delete">Eliminar</string>
 
     <!-- SearchScreen -->
     <string name="search_hint">Buscar producto…</string>
     <string name="search_results_count">%1$d resultados</string>
     <string name="search_empty">Escribe para buscar productos</string>
+    <string name="search_no_results">No se encontraron productos</string>
+    <string name="search_status_pending">Pendiente</string>
+    <string name="search_status_owned">Ya lo tienes</string>
 
     <!-- MainListScreen (Nocturne restyle) -->
     <string name="main_title">Lista de la compra</string>
     <string name="main_view_grouped">Agrupado</string>
     <string name="main_view_flat">Todo</string>
-    <string name="main_updated_in_zone">Actualizado en %1$s</string>
     <string name="main_overflow_cd">Más opciones</string>
+    <string name="main_quick_add_defaults">Productos habituales</string>
+
+    <!-- DefaultProductsSheet -->
+    <string name="default_products_title">Productos habituales</string>
+    <string name="default_products_subtitle">Marca los que quieras añadir a tu lista.</string>
+    <string name="default_products_select_all">Marcar todos</string>
+    <string name="default_products_deselect_all">Desmarcar todos</string>
+    <string name="default_products_already_added">%1$s (ya en tu lista)</string>
+    <string name="default_products_add_selected">Añadir seleccionados (%1$d)</string>
 </resources>

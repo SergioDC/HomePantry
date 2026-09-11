@@ -30,6 +30,7 @@ data class Item(
     val unit: String = Unit.UD.name,
     val note: String? = null,
     val zone: String = "",
+    val store: String? = null,
     val photoUrl: String? = null,
     val barcode: String? = null,
     val done: Boolean = false,

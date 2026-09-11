@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -25,7 +24,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -36,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
@@ -57,12 +56,12 @@ fun MainListScreen(
     isOnline: Boolean = true,
     onAddItem: () -> Unit,
     onEditItem: (Item) -> Unit = {},
-    onEditName: () -> Unit = {}
+    onEditName: () -> Unit = {},
+    onQuickAddDefaults: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
     var menuExpanded by remember { mutableStateOf(false) }
     var sortMenuExpanded by remember { mutableStateOf(false) }
-    var showClearConfirm by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -81,10 +80,10 @@ fun MainListScreen(
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text(stringResource(R.string.main_clear_done)) },
+                            text = { Text(stringResource(R.string.main_quick_add_defaults)) },
                             onClick = {
                                 menuExpanded = false
-                                showClearConfirm = true
+                                onQuickAddDefaults()
                             }
                         )
                         DropdownMenuItem(
@@ -173,24 +172,69 @@ fun MainListScreen(
                 }
             }
 
+            // Filtro por tienda (versión ligera): solo aparece si algún producto pendiente
+            // tiene tienda asignada, para no meter una fila vacía cuando nadie la usa.
+            if (state.pendingStores.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ZoneChip(
+                        label = stringResource(R.string.main_all_zones_tab),
+                        colorHex = null,
+                        selected = state.selectedStore == "ALL",
+                        onClick = { viewModel.selectStore("ALL") }
+                    )
+                    state.pendingStores.forEach { store ->
+                        ZoneChip(
+                            label = store,
+                            colorHex = null,
+                            selected = state.selectedStore == store,
+                            onClick = { viewModel.selectStore(store) }
+                        )
+                    }
+                }
+            }
+
             when {
-                state.loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                // `weight(1f)` en vez de solo `fillMaxSize()`: dentro de un Column,
+                // un hijo sin peso se mide contra la altura completa del Column (no
+                // la que queda libre tras la barra de progreso/toggle/chips de
+                // arriba), así que el contenido centrado acababa desplazado hacia
+                // abajo en vez de centrado en el espacio realmente visible.
+                state.loading -> Box(
+                    Modifier.fillMaxSize().weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
                     CircularProgressIndicator()
                 }
-                state.items.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.main_empty_list))
+                // state.flatRows (no state.items): tras filtrar a solo pendientes, puede
+                // haber productos en el hogar (inventario en zonas) sin que quede nada por
+                // comprar -- en ese caso también hay que mostrar el mensaje de vacío, no una
+                // lista en blanco.
+                state.flatRows.isEmpty() -> Box(
+                    Modifier.fillMaxSize().weight(1f),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = stringResource(R.string.main_empty_list),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 32.dp)
+                    )
                 }
+                // bottom = 96.dp (no solo 16.dp): deja hueco para que el último producto no
+                // quede tapado detrás del FAB flotante de "añadir".
                 state.listViewMode == ListViewMode.FLAT -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp)
                 ) {
                     items(state.flatRows, key = { it.item.id }) { row ->
                         ItemPillRow(
                             item = row.item,
                             zoneName = row.zoneName,
-                            updatedInZoneLabel = if (row.item.done) {
-                                stringResource(R.string.main_updated_in_zone, row.zoneName)
-                            } else null,
                             onToggleDone = { viewModel.toggleDone(row.item) },
                             onDelete = { viewModel.deleteItem(row.item.id) },
                             onEdit = { onEditItem(row.item) }
@@ -199,7 +243,7 @@ fun MainListScreen(
                 }
                 else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp)
+                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp)
                 ) {
                     state.sections.forEach { section ->
                         item {
@@ -221,23 +265,5 @@ fun MainListScreen(
                 }
             }
         }
-    }
-
-    if (showClearConfirm) {
-        val doneCount = state.items.count { it.done }
-        AlertDialog(
-            onDismissRequest = { showClearConfirm = false },
-            title = { Text(stringResource(R.string.main_clear_done_confirm_title)) },
-            text = { Text(stringResource(R.string.main_clear_done_confirm_message, doneCount)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.clearDone()
-                    showClearConfirm = false
-                }) { Text(stringResource(R.string.main_clear_done_confirm_title)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showClearConfirm = false }) { Text("Cancelar") }
-            }
-        )
     }
 }

@@ -9,14 +9,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -30,25 +29,39 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.homepantry.app.BuildConfig
 import com.homepantry.app.R
-import com.homepantry.app.data.Zone
-import com.homepantry.app.data.isProtectedZone
+import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.ui.AppViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
-/** SPEC.md sec 1.6: crear, renombrar y eliminar zonas. "Otros" está protegida (cierre de huecos §4). */
+/**
+ * Pantalla "Ajustes": solo datos generales de la casa (código para invitar, miembros,
+ * salir de la casa, versión instalada). Gestionar zonas ya no vive aquí -- crear una
+ * zona está en el dashboard de Almacén, y renombrar/eliminar en la propia zona.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManageZonesScreen(viewModel: AppViewModel, onBack: () -> Unit) {
+fun ManageZonesScreen(viewModel: AppViewModel, householdCode: String, userPrefs: UserPrefs, onBack: () -> Unit) {
     val state by viewModel.state.collectAsState()
-    val zones = state.zones.sortedBy { it.order }
-    var newZoneName by remember { mutableStateOf("") }
-    var zoneToDelete by remember { mutableStateOf<Zone?>(null) }
+    var showLeaveConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val clipboardManager = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.zones_household_code_copied)
+    val lastSeenFormat = remember { SimpleDateFormat("dd/MM HH:mm", Locale("es", "ES")) }
 
     LaunchedEffect(state.error) {
         val message = state.error
@@ -72,99 +85,93 @@ fun ManageZonesScreen(viewModel: AppViewModel, onBack: () -> Unit) {
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
-            items(zones, key = { it.id }) { zone ->
-                var editedName by remember(zone.id) { mutableStateOf(zone.name) }
-                val itemCount = state.items.count { it.zone == zone.id }
-                val protected = isProtectedZone(zone)
-
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        OutlinedTextField(
-                            value = editedName,
-                            onValueChange = { editedName = it },
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            readOnly = protected
-                        )
-                        Text(
-                            text = "$itemCount",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        if (!protected && editedName != zone.name && editedName.isNotBlank()) {
-                            TextButton(onClick = { viewModel.renameZone(zone.id, editedName.trim()) }) {
-                                Text("OK")
-                            }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.zones_household_code_label),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = householdCode,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                        if (!protected && zones.size > 1) {
-                            IconButton(onClick = { zoneToDelete = zone }) {
-                                Icon(
-                                    Icons.Filled.Delete,
-                                    contentDescription = stringResource(R.string.zones_delete_cd),
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                            }
+                        IconButton(onClick = {
+                            clipboardManager.setText(AnnotatedString(householdCode))
+                            scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+                        }) {
+                            Icon(Icons.Filled.ContentCopy, contentDescription = stringResource(R.string.zones_household_code_copy_cd))
                         }
                     }
-                    if (protected) {
-                        Text(
-                            text = stringResource(R.string.zones_protected_hint),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 2.dp)
-                        )
-                    }
+                }
+            }
+            item {
+                Text(
+                    text = stringResource(R.string.zones_members_title),
+                    style = MaterialTheme.typography.labelLarge,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+            items(state.members.sortedByDescending { it.lastSeen }, key = { "member/${it.id}" }) { member ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = member.name.ifBlank { "?" },
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = member.lastSeen?.let { lastSeenFormat.format(it) } ?: "",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                TextButton(
+                    onClick = { showLeaveConfirm = true },
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp)
                 ) {
-                    OutlinedTextField(
-                        value = newZoneName,
-                        onValueChange = { newZoneName = it },
-                        label = { Text(stringResource(R.string.zones_new_zone_hint)) },
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(
-                        onClick = {
-                            if (newZoneName.isNotBlank()) {
-                                viewModel.createZone(newZoneName.trim())
-                                newZoneName = ""
-                            }
-                        }
-                    ) {
-                        Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zones_add_cd))
-                    }
+                    Text(stringResource(R.string.zones_leave_household), color = MaterialTheme.colorScheme.error)
                 }
+            }
+
+            item {
+                // Para verificar rápido qué build tienes instalada mientras probamos cambios.
+                Text(
+                    text = stringResource(R.string.zones_build_info, BuildConfig.VERSION_NAME, BuildConfig.BUILD_TIME),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }
 
-    val pendingZone = zoneToDelete
-    if (pendingZone != null) {
-        val otros = zones.firstOrNull { isProtectedZone(it) && it.id != pendingZone.id }
-            ?: zones.firstOrNull { it.id != pendingZone.id }
-        val affectedCount = state.items.count { it.zone == pendingZone.id }
+    if (showLeaveConfirm) {
         AlertDialog(
-            onDismissRequest = { zoneToDelete = null },
-            title = { Text(stringResource(R.string.zones_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.zones_delete_confirm_message, affectedCount)) },
+            onDismissRequest = { showLeaveConfirm = false },
+            title = { Text(stringResource(R.string.zones_leave_household)) },
+            text = { Text(stringResource(R.string.zones_leave_household_confirm_message)) },
             confirmButton = {
                 TextButton(onClick = {
-                    if (otros != null) {
-                        viewModel.deleteZone(pendingZone.id, otros.id)
-                    }
-                    zoneToDelete = null
-                }) { Text(stringResource(R.string.zones_delete_confirm_title)) }
+                    showLeaveConfirm = false
+                    scope.launch { userPrefs.clearHousehold() }
+                }) { Text(stringResource(R.string.zones_leave_household), color = MaterialTheme.colorScheme.error) }
             },
             dismissButton = {
-                TextButton(onClick = { zoneToDelete = null }) { Text("Cancelar") }
+                TextButton(onClick = { showLeaveConfirm = false }) { Text("Cancelar") }
             }
         )
     }

@@ -3,10 +3,15 @@ package com.homepantry.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -34,6 +39,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.homepantry.app.data.ConnectivityObserver
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
+import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
@@ -41,6 +47,7 @@ import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.BottomNavBar
 import com.homepantry.app.ui.components.BottomNavItem
 import com.homepantry.app.ui.screens.AddItemSheet
+import com.homepantry.app.ui.screens.DefaultProductsSheet
 import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
@@ -106,6 +113,8 @@ fun ListaDeLaCasaApp() {
     val connectivityObserver = remember { ConnectivityObserver(context) }
     val isOnline by connectivityObserver.observe().collectAsState(initial = true)
 
+    val uid = auth.currentUser?.uid.orEmpty()
+
     val viewModel: AppViewModel = viewModel(
         key = code,
         factory = remember(code, name) {
@@ -115,18 +124,24 @@ fun ListaDeLaCasaApp() {
                     return AppViewModel(
                         itemsRepository = ItemsRepository(firestore, code),
                         zonesRepository = ZonesRepository(firestore, code),
+                        membersRepository = MembersRepository(firestore, code),
                         storageRepository = StorageRepository(storage, code, context.applicationContext),
-                        userName = name
+                        userName = name,
+                        uid = uid
                     ) as T
                 }
             }
         }
     )
 
+    val state by viewModel.state.collectAsState()
+    val pendingCount = state.items.count { !it.done }
+
     var showAddItem by remember { mutableStateOf(false) }
     var addItemZoneOverride by remember { mutableStateOf<String?>(null) }
     var itemBeingEdited by remember { mutableStateOf<Item?>(null) }
     var showEditName by remember { mutableStateOf(false) }
+    var showDefaultProducts by remember { mutableStateOf(false) }
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
@@ -136,20 +151,26 @@ fun ListaDeLaCasaApp() {
 
     Scaffold(
         bottomBar = {
-            if (showBottomBar) {
+            // AnimatedVisibility en vez de un `if` a secas: al entrar/salir de pantallas sin
+            // barra inferior (p.ej. Ajustes) el Scaffold recalculaba el padding del contenido
+            // de golpe al aparecer/desaparecer la barra, dando un parpadeo/salto visual.
+            AnimatedVisibility(visible = showBottomBar) {
                 val selectedRoute = if (currentRoute?.startsWith("zoneDetail/") == true) "zonesDashboard" else currentRoute
                 BottomNavBar(
                     items = listOf(
-                        BottomNavItem("mainList", stringResource(R.string.nav_lista)),
-                        BottomNavItem("zonesDashboard", stringResource(R.string.nav_almacen)),
-                        BottomNavItem("search", stringResource(R.string.nav_buscar))
+                        BottomNavItem("zonesDashboard", stringResource(R.string.nav_almacen), Icons.Filled.Inventory2),
+                        BottomNavItem("mainList", stringResource(R.string.nav_lista), Icons.Filled.ShoppingCart, badgeCount = pendingCount),
+                        BottomNavItem("search", stringResource(R.string.nav_buscar), Icons.Filled.Search)
                     ),
-                    selectedRoute = selectedRoute ?: "mainList",
+                    selectedRoute = selectedRoute ?: "zonesDashboard",
                     onSelect = { route ->
+                        // Sin saveState/restoreState: cada pestaña siempre vuelve a su
+                        // pantalla raíz (p.ej. Almacén nunca deja "colgada" la última
+                        // zona abierta -- antes restauraba ese zoneDetail en vez de ir
+                        // al listado de zonas).
                         navController.navigate(route) {
-                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            popUpTo(navController.graph.findStartDestination().id)
                             launchSingleTop = true
-                            restoreState = true
                         }
                     }
                 )
@@ -158,7 +179,7 @@ fun ListaDeLaCasaApp() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = "mainList",
+            startDestination = "zonesDashboard",
             modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         ) {
             composable("mainList") {
@@ -170,7 +191,8 @@ fun ListaDeLaCasaApp() {
                         showAddItem = true
                     },
                     onEditItem = { item -> itemBeingEdited = item },
-                    onEditName = { showEditName = true }
+                    onEditName = { showEditName = true },
+                    onQuickAddDefaults = { showDefaultProducts = true }
                 )
             }
             composable("zonesDashboard") {
@@ -187,7 +209,6 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     zoneId = zoneId,
                     onBack = { navController.popBackStack() },
-                    onManageZones = { navController.navigate("manageZones") },
                     onAddItem = {
                         addItemZoneOverride = zoneId
                         showAddItem = true
@@ -196,19 +217,24 @@ fun ListaDeLaCasaApp() {
                 )
             }
             composable("search") {
-                SearchScreen(viewModel = viewModel, onEditItem = { item -> itemBeingEdited = item })
+                SearchScreen(viewModel = viewModel)
             }
             composable("manageZones") {
-                ManageZonesScreen(viewModel = viewModel, onBack = { navController.popBackStack() })
+                ManageZonesScreen(
+                    viewModel = viewModel,
+                    householdCode = code,
+                    userPrefs = userPrefs,
+                    onBack = { navController.popBackStack() }
+                )
             }
         }
     }
 
     if (showAddItem || itemBeingEdited != null) {
-        val state by viewModel.state.collectAsState()
         AddItemSheet(
             viewModel = viewModel,
             initialZoneId = addItemZoneOverride ?: state.selectedZoneId,
+            isFromZone = addItemZoneOverride != null,
             itemToEdit = itemBeingEdited,
             onDismiss = {
                 showAddItem = false
@@ -220,5 +246,9 @@ fun ListaDeLaCasaApp() {
 
     if (showEditName) {
         EditNameDialog(userPrefs = userPrefs, currentName = name, onDismiss = { showEditName = false })
+    }
+
+    if (showDefaultProducts) {
+        DefaultProductsSheet(viewModel = viewModel, onDismiss = { showDefaultProducts = false })
     }
 }

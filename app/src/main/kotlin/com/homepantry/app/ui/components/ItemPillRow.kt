@@ -30,24 +30,24 @@ import com.homepantry.app.data.Unit as ItemUnit
 /**
  * Fila de producto estilo "pill" (Nocturne), reemplaza ProductCard en Lista,
  * Zone Detail y Buscar. `zoneName` (opcional) muestra el chip de etiqueta de
- * zona. `updatedInZoneLabel` (opcional) muestra la nota "Actualizado en
- * {zona}" bajo productos comprados en la vista "Todo". `showDeleteAction`
- * controla el elemento final de la fila: "×" para borrar (Lista/Zone
- * Detail, por defecto) o una flecha ">" (Buscar, donde tocar la fila ya
- * abre la edición y no se ofrece borrar directamente).
+ * zona. `showDeleteAction` controla el elemento final de la fila: "×" para
+ * borrar (Lista/Zone Detail, por defecto) o una flecha ">" (Buscar, donde
+ * tocar la fila ya abre la edición y no se ofrece borrar directamente).
  */
 @Composable
 fun ItemPillRow(
     item: Item,
     zoneName: String? = null,
-    updatedInZoneLabel: String? = null,
     showDeleteAction: Boolean = true,
+    dimWhenDone: Boolean = true,
     onToggleDone: () -> Unit,
     onDelete: () -> Unit = {},
     onEdit: () -> Unit = {}
 ) {
     val unitLabel = runCatching { ItemUnit.valueOf(item.unit).label }.getOrDefault(item.unit)
-    val rowAlpha = if (item.done) 0.5f else 1f
+    // En Zone Detail "done" significa "en stock", no "terminado" -- ahí no se atenúa/tacha
+    // (dimWhenDone = false), solo en Lista/Buscar donde sí significa "ya comprado".
+    val rowAlpha = if (item.done && dimWhenDone) 0.5f else 1f
 
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).alpha(rowAlpha),
@@ -68,7 +68,7 @@ fun ItemPillRow(
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
-                textDecoration = if (item.done) TextDecoration.LineThrough else null
+                textDecoration = if (item.done && dimWhenDone) TextDecoration.LineThrough else null
             )
             val addedBySuffix = item.addedBy?.takeIf { it.isNotBlank() }?.let { " · pedido por $it" } ?: ""
             Text(
@@ -76,18 +76,18 @@ fun ItemPillRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (!item.store.isNullOrBlank()) {
+                Text(
+                    text = item.store,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             if (!item.note.isNullOrBlank()) {
                 Text(
                     text = item.note,
                     style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (!updatedInZoneLabel.isNullOrBlank()) {
-                Text(
-                    text = updatedInZoneLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
                 )
             }
         }

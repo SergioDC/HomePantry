@@ -80,9 +80,14 @@ fun findPendingDuplicateByBarcode(items: List<Item>, barcode: String): Item? =
 
 data class ZoneSummary(val zone: Zone, val itemCount: Int, val pendingCount: Int)
 
-/** Resumen por zona para las tarjetas del dashboard "Almacén" (Nocturne). */
+/**
+ * Resumen por zona para las tarjetas del dashboard "Almacén" (Nocturne). `itemCount`
+ * cuenta solo lo que tienes (done=true) -- lo pendiente de esa zona ya no se ve dentro
+ * de ZoneDetailScreen (vive en Lista de la compra), así que el total debe coincidir con
+ * lo que realmente se ve al entrar en la zona.
+ */
 fun zoneSummaries(items: List<Item>, zones: List<Zone>): List<ZoneSummary> =
     zones.sortedBy { it.order }.map { zone ->
         val zoneItems = items.filter { it.zone == zone.id }
-        ZoneSummary(zone = zone, itemCount = zoneItems.size, pendingCount = zoneItems.count { !it.done })
+        ZoneSummary(zone = zone, itemCount = zoneItems.count { it.done }, pendingCount = zoneItems.count { !it.done })
     }

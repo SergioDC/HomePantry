@@ -27,4 +27,9 @@ class UserPrefs(private val context: Context) {
     suspend fun saveUserName(name: String) {
         context.dataStore.edit { it[userNameKey] = name.trim() }
     }
+
+    /** Borra el código de casa guardado -- MainActivity reacciona mostrando JoinHouseholdScreen. */
+    suspend fun clearHousehold() {
+        context.dataStore.edit { it.remove(householdCodeKey) }
+    }
 }
