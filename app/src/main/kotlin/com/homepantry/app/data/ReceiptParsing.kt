@@ -22,8 +22,7 @@ private fun parseReceiptLine(line: String): ParsedReceiptLine? {
     val trimmed = line.trim()
     if (trimmed.isEmpty()) return null
 
-    val upper = trimmed.uppercase()
-    if (SUMMARY_LINE_KEYWORDS.any { keyword -> upper.contains(keyword) }) return null
+    if (SUMMARY_LINE_KEYWORDS.any { keyword -> Regex("\\b${Regex.escape(keyword)}\\b").containsMatchIn(trimmed.uppercase()) }) return null
 
     val match = PRICE_AT_END.find(trimmed) ?: return null
     val price = parseSpanishDecimal(match.groupValues[1]) ?: return null
