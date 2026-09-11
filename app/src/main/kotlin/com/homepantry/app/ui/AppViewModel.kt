@@ -8,9 +8,15 @@ import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.Member
 import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.PROTECTED_ZONE_NAME
+import com.homepantry.app.data.ParsedReceiptLine
+import com.homepantry.app.data.ProductSummary
+import com.homepantry.app.data.Purchase
+import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.Zone
 import com.homepantry.app.data.ZonesRepository
+import com.homepantry.app.data.normalizeProductName
+import com.homepantry.app.data.productSummaries
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,9 +32,12 @@ data class UiState(
     val listViewMode: ListViewMode = ListViewMode.GROUPED,
     val loading: Boolean = true,
     val error: String? = null,
-    val members: List<Member> = emptyList()
+    val members: List<Member> = emptyList(),
+    val purchases: List<Purchase> = emptyList()
 ) {
     val progress: String get() = progressText(items)
+
+    val purchaseSummaries: List<ProductSummary> get() = productSummaries(purchases)
 
     // Lista de la compra: solo lo pendiente. Un producto "done" = ya lo tienes (lo compraste
     // o lo añadiste directamente a una Zona como inventario), así que no tiene sentido que
@@ -58,6 +67,7 @@ class AppViewModel(
     private val itemsRepository: ItemsRepository,
     private val zonesRepository: ZonesRepository,
     private val membersRepository: MembersRepository,
+    private val purchasesRepository: PurchasesRepository,
     val storageRepository: StorageRepository,
     private val userName: String,
     private val uid: String
@@ -96,6 +106,15 @@ class AppViewModel(
                 membersRepository.observeMembers().collect { members ->
                     _state.value = _state.value.copy(members = members)
                 }
+            }
+        }
+        viewModelScope.launch {
+            runCatching {
+                purchasesRepository.observePurchases().collect { purchases ->
+                    _state.value = _state.value.copy(purchases = purchases)
+                }
+            }.onFailure { e ->
+                _state.value = _state.value.copy(error = e.message)
             }
         }
     }
@@ -155,6 +174,31 @@ class AppViewModel(
                 runCatching { uploadAndAttachPhoto(item.id, localPhotoUri) }
                     .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
             }
+        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /**
+     * Guarda todas las líneas confirmadas de un ticket escaneado como
+     * Purchase independientes, subiendo la foto del ticket una vez y
+     * enlazándola desde cada línea (spec "Flujo de captura y parseo").
+     */
+    fun savePurchaseBatch(lines: List<ParsedReceiptLine>, ticketPhotoLocalUri: android.net.Uri?) = viewModelScope.launch {
+        if (lines.isEmpty()) return@launch
+        runCatching {
+            val batchId = java.util.UUID.randomUUID().toString()
+            val photoUrl = ticketPhotoLocalUri?.let { uri -> storageRepository.uploadReceiptPhoto(batchId, uri) }
+            val now = java.util.Date()
+            val purchases = lines.map { line ->
+                Purchase(
+                    rawName = line.name,
+                    normalizedName = normalizeProductName(line.name),
+                    price = line.price,
+                    date = now,
+                    addedBy = userName,
+                    ticketPhotoUrl = photoUrl
+                )
+            }
+            purchasesRepository.addPurchases(purchases)
         }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 

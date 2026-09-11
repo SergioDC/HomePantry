@@ -40,6 +40,7 @@ import com.homepantry.app.data.ConnectivityObserver
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MembersRepository
+import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
@@ -125,6 +126,7 @@ fun ListaDeLaCasaApp() {
                         itemsRepository = ItemsRepository(firestore, code),
                         zonesRepository = ZonesRepository(firestore, code),
                         membersRepository = MembersRepository(firestore, code),
+                        purchasesRepository = PurchasesRepository(firestore, code),
                         storageRepository = StorageRepository(storage, code, context.applicationContext),
                         userName = name,
                         uid = uid
