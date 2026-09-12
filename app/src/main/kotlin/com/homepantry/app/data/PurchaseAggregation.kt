@@ -16,9 +16,7 @@ data class ProductSummary(
     val purchases: List<Purchase>
 )
 
-private val YEAR_MONTH_FORMAT = SimpleDateFormat("yyyy-MM", Locale.US)
-
-private fun yearMonthOf(date: Date): String = YEAR_MONTH_FORMAT.format(date)
+private fun yearMonthOf(date: Date): String = SimpleDateFormat("yyyy-MM", Locale.US).format(date)
 
 /** Gasto total por mes, sin distinguir producto, más reciente primero. */
 fun monthlySpend(purchases: List<Purchase>): List<MonthlySpend> =

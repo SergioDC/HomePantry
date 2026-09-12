@@ -123,6 +123,8 @@
     <string name="purchase_history_scan_cd">Escanear ticket</string>
     <string name="purchase_history_empty">Aún no hay compras. Toca el botón de la cámara para escanear un ticket.</string>
     <string name="purchase_history_ocr_empty">No se ha detectado texto en el ticket. Prueba con mejor luz o añade productos a mano.</string>
+    <string name="purchase_history_ocr_error">No se pudo procesar la foto. Inténtalo de nuevo.</string>
+    <string name="purchase_history_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
 
     <!-- PurchaseDetailScreen -->

@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,7 +66,7 @@ fun PurchaseHistoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
-    var pendingCaptureUri by remember { mutableStateOf<Uri?>(null) }
+    var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var reviewLines by remember { mutableStateOf<List<ParsedReceiptLine>?>(null) }
     var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var processingOcr by remember { mutableStateOf(false) }
@@ -75,15 +76,23 @@ fun PurchaseHistoryScreen(
         if (success && uri != null) {
             processingOcr = true
             scope.launch {
-                val textLines = runCatching { recognizeReceiptTextLines(context, uri) }.getOrDefault(emptyList())
-                val parsed = parseReceiptLines(textLines)
+                val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
                 processingOcr = false
-                if (parsed.isEmpty()) {
+                val parsed = parseReceiptLines(ocrResult.getOrDefault(emptyList()))
+                if (ocrResult.isFailure) {
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
+                } else if (parsed.isEmpty()) {
                     scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
                 }
                 reviewLines = parsed
                 reviewPhotoUri = uri
             }
+        } else if (success && uri == null) {
+            // La captura de cámara sobrevivió (foto en cacheDir) pero el estado
+            // en memoria con su Uri se perdió (recreación de actividad o proceso
+            // matado en segundo plano). Avisamos al usuario en vez de fallar en
+            // silencio: ver hallazgo de revisión "Lost capture URI".
+            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_capture_lost)) }
         }
     }
 
