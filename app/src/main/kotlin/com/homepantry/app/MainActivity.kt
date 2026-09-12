@@ -1,5 +1,6 @@
 package com.homepantry.app
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -40,6 +41,7 @@ import com.homepantry.app.data.ConnectivityObserver
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MembersRepository
+import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
@@ -52,6 +54,8 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
+import com.homepantry.app.ui.screens.PurchaseDetailScreen
+import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
@@ -125,6 +129,7 @@ fun ListaDeLaCasaApp() {
                         itemsRepository = ItemsRepository(firestore, code),
                         zonesRepository = ZonesRepository(firestore, code),
                         membersRepository = MembersRepository(firestore, code),
+                        purchasesRepository = PurchasesRepository(firestore, code),
                         storageRepository = StorageRepository(storage, code, context.applicationContext),
                         userName = name,
                         uid = uid
@@ -199,6 +204,7 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     userName = name,
                     onManageZones = { navController.navigate("manageZones") },
+                    onOpenPurchaseHistory = { navController.navigate("purchaseHistory") },
                     onOpenZone = { zoneId -> navController.navigate("zoneDetail/$zoneId") }
                 )
             }
@@ -227,6 +233,23 @@ fun ListaDeLaCasaApp() {
                     userPrefs = userPrefs,
                     onBack = { navController.popBackStack() },
                     onEditName = { showEditName = true }
+                )
+            }
+            composable("purchaseHistory") {
+                PurchaseHistoryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { normalizedName ->
+                        navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
+                    }
+                )
+            }
+            composable("purchaseDetail/{normalizedName}") { backStackEntry ->
+                val encodedName = backStackEntry.arguments?.getString("normalizedName") ?: return@composable
+                PurchaseDetailScreen(
+                    viewModel = viewModel,
+                    normalizedName = Uri.decode(encodedName),
+                    onBack = { navController.popBackStack() }
                 )
             }
         }

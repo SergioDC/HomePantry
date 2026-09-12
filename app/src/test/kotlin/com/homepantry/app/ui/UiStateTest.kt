@@ -71,4 +71,15 @@ class UiStateTest {
     @Test fun `listViewMode defaults to GROUPED`() {
         assertEquals(ListViewMode.GROUPED, UiState().listViewMode)
     }
+
+    @Test fun `purchaseSummaries exposes productSummaries computed from purchases`() {
+        val state = UiState(
+            purchases = listOf(
+                com.homepantry.app.data.Purchase(rawName = "Tomate", normalizedName = "tomate", price = 1.5),
+                com.homepantry.app.data.Purchase(rawName = "Tomate", normalizedName = "tomate", price = 1.2)
+            )
+        )
+        assertEquals(1, state.purchaseSummaries.size)
+        assertEquals(2.7, state.purchaseSummaries.single().allTimeTotal, 0.001)
+    }
 }

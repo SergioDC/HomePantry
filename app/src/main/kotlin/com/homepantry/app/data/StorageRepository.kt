@@ -21,4 +21,16 @@ class StorageRepository(
         ref.putFile(compressedUri).await()
         return ref.downloadUrl.await().toString()
     }
+
+    /**
+     * Sube la foto de un ticket ya escaneado y confirmado.
+     * households/{householdCode}/receipts/{batchId}.jpg -- una foto por
+     * ticket, referenciada desde cada Purchase generada en ese escaneo.
+     */
+    suspend fun uploadReceiptPhoto(batchId: String, localUri: Uri): String {
+        val compressedUri = ImageCompressor.compress(context, localUri)
+        val ref = storage.reference.child("households/$householdCode/receipts/$batchId.jpg")
+        ref.putFile(compressedUri).await()
+        return ref.downloadUrl.await().toString()
+    }
 }
