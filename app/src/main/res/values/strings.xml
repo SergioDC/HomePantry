@@ -123,4 +123,10 @@
     <string name="purchase_history_empty">Aún no hay compras. Toca el botón de la cámara para escanear un ticket.</string>
     <string name="purchase_history_ocr_empty">No se ha detectado texto en el ticket. Prueba con mejor luz o añade productos a mano.</string>
     <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
+
+    <!-- PurchaseDetailScreen -->
+    <string name="purchase_detail_not_found">No se encontró el producto</string>
+    <string name="purchase_detail_monthly_title">Gasto por mes</string>
+    <string name="purchase_detail_history_title">Historial de compras</string>
+    <string name="purchase_detail_amount">%1$.2f €</string>
 </resources>
