@@ -107,4 +107,13 @@
     <string name="default_products_deselect_all">Desmarcar todos</string>
     <string name="default_products_already_added">%1$s (ya en tu lista)</string>
     <string name="default_products_add_selected">Añadir seleccionados (%1$d)</string>
+
+    <!-- ReceiptReviewSheet -->
+    <string name="receipt_review_title">Revisar ticket</string>
+    <string name="receipt_review_name">Producto</string>
+    <string name="receipt_review_price">Precio</string>
+    <string name="receipt_review_delete_line_cd">Eliminar línea</string>
+    <string name="receipt_review_add_line">+ Añadir línea</string>
+    <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
+    <string name="receipt_review_save">Guardar compras</string>
 </resources>
