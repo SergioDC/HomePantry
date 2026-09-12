@@ -11,7 +11,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.homepantry.app.data.Zone
 
 /**
  * Selección con solo `secondaryContainer` es casi invisible en Nocturne (muy
@@ -55,9 +54,4 @@ fun ZoneChip(
         ),
         modifier = modifier
     )
-}
-
-@Composable
-fun ZoneChip(zone: Zone, colorHex: String, selected: Boolean, onClick: () -> Unit) {
-    ZoneChip(label = zone.name, colorHex = colorHex, selected = selected, onClick = onClick)
 }

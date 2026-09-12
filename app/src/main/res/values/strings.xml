@@ -52,6 +52,7 @@
 
     <!-- ManageZonesScreen (Ajustes) -->
     <string name="zones_title">Ajustes</string>
+    <string name="zones_your_name_label">Tu nombre</string>
     <string name="zones_delete_confirm_title">Eliminar zona</string>
     <string name="zones_delete_confirm_message">%1$d producto(s) se moverán a \"Otros\". ¿Continuar?</string>
     <string name="zones_new_zone_hint">Nombre de la nueva zona</string>
@@ -80,6 +81,10 @@
     <!-- ZoneDetailScreen -->
     <string name="zone_detail_back_cd">Volver</string>
     <string name="zone_detail_edit_cd">Editar zona</string>
+    <string name="zone_detail_color_cd">Color de zona</string>
+    <string name="zone_detail_color_close">Cerrar</string>
+    <string name="zone_detail_new_subzone_chip">+ Subzona</string>
+    <string name="zone_detail_new_subzone_title">Nueva subzona</string>
     <string name="zone_detail_remove_title">Quitar \"%1$s\"</string>
     <string name="zone_detail_remove_message">¿Lo añadimos a la lista de la compra o lo eliminamos del todo?</string>
     <string name="zone_detail_remove_to_list">Añadir a la lista</string>

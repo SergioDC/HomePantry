@@ -38,7 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
-import com.homepantry.app.data.zoneColorFor
+import com.homepantry.app.data.resolvedZoneColor
+import com.homepantry.app.data.zoneDisplayLabel
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.ListViewMode
 import com.homepantry.app.ui.SortMode
@@ -56,7 +57,6 @@ fun MainListScreen(
     isOnline: Boolean = true,
     onAddItem: () -> Unit,
     onEditItem: (Item) -> Unit = {},
-    onEditName: () -> Unit = {},
     onQuickAddDefaults: () -> Unit = {}
 ) {
     val state by viewModel.state.collectAsState()
@@ -84,13 +84,6 @@ fun MainListScreen(
                             onClick = {
                                 menuExpanded = false
                                 onQuickAddDefaults()
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.main_edit_name)) },
-                            onClick = {
-                                menuExpanded = false
-                                onEditName()
                             }
                         )
                     }
@@ -164,8 +157,8 @@ fun MainListScreen(
                 )
                 state.zones.sortedBy { it.order }.forEachIndexed { index, zone ->
                     ZoneChip(
-                        zone = zone,
-                        colorHex = zoneColorFor(index),
+                        label = zoneDisplayLabel(zone, state.zones),
+                        colorHex = resolvedZoneColor(zone, index),
                         selected = state.selectedZoneId == zone.id,
                         onClick = { viewModel.selectZone(zone.id) }
                     )
@@ -235,6 +228,7 @@ fun MainListScreen(
                         ItemPillRow(
                             item = row.item,
                             zoneName = row.zoneName,
+                            zoneColor = row.zoneColor,
                             onToggleDone = { viewModel.toggleDone(row.item) },
                             onDelete = { viewModel.deleteItem(row.item.id) },
                             onEdit = { onEditItem(row.item) }

@@ -193,14 +193,19 @@ class AppViewModel(
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
-    fun createZone(name: String) = viewModelScope.launch {
+    fun createZone(name: String, parentZoneId: String? = null) = viewModelScope.launch {
         val nextOrder = (_state.value.zones.maxOfOrNull { it.order } ?: -1) + 1
-        runCatching { zonesRepository.addZone(name, nextOrder) }
+        runCatching { zonesRepository.addZone(name, nextOrder, parentZoneId) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun renameZone(zoneId: String, newName: String) = viewModelScope.launch {
         runCatching { zonesRepository.renameZone(zoneId, newName) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    fun updateZoneColor(zoneId: String, colorHex: String) = viewModelScope.launch {
+        runCatching { zonesRepository.updateZoneColor(zoneId, colorHex) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 

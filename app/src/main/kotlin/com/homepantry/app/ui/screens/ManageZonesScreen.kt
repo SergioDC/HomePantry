@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,7 +55,14 @@ import java.util.Locale
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ManageZonesScreen(viewModel: AppViewModel, householdCode: String, userPrefs: UserPrefs, onBack: () -> Unit) {
+fun ManageZonesScreen(
+    viewModel: AppViewModel,
+    householdCode: String,
+    userName: String,
+    userPrefs: UserPrefs,
+    onBack: () -> Unit,
+    onEditName: () -> Unit
+) {
     val state by viewModel.state.collectAsState()
     var showLeaveConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -85,6 +93,30 @@ fun ManageZonesScreen(viewModel: AppViewModel, householdCode: String, userPrefs:
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.zones_your_name_label),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = userName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        IconButton(onClick = onEditName) {
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.main_edit_name))
+                        }
+                    }
+                }
+            }
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
                     Row(

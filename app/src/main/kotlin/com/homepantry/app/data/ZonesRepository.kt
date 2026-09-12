@@ -30,12 +30,16 @@ class ZonesRepository(
         awaitClose { registration.remove() }
     }
 
-    suspend fun addZone(name: String, order: Int) {
-        collection().add(Zone(name = name, order = order)).await()
+    suspend fun addZone(name: String, order: Int, parentZoneId: String? = null) {
+        collection().add(Zone(name = name, order = order, parentZoneId = parentZoneId)).await()
     }
 
     suspend fun renameZone(zoneId: String, newName: String) {
         collection().document(zoneId).update("name", newName).await()
+    }
+
+    suspend fun updateZoneColor(zoneId: String, colorHex: String) {
+        collection().document(zoneId).update("color", colorHex).await()
     }
 
     /** Eliminar zona. Reasignar productos a "Otros" debe hacerse ANTES desde

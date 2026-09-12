@@ -40,7 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
-import com.homepantry.app.data.zoneColorFor
+import com.homepantry.app.data.resolvedZoneColor
 import com.homepantry.app.data.zoneIconLetter
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.ZoneCard
@@ -112,7 +112,7 @@ fun ZonesDashboardScreen(
                     }
                     ZoneCard(
                         letter = zoneIconLetter(summary.zone),
-                        colorHex = zoneColorFor(index),
+                        colorHex = resolvedZoneColor(summary.zone, index),
                         name = summary.zone.name,
                         summaryText = summaryText,
                         onClick = { onOpenZone(summary.zone.id) }

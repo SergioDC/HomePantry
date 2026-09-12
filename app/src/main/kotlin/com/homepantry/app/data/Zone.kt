@@ -13,7 +13,11 @@ data class Zone(
     @DocumentId
     val id: String = "",
     val name: String = "",
-    val order: Int = 0
+    val order: Int = 0,
+    /** Color elegido por el usuario (hex "#RRGGBB"). Null = sin personalizar, usar zoneColorFor(index). */
+    val color: String? = null,
+    /** Id de la zona padre si esta es una subzona; null si es una zona raíz. Un solo nivel de anidación. */
+    val parentZoneId: String? = null
 )
 
 val DEFAULT_ZONE_NAMES = listOf("Nevera", "Congelador", "Despensa", "Otros")
@@ -25,6 +29,9 @@ val ZONE_COLORS = listOf(
 
 fun zoneColorFor(index: Int): String = ZONE_COLORS[index % ZONE_COLORS.size]
 
+/** Color a mostrar para una zona: el elegido por el usuario, o el derivado de su posición si no personalizó ninguno. */
+fun resolvedZoneColor(zone: Zone, index: Int): String = zone.color?.takeIf { it.isNotBlank() } ?: zoneColorFor(index)
+
 const val PROTECTED_ZONE_NAME = "Otros"
 
 /** "Otros" es la zona de reserva de reasignación y no se puede renombrar/eliminar (cierre de huecos §4). */
@@ -32,3 +39,13 @@ fun isProtectedZone(zone: Zone): Boolean = zone.name.equals(PROTECTED_ZONE_NAME,
 
 /** Icono auto-derivado: primera letra del nombre en mayúscula (Nocturne redesign, sin campo de icono editable). */
 fun zoneIconLetter(zone: Zone): String = zone.name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+
+/** Subzonas directas de una zona raíz (un solo nivel de anidación). */
+fun subzonesOf(zoneId: String, zones: List<Zone>): List<Zone> =
+    zones.filter { it.parentZoneId == zoneId }.sortedBy { it.order }
+
+/** Etiqueta para mostrar una zona fuera de su propia pantalla de detalle: "Padre > Hija" para subzonas. */
+fun zoneDisplayLabel(zone: Zone, zones: List<Zone>): String {
+    val parent = zone.parentZoneId?.let { parentId -> zones.firstOrNull { it.id == parentId } }
+    return if (parent != null) "${parent.name} > ${zone.name}" else zone.name
+}

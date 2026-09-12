@@ -2,6 +2,7 @@ package com.homepantry.app.ui
 
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.Zone
+import com.homepantry.app.data.zoneColorFor
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -129,6 +130,25 @@ class ItemListLogicTest {
         assertEquals("", rows.single().zoneName)
     }
 
+    @Test fun `flattenAndSort attaches the zone's resolved color to each row`() {
+        val coloredZone = Zone(id = "z1", name = "Nevera", order = 0, color = "#ABCDEF")
+        val items = listOf(Item(id = "1", name = "Leche", zone = "z1"))
+        val rows = flattenAndSort(items, listOf(coloredZone, despensa), SortMode.NEWEST_FIRST)
+        assertEquals("#ABCDEF", rows.single().zoneColor)
+    }
+
+    @Test fun `flattenAndSort falls back to the index-derived color when the zone has none`() {
+        val items = listOf(Item(id = "1", name = "Arroz", zone = "z2"))
+        val rows = flattenAndSort(items, listOf(nevera, despensa), SortMode.NEWEST_FIRST)
+        assertEquals(zoneColorFor(1), rows.single().zoneColor)
+    }
+
+    @Test fun `flattenAndSort leaves the zone color null when the zone is unknown`() {
+        val items = listOf(Item(id = "1", name = "Leche", zone = "missing"))
+        val rows = flattenAndSort(items, listOf(nevera, despensa), SortMode.NEWEST_FIRST)
+        assertEquals(null, rows.single().zoneColor)
+    }
+
     @Test fun `flattenAndSort respects sort mode within the pending and done groups`() {
         val zebra = Item(id = "1", name = "zanahoria", zone = "z1")
         val apple = Item(id = "2", name = "Arroz", zone = "z2")
@@ -144,9 +164,9 @@ class ItemListLogicTest {
         )
         val summaries = zoneSummaries(items, listOf(despensa, nevera))
         assertEquals(listOf("z1", "z2"), summaries.map { it.zone.id })
-        assertEquals(2, summaries[0].itemCount)
+        assertEquals(1, summaries[0].itemCount)
         assertEquals(1, summaries[0].pendingCount)
-        assertEquals(1, summaries[1].itemCount)
+        assertEquals(0, summaries[1].itemCount)
         assertEquals(1, summaries[1].pendingCount)
     }
 
@@ -159,5 +179,30 @@ class ItemListLogicTest {
     @Test fun `zoneSummaries includes zones with no items at all`() {
         val summaries = zoneSummaries(emptyList(), listOf(nevera, despensa))
         assertEquals(listOf(0, 0), summaries.map { it.itemCount })
+    }
+
+    @Test fun `zoneSummaries has no card for a subzone`() {
+        val puerta = Zone(id = "z3", name = "Puerta", parentZoneId = "z1")
+        val summaries = zoneSummaries(emptyList(), listOf(nevera, puerta))
+        assertEquals(listOf("z1"), summaries.map { it.zone.id })
+    }
+
+    @Test fun `zoneSummaries folds a subzone's items into its parent's card`() {
+        val puerta = Zone(id = "z3", name = "Puerta", parentZoneId = "z1")
+        val items = listOf(
+            Item(id = "1", name = "Leche", zone = "z1", done = true),
+            Item(id = "2", name = "Mantequilla", zone = "z3", done = true),
+            Item(id = "3", name = "Huevos", zone = "z3", done = false)
+        )
+        val summary = zoneSummaries(items, listOf(nevera, puerta)).single()
+        assertEquals(2, summary.itemCount)
+        assertEquals(1, summary.pendingCount)
+    }
+
+    @Test fun `flattenAndSort labels a subzone item with its parent's name`() {
+        val puerta = Zone(id = "z3", name = "Puerta", order = 0, parentZoneId = "z1")
+        val items = listOf(Item(id = "1", name = "Mantequilla", zone = "z3"))
+        val rows = flattenAndSort(items, listOf(nevera, puerta), SortMode.NEWEST_FIRST)
+        assertEquals("Nevera > Puerta", rows.single().zoneName)
     }
 }

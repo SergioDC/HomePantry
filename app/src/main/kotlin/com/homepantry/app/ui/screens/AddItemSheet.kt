@@ -61,7 +61,8 @@ import com.homepantry.app.data.DEFAULT_PRODUCTS
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.OpenFoodFactsClient
 import com.homepantry.app.data.parseQtyOrDefault
-import com.homepantry.app.data.zoneColorFor
+import com.homepantry.app.data.resolvedZoneColor
+import com.homepantry.app.data.zoneDisplayLabel
 import com.homepantry.app.data.Unit as ItemUnit
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.BarcodeScannerView
@@ -300,8 +301,8 @@ fun AddItemSheet(
                 ) {
                     zones.forEachIndexed { index, zone ->
                         ZoneChip(
-                            zone = zone,
-                            colorHex = zoneColorFor(index),
+                            label = zoneDisplayLabel(zone, zones),
+                            colorHex = resolvedZoneColor(zone, index),
                             selected = zone.id == selectedZoneId,
                             onClick = { selectedZoneId = zone.id }
                         )

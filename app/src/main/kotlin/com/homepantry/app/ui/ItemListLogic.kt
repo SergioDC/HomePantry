@@ -2,6 +2,9 @@ package com.homepantry.app.ui
 
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.Zone
+import com.homepantry.app.data.resolvedZoneColor
+import com.homepantry.app.data.subzonesOf
+import com.homepantry.app.data.zoneDisplayLabel
 
 data class ZoneSection(val zone: Zone, val items: List<Item>)
 
@@ -10,7 +13,7 @@ enum class SortMode { NEWEST_FIRST, OLDEST_FIRST, ALPHABETICAL }
 /** Vista Lista: agrupada por zona (hoy) o plana (Nocturne, cierre de huecos §Nocturne). */
 enum class ListViewMode { GROUPED, FLAT }
 
-data class FlatRow(val item: Item, val zoneName: String)
+data class FlatRow(val item: Item, val zoneName: String, val zoneColor: String? = null)
 
 /** "X de Y listos" — comprados vs total (SPEC.md sec 1.4). */
 fun progressText(items: List<Item>): String {
@@ -59,9 +62,13 @@ fun flattenAndSort(
     zones: List<Zone>,
     sortMode: SortMode = SortMode.NEWEST_FIRST
 ): List<FlatRow> {
-    val zoneNameById = zones.associate { it.id to it.name }
+    val orderedZones = zones.sortedBy { it.order }
+    val zoneNameById = orderedZones.associate { it.id to zoneDisplayLabel(it, zones) }
+    val zoneColorById = orderedZones.withIndex().associate { (index, zone) -> zone.id to resolvedZoneColor(zone, index) }
     val comparator = compareBy<Item> { it.done }.then(withinGroupComparator(sortMode))
-    return items.sortedWith(comparator).map { FlatRow(item = it, zoneName = zoneNameById[it.zone] ?: "") }
+    return items.sortedWith(comparator).map {
+        FlatRow(item = it, zoneName = zoneNameById[it.zone] ?: "", zoneColor = zoneColorById[it.zone])
+    }
 }
 
 /** Filtro de búsqueda por texto, client-side (cierre de huecos §11). */
@@ -84,10 +91,14 @@ data class ZoneSummary(val zone: Zone, val itemCount: Int, val pendingCount: Int
  * Resumen por zona para las tarjetas del dashboard "Almacén" (Nocturne). `itemCount`
  * cuenta solo lo que tienes (done=true) -- lo pendiente de esa zona ya no se ve dentro
  * de ZoneDetailScreen (vive en Lista de la compra), así que el total debe coincidir con
- * lo que realmente se ve al entrar en la zona.
+ * lo que realmente se ve al entrar en la zona. Solo hay tarjeta por zona raíz -- las
+ * subzonas no tienen tarjeta propia, pero sus productos cuentan dentro de la de su padre.
  */
-fun zoneSummaries(items: List<Item>, zones: List<Zone>): List<ZoneSummary> =
-    zones.sortedBy { it.order }.map { zone ->
-        val zoneItems = items.filter { it.zone == zone.id }
+fun zoneSummaries(items: List<Item>, zones: List<Zone>): List<ZoneSummary> {
+    val rootZones = zones.filter { it.parentZoneId == null }.sortedBy { it.order }
+    return rootZones.map { zone ->
+        val zoneIds = setOf(zone.id) + subzonesOf(zone.id, zones).map { it.id }
+        val zoneItems = items.filter { it.zone in zoneIds }
         ZoneSummary(zone = zone, itemCount = zoneItems.count { it.done }, pendingCount = zoneItems.count { !it.done })
     }
+}

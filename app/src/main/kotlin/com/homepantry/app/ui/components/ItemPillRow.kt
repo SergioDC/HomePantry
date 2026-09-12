@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -30,7 +31,9 @@ import com.homepantry.app.data.Unit as ItemUnit
 /**
  * Fila de producto estilo "pill" (Nocturne), reemplaza ProductCard en Lista,
  * Zone Detail y Buscar. `zoneName` (opcional) muestra el chip de etiqueta de
- * zona. `showDeleteAction` controla el elemento final de la fila: "×" para
+ * zona, coloreado con `zoneColor` (hex) si se indica -- así el nombre de la
+ * zona se reconoce de un vistazo por su color, igual que en el chip/tarjeta.
+ * `showDeleteAction` controla el elemento final de la fila: "×" para
  * borrar (Lista/Zone Detail, por defecto) o una flecha ">" (Buscar, donde
  * tocar la fila ya abre la edición y no se ofrece borrar directamente).
  */
@@ -38,6 +41,7 @@ import com.homepantry.app.data.Unit as ItemUnit
 fun ItemPillRow(
     item: Item,
     zoneName: String? = null,
+    zoneColor: String? = null,
     showDeleteAction: Boolean = true,
     dimWhenDone: Boolean = true,
     onToggleDone: () -> Unit,
@@ -93,10 +97,13 @@ fun ItemPillRow(
         }
 
         if (!zoneName.isNullOrBlank()) {
+            val labelColor = zoneColor
+                ?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+                ?: MaterialTheme.colorScheme.primary
             Text(
                 text = zoneName,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary,
+                color = labelColor,
                 modifier = Modifier.padding(horizontal = 8.dp)
             )
         }

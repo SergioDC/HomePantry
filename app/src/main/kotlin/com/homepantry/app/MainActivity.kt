@@ -191,7 +191,6 @@ fun ListaDeLaCasaApp() {
                         showAddItem = true
                     },
                     onEditItem = { item -> itemBeingEdited = item },
-                    onEditName = { showEditName = true },
                     onQuickAddDefaults = { showDefaultProducts = true }
                 )
             }
@@ -213,7 +212,8 @@ fun ListaDeLaCasaApp() {
                         addItemZoneOverride = zoneId
                         showAddItem = true
                     },
-                    onEditItem = { item -> itemBeingEdited = item }
+                    onEditItem = { item -> itemBeingEdited = item },
+                    onOpenZone = { subzoneId -> navController.navigate("zoneDetail/$subzoneId") }
                 )
             }
             composable("search") {
@@ -223,8 +223,10 @@ fun ListaDeLaCasaApp() {
                 ManageZonesScreen(
                     viewModel = viewModel,
                     householdCode = code,
+                    userName = name,
                     userPrefs = userPrefs,
-                    onBack = { navController.popBackStack() }
+                    onBack = { navController.popBackStack() },
+                    onEditName = { showEditName = true }
                 )
             }
         }
