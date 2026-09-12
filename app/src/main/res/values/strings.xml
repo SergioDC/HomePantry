@@ -116,4 +116,11 @@
     <string name="receipt_review_add_line">+ Añadir línea</string>
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
     <string name="receipt_review_save">Guardar compras</string>
+
+    <!-- PurchaseHistoryScreen -->
+    <string name="purchase_history_title">Historial de compras</string>
+    <string name="purchase_history_scan_cd">Escanear ticket</string>
+    <string name="purchase_history_empty">Aún no hay compras. Toca el botón de la cámara para escanear un ticket.</string>
+    <string name="purchase_history_ocr_empty">No se ha detectado texto en el ticket. Prueba con mejor luz o añade productos a mano.</string>
+    <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
 </resources>
