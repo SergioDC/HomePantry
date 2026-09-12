@@ -1,5 +1,6 @@
 package com.homepantry.app
 
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -53,6 +54,8 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
+import com.homepantry.app.ui.screens.PurchaseDetailScreen
+import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
@@ -202,6 +205,7 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     userName = name,
                     onManageZones = { navController.navigate("manageZones") },
+                    onOpenPurchaseHistory = { navController.navigate("purchaseHistory") },
                     onOpenZone = { zoneId -> navController.navigate("zoneDetail/$zoneId") }
                 )
             }
@@ -226,6 +230,23 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     householdCode = code,
                     userPrefs = userPrefs,
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("purchaseHistory") {
+                PurchaseHistoryScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { normalizedName ->
+                        navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
+                    }
+                )
+            }
+            composable("purchaseDetail/{normalizedName}") { backStackEntry ->
+                val encodedName = backStackEntry.arguments?.getString("normalizedName") ?: return@composable
+                PurchaseDetailScreen(
+                    viewModel = viewModel,
+                    normalizedName = Uri.decode(encodedName),
                     onBack = { navController.popBackStack() }
                 )
             }

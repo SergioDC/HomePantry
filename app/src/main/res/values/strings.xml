@@ -76,6 +76,7 @@
     <string name="dashboard_summary_up_to_date">%1$d productos · al día</string>
     <string name="dashboard_summary_pending">%1$d productos · %2$d pendientes</string>
     <string name="dashboard_new_zone">+ Nueva zona</string>
+    <string name="dashboard_purchase_history_cd">Historial de compras</string>
 
     <!-- ZoneDetailScreen -->
     <string name="zone_detail_back_cd">Volver</string>
