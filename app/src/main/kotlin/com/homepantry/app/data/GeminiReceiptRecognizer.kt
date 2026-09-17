@@ -6,6 +6,7 @@ import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import java.io.IOException
+import kotlinx.coroutines.CancellationException
 
 sealed class GeminiReceiptException(message: String) : Exception(message)
 class GeminiAuthException : GeminiReceiptException("La clave de Gemini no es válida o no tiene permisos.")
@@ -64,6 +65,8 @@ private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest
         GeminiReceiptClient.api().createInteraction(apiKey, request)
     } catch (e: IOException) {
         throw GeminiNetworkException(e)
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         throw GeminiResponseException("respuesta ilegible: ${e.message}")
     }
