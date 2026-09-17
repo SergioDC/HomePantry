@@ -1,22 +1,29 @@
 package com.homepantry.app.ui.screens
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -35,14 +42,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.BuildConfig
 import com.homepantry.app.R
+import com.homepantry.app.data.GeminiApiKeyStore
+import com.homepantry.app.data.GeminiReceiptException
 import com.homepantry.app.data.UserPrefs
+import com.homepantry.app.data.validateGeminiApiKey
 import com.homepantry.app.ui.AppViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -60,6 +73,7 @@ fun ManageZonesScreen(
     householdCode: String,
     userName: String,
     userPrefs: UserPrefs,
+    geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
     onEditName: () -> Unit
 ) {
@@ -145,6 +159,13 @@ fun ManageZonesScreen(
                 }
             }
             item {
+                GeminiApiKeyCard(
+                    geminiApiKeyStore = geminiApiKeyStore,
+                    snackbarHostState = snackbarHostState,
+                    scope = scope
+                )
+            }
+            item {
                 Text(
                     text = stringResource(R.string.zones_members_title),
                     style = MaterialTheme.typography.labelLarge,
@@ -206,5 +227,98 @@ fun ManageZonesScreen(
                 TextButton(onClick = { showLeaveConfirm = false }) { Text("Cancelar") }
             }
         )
+    }
+}
+
+@Composable
+private fun GeminiApiKeyCard(
+    geminiApiKeyStore: GeminiApiKeyStore,
+    snackbarHostState: SnackbarHostState,
+    scope: kotlinx.coroutines.CoroutineScope
+) {
+    var storedKey by remember { mutableStateOf<String?>(null) }
+    var inputValue by remember { mutableStateOf("") }
+    var showKey by remember { mutableStateOf(false) }
+    var validating by remember { mutableStateOf(false) }
+    val uriHandler = LocalUriHandler.current
+    val savedMessage = stringResource(R.string.zones_gemini_api_key_saved)
+    val removedMessage = stringResource(R.string.zones_gemini_api_key_removed)
+
+    LaunchedEffect(Unit) {
+        val existing = geminiApiKeyStore.getApiKey()
+        storedKey = existing
+        inputValue = existing ?: ""
+    }
+
+    Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                text = stringResource(R.string.zones_gemini_api_key_label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = stringResource(R.string.zones_gemini_api_key_description),
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+            )
+            OutlinedTextField(
+                value = inputValue,
+                onValueChange = { inputValue = it },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { showKey = !showKey }) {
+                        Icon(
+                            if (showKey) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+                            contentDescription = stringResource(R.string.zones_gemini_api_key_toggle_visibility_cd)
+                        )
+                    }
+                }
+            )
+            TextButton(onClick = { uriHandler.openUri("https://aistudio.google.com/apikey") }) {
+                Text(stringResource(R.string.zones_gemini_api_key_help_link))
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                if (storedKey != null) {
+                    TextButton(onClick = {
+                        scope.launch {
+                            geminiApiKeyStore.clear()
+                            storedKey = null
+                            inputValue = ""
+                            snackbarHostState.showSnackbar(removedMessage)
+                        }
+                    }) {
+                        Text(stringResource(R.string.zones_gemini_api_key_remove))
+                    }
+                }
+                Button(
+                    enabled = inputValue.isNotBlank() && !validating,
+                    onClick = {
+                        val candidate = inputValue.trim()
+                        validating = true
+                        scope.launch {
+                            try {
+                                validateGeminiApiKey(candidate)
+                                geminiApiKeyStore.save(candidate)
+                                storedKey = candidate
+                                snackbarHostState.showSnackbar(savedMessage)
+                            } catch (e: GeminiReceiptException) {
+                                snackbarHostState.showSnackbar(e.message ?: "Error")
+                            } finally {
+                                validating = false
+                            }
+                        }
+                    }
+                ) {
+                    if (validating) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.zones_gemini_api_key_save))
+                    }
+                }
+            }
+        }
     }
 }
