@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ContentCopy
@@ -46,6 +47,7 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -53,7 +55,6 @@ import androidx.compose.ui.unit.dp
 import com.homepantry.app.BuildConfig
 import com.homepantry.app.R
 import com.homepantry.app.data.GeminiApiKeyStore
-import com.homepantry.app.data.GeminiReceiptException
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.validateGeminiApiKey
 import com.homepantry.app.ui.AppViewModel
@@ -268,6 +269,7 @@ private fun GeminiApiKeyCard(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 trailingIcon = {
                     IconButton(onClick = { showKey = !showKey }) {
                         Icon(
@@ -304,7 +306,7 @@ private fun GeminiApiKeyCard(
                                 geminiApiKeyStore.save(candidate)
                                 storedKey = candidate
                                 snackbarHostState.showSnackbar(savedMessage)
-                            } catch (e: GeminiReceiptException) {
+                            } catch (e: Exception) {
                                 snackbarHostState.showSnackbar(e.message ?: "Error")
                             } finally {
                                 validating = false

@@ -30,8 +30,21 @@ class GeminiApiKeyStore(private val context: Context) {
         )
     }
 
+    /**
+     * Nunca lanza: si el fichero cifrado no se puede descifrar (corrupto, o
+     * restaurado por Auto Backup / transferencia de dispositivo sobre una
+     * instalación cuya master key del Keystore ya no coincide), se borra el
+     * fichero y se trata como "no hay key configurada". Esto se llama en cada
+     * escaneo de ticket, incluso para usuarios que nunca han configurado nada,
+     * así que una excepción aquí tumbaría la corrutina del escaneo.
+     */
     suspend fun getApiKey(): String? = withContext(Dispatchers.IO) {
-        prefs.getString(KEY_API_KEY, null)?.takeIf { it.isNotBlank() }
+        try {
+            prefs.getString(KEY_API_KEY, null)?.takeIf { it.isNotBlank() }
+        } catch (e: Exception) {
+            context.deleteSharedPreferences(PREFS_FILE_NAME)
+            null
+        }
     }
 
     suspend fun save(key: String) = withContext(Dispatchers.IO) {
