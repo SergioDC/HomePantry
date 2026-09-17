@@ -3,6 +3,7 @@ package com.homepantry.app.ui.screens
 import android.Manifest
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -13,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -24,6 +26,7 @@ import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,29 +73,41 @@ fun PurchaseHistoryScreen(
     var reviewLines by remember { mutableStateOf<List<ParsedReceiptLine>?>(null) }
     var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var processingOcr by remember { mutableStateOf(false) }
+    var showScanDialog by remember { mutableStateOf(false) }
+
+    fun processReceiptUri(uri: Uri) {
+        processingOcr = true
+        scope.launch {
+            val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
+            processingOcr = false
+            val rawLines = ocrResult.getOrDefault(emptyList())
+            val parsed = parseReceiptLines(rawLines)
+            if (ocrResult.isFailure) {
+                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
+            } else if (parsed.isEmpty()) {
+                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
+            }
+            reviewLines = parsed
+            reviewPhotoUri = uri
+        }
+    }
 
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = pendingCaptureUri
         if (success && uri != null) {
-            processingOcr = true
-            scope.launch {
-                val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
-                processingOcr = false
-                val parsed = parseReceiptLines(ocrResult.getOrDefault(emptyList()))
-                if (ocrResult.isFailure) {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
-                } else if (parsed.isEmpty()) {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
-                }
-                reviewLines = parsed
-                reviewPhotoUri = uri
-            }
+            processReceiptUri(uri)
         } else if (success && uri == null) {
             // La captura de cámara sobrevivió (foto en cacheDir) pero el estado
             // en memoria con su Uri se perdió (recreación de actividad o proceso
             // matado en segundo plano). Avisamos al usuario en vez de fallar en
             // silencio: ver hallazgo de revisión "Lost capture URI".
             scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_capture_lost)) }
+        }
+    }
+
+    val pickFromGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            processReceiptUri(uri)
         }
     }
 
@@ -116,15 +131,7 @@ fun PurchaseHistoryScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = {
-                if (!cameraPermissionState.status.isGranted) {
-                    cameraPermissionState.launchPermissionRequest()
-                } else {
-                    val uri = createReceiptCaptureUri(context)
-                    pendingCaptureUri = uri
-                    takePicture.launch(uri)
-                }
-            }) {
+            FloatingActionButton(onClick = { showScanDialog = true }) {
                 Icon(Icons.Filled.CameraAlt, contentDescription = stringResource(R.string.purchase_history_scan_cd))
             }
         },
@@ -161,6 +168,36 @@ fun PurchaseHistoryScreen(
                 }
             }
         }
+    }
+
+    if (showScanDialog) {
+        AlertDialog(
+            onDismissRequest = { showScanDialog = false },
+            title = { Text(stringResource(R.string.purchase_history_scan_dialog_title)) },
+            text = null,
+            confirmButton = {
+                TextButton(onClick = {
+                    showScanDialog = false
+                    if (!cameraPermissionState.status.isGranted) {
+                        cameraPermissionState.launchPermissionRequest()
+                    } else {
+                        val uri = createReceiptCaptureUri(context)
+                        pendingCaptureUri = uri
+                        takePicture.launch(uri)
+                    }
+                }) {
+                    Text(stringResource(R.string.purchase_history_scan_dialog_camera))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showScanDialog = false
+                    pickFromGallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                }) {
+                    Text(stringResource(R.string.purchase_history_scan_dialog_gallery))
+                }
+            }
+        )
     }
 
     val lines = reviewLines

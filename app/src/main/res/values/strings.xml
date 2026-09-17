@@ -131,6 +131,9 @@
     <string name="purchase_history_ocr_error">No se pudo procesar la foto. Inténtalo de nuevo.</string>
     <string name="purchase_history_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
+    <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
+    <string name="purchase_history_scan_dialog_camera">Sacar foto</string>
+    <string name="purchase_history_scan_dialog_gallery">Elegir de galería</string>
 
     <!-- PurchaseDetailScreen -->
     <string name="purchase_detail_not_found">No se encontró el producto</string>
