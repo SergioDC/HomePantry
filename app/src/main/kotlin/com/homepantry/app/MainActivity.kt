@@ -38,6 +38,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.homepantry.app.data.ConnectivityObserver
+import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MembersRepository
@@ -86,6 +87,7 @@ private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "search")
 fun ListaDeLaCasaApp() {
     val context = LocalContext.current
     val userPrefs = remember { UserPrefs(context) }
+    val geminiApiKeyStore = remember { GeminiApiKeyStore(context) }
     val auth = remember { FirebaseAuth.getInstance() }
     var authReady by remember { mutableStateOf(false) }
 
@@ -231,6 +233,7 @@ fun ListaDeLaCasaApp() {
                     householdCode = code,
                     userName = name,
                     userPrefs = userPrefs,
+                    geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
                     onEditName = { showEditName = true }
                 )
@@ -238,6 +241,7 @@ fun ListaDeLaCasaApp() {
             composable("purchaseHistory") {
                 PurchaseHistoryScreen(
                     viewModel = viewModel,
+                    geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
                     onOpenProduct = { normalizedName ->
                         navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
