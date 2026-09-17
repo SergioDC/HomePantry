@@ -61,6 +61,14 @@
     <string name="zones_household_code_label">Código de tu casa</string>
     <string name="zones_household_code_copy_cd">Copiar código</string>
     <string name="zones_household_code_copied">Código copiado</string>
+    <string name="zones_gemini_api_key_label">Interpretación de tickets con IA (opcional)</string>
+    <string name="zones_gemini_api_key_description">Pega aquí tu propia clave gratuita de Gemini para que los tickets se interpreten con IA en vez del lector de texto clásico. La foto del ticket se envía a la API de Google al usar esta opción.</string>
+    <string name="zones_gemini_api_key_toggle_visibility_cd">Mostrar/ocultar clave</string>
+    <string name="zones_gemini_api_key_help_link">¿Cómo consigo mi clave gratuita?</string>
+    <string name="zones_gemini_api_key_save">Guardar</string>
+    <string name="zones_gemini_api_key_remove">Quitar</string>
+    <string name="zones_gemini_api_key_saved">Clave guardada</string>
+    <string name="zones_gemini_api_key_removed">Clave eliminada</string>
     <string name="zones_members_title">Miembros de la casa</string>
     <string name="zones_leave_household">Salir de esta casa</string>
     <string name="zones_leave_household_confirm_message">Dejarás de ver los productos y zonas de esta casa en este dispositivo. Podrás volver a unirte más tarde con el código.</string>
@@ -129,6 +137,7 @@
     <string name="purchase_history_empty">Aún no hay compras. Toca el botón de la cámara para escanear un ticket.</string>
     <string name="purchase_history_ocr_empty">No se ha detectado texto en el ticket. Prueba con mejor luz o añade productos a mano.</string>
     <string name="purchase_history_ocr_error">No se pudo procesar la foto. Inténtalo de nuevo.</string>
+    <string name="purchase_history_gemini_fallback">No se pudo usar IA (%1$s); se ha usado el modo clásico.</string>
     <string name="purchase_history_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
     <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
