@@ -80,6 +80,9 @@ dependencies {
     // Persistencia local ligera (nombre de usuario, código de casa)
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 
+    // Almacenamiento cifrado (API key de Gemini que aporta cada usuario)
+    implementation("androidx.security:security-crypto:1.1.0")
+
     // Networking para Open Food Facts (autocompletar nombre por código de barras)
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
