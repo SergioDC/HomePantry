@@ -64,6 +64,8 @@ private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest
         GeminiReceiptClient.api().createInteraction(apiKey, request)
     } catch (e: IOException) {
         throw GeminiNetworkException(e)
+    } catch (e: Exception) {
+        throw GeminiResponseException("respuesta ilegible: ${e.message}")
     }
     classifyHttpErrorCode(response.code())?.let { throw it }
     if (!response.isSuccessful) {
@@ -75,8 +77,12 @@ private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest
 /** Manda una foto de ticket a Gemini y devuelve las líneas ya estructuradas (sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
 suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String): List<ParsedReceiptLine> {
     val compressedUri = ImageCompressor.compress(context, imageUri)
-    val imageBytes = context.contentResolver.openInputStream(compressedUri)?.use { it.readBytes() }
-        ?: throw GeminiResponseException("no se pudo leer la foto comprimida del ticket")
+    val imageBytes = try {
+        context.contentResolver.openInputStream(compressedUri)?.use { it.readBytes() }
+            ?: throw GeminiResponseException("no se pudo leer la foto comprimida del ticket")
+    } catch (e: IOException) {
+        throw GeminiResponseException("no se pudo leer la foto comprimida del ticket: ${e.message}")
+    }
     val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
 
     val request = GeminiInteractionRequest(
