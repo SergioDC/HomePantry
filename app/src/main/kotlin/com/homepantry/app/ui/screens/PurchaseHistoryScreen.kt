@@ -45,10 +45,13 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.homepantry.app.R
+import com.homepantry.app.data.GeminiApiKeyStore
+import com.homepantry.app.data.GeminiReceiptException
 import com.homepantry.app.data.ParsedReceiptLine
 import com.homepantry.app.data.createReceiptCaptureUri
 import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.recognizeReceiptTextLines
+import com.homepantry.app.data.recognizeReceiptWithGemini
 import com.homepantry.app.ui.AppViewModel
 import kotlinx.coroutines.launch
 
@@ -60,6 +63,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PurchaseHistoryScreen(
     viewModel: AppViewModel,
+    geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
     onOpenProduct: (String) -> Unit
 ) {
@@ -78,15 +82,48 @@ fun PurchaseHistoryScreen(
     fun processReceiptUri(uri: Uri) {
         processingOcr = true
         scope.launch {
-            val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
-            processingOcr = false
-            val rawLines = ocrResult.getOrDefault(emptyList())
-            val parsed = parseReceiptLines(rawLines)
-            if (ocrResult.isFailure) {
-                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
-            } else if (parsed.isEmpty()) {
-                scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
+            val apiKey = geminiApiKeyStore.getApiKey()
+            var parsed: List<ParsedReceiptLine> = emptyList()
+            var geminiFailureReason: String? = null
+            var usedClassicAfterGeminiFailure = false
+
+            if (apiKey != null) {
+                val geminiResult = runCatching { recognizeReceiptWithGemini(context, uri, apiKey) }
+                val geminiLines = geminiResult.getOrNull()
+                if (geminiLines != null) {
+                    parsed = geminiLines
+                } else {
+                    val failure = geminiResult.exceptionOrNull()
+                    geminiFailureReason = (failure as? GeminiReceiptException)?.message ?: failure?.message ?: "error desconocido"
+                    usedClassicAfterGeminiFailure = true
+                }
             }
+
+            var classicFailed = false
+            if (apiKey == null || usedClassicAfterGeminiFailure) {
+                val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
+                classicFailed = ocrResult.isFailure
+                parsed = parseReceiptLines(ocrResult.getOrDefault(emptyList()))
+            }
+
+            processingOcr = false
+
+            when {
+                usedClassicAfterGeminiFailure && geminiFailureReason != null -> {
+                    scope.launch {
+                        snackbarHostState.showSnackbar(
+                            context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
+                        )
+                    }
+                }
+                classicFailed -> {
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
+                }
+                parsed.isEmpty() -> {
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
+                }
+            }
+
             reviewLines = parsed
             reviewPhotoUri = uri
         }
