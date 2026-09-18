@@ -84,6 +84,10 @@ class GeminiReceiptRecognizerTest {
         assertTrue(classifyHttpErrorCode(403) is GeminiAuthException)
     }
 
+    @Test fun `classifies 404 as the configured model being unavailable`() {
+        assertTrue(classifyHttpErrorCode(404) is GeminiModelUnavailableException)
+    }
+
     @Test fun `classifies 429 as a quota error`() {
         assertTrue(classifyHttpErrorCode(429) is GeminiQuotaException)
     }

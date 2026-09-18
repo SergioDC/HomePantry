@@ -88,7 +88,8 @@ fun PurchaseHistoryScreen(
             var usedClassicAfterGeminiFailure = false
 
             if (apiKey != null) {
-                val geminiResult = runCatching { recognizeReceiptWithGemini(context, uri, apiKey) }
+                val model = geminiApiKeyStore.getModel()
+                val geminiResult = runCatching { recognizeReceiptWithGemini(context, uri, apiKey, model) }
                 val geminiLines = geminiResult.getOrNull()
                 if (geminiLines != null) {
                     parsed = geminiLines

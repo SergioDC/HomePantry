@@ -7,8 +7,10 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Path
 
 /** SPEC 2026-09-17: interpretación de tickets con Gemini (v1beta/interactions). */
 data class GeminiInputPart(
@@ -53,12 +55,26 @@ val PRODUCTS_JSON_SCHEMA: Map<String, Any> = mapOf(
     "required" to listOf("products")
 )
 
+/** Metadatos de un modelo (GET /v1beta/models/{model}); solo nos interesa el código HTTP de la respuesta. */
+data class GeminiModelInfo(val name: String? = null)
+
 interface GeminiReceiptApi {
     @POST("v1beta/interactions")
     suspend fun createInteraction(
         @Header("x-goog-api-key") apiKey: String,
         @Body request: GeminiInteractionRequest
     ): Response<GeminiInteractionResponse>
+
+    /**
+     * Consulta ligera de metadatos, sin generar contenido -- confirma que la
+     * key es válida y el modelo sigue existiendo sin pagar el coste (ni el
+     * tiempo) de una generación real.
+     */
+    @GET("v1beta/models/{model}")
+    suspend fun getModel(
+        @Path("model") model: String,
+        @Header("x-goog-api-key") apiKey: String
+    ): Response<GeminiModelInfo>
 }
 
 object GeminiReceiptClient {

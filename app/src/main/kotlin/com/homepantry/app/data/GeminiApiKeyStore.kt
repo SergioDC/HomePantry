@@ -9,6 +9,7 @@ import kotlinx.coroutines.withContext
 
 private const val PREFS_FILE_NAME = "gemini_api_key_store"
 private const val KEY_API_KEY = "api_key"
+private const val KEY_MODEL = "model"
 
 /**
  * Almacén cifrado (Android Keystore vía EncryptedSharedPreferences) de la
@@ -47,11 +48,24 @@ class GeminiApiKeyStore(private val context: Context) {
         }
     }
 
-    suspend fun save(key: String) = withContext(Dispatchers.IO) {
-        prefs.edit().putString(KEY_API_KEY, key.trim()).apply()
+    /** Mismo criterio de "nunca lanza" que [getApiKey]: sin modelo guardado (o fichero corrupto), el modelo por defecto. */
+    suspend fun getModel(): String = withContext(Dispatchers.IO) {
+        try {
+            prefs.getString(KEY_MODEL, null)?.takeIf { it.isNotBlank() } ?: DEFAULT_GEMINI_MODEL
+        } catch (e: Exception) {
+            context.deleteSharedPreferences(PREFS_FILE_NAME)
+            DEFAULT_GEMINI_MODEL
+        }
+    }
+
+    suspend fun save(key: String, model: String) = withContext(Dispatchers.IO) {
+        prefs.edit()
+            .putString(KEY_API_KEY, key.trim())
+            .putString(KEY_MODEL, model.trim().ifBlank { DEFAULT_GEMINI_MODEL })
+            .apply()
     }
 
     suspend fun clear() = withContext(Dispatchers.IO) {
-        prefs.edit().remove(KEY_API_KEY).apply()
+        prefs.edit().remove(KEY_API_KEY).remove(KEY_MODEL).apply()
     }
 }

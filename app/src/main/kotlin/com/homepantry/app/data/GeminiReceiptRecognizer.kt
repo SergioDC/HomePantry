@@ -11,10 +11,14 @@ import com.google.gson.JsonSyntaxException
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import retrofit2.Response
 
 sealed class GeminiReceiptException(message: String, cause: Throwable? = null) : Exception(message, cause)
 class GeminiAuthException : GeminiReceiptException("La clave de Gemini no es válida o no tiene permisos.")
 class GeminiQuotaException : GeminiReceiptException("Se ha agotado la cuota gratuita de Gemini por hoy.")
+class GeminiModelUnavailableException : GeminiReceiptException(
+    "El modelo de Gemini configurado en la app ya no está disponible. Hace falta actualizar la app."
+)
 class GeminiNetworkException(cause: Throwable) : GeminiReceiptException("Sin conexión con Gemini: ${cause.message}", cause)
 class GeminiResponseException(reason: String) : GeminiReceiptException("Respuesta inesperada de Gemini: $reason")
 
@@ -30,6 +34,7 @@ private data class GeminiProductsPayload(val products: List<GeminiProduct>?)
  */
 internal fun classifyHttpErrorCode(code: Int): GeminiReceiptException? = when (code) {
     400, 401, 403 -> GeminiAuthException()
+    404 -> GeminiModelUnavailableException()
     429 -> GeminiQuotaException()
     else -> null
 }
@@ -59,7 +64,23 @@ internal fun mapGeminiOutputTextToLines(outputText: String): List<ParsedReceiptL
     }
 }
 
-private const val GEMINI_MODEL = "gemini-3.8-flash"
+/** Modelo usado si el usuario nunca ha elegido uno explícitamente en Ajustes. */
+internal const val DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
+
+/**
+ * Modelos con soporte de visión ofrecidos en el selector de Ajustes (lista
+ * seleccionada de https://ai.google.dev/gemini-api/docs/models a fecha de la
+ * spec). El campo admite texto libre para no bloquear al usuario si Google
+ * publica un modelo nuevo o descataloga uno de estos.
+ */
+val GEMINI_MODEL_OPTIONS: List<String> = listOf(
+    "gemini-3.8-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-pro"
+)
 
 private val RECEIPT_PROMPT = """
     Eres un asistente que extrae la lista de la compra de la foto de un
@@ -71,20 +92,31 @@ private val RECEIPT_PROMPT = """
     comprado.
 """.trimIndent()
 
-private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
-    val response = try {
-        GeminiReceiptClient.api().createInteraction(apiKey, request)
-    } catch (e: IOException) {
-        throw GeminiNetworkException(e)
-    } catch (e: CancellationException) {
-        throw e
-    } catch (e: Exception) {
-        throw GeminiResponseException("respuesta ilegible: ${e.message}")
-    }
+/**
+ * Envuelve cualquier llamada Retrofit a Gemini con el mismo mapeo de errores
+ * (red -> [GeminiNetworkException], cancelación cooperativa intacta, cualquier
+ * otro fallo -> [GeminiResponseException]), para no repetirlo en cada endpoint.
+ */
+private suspend fun <T> callGeminiApi(call: suspend () -> Response<T>): Response<T> = try {
+    call()
+} catch (e: IOException) {
+    throw GeminiNetworkException(e)
+} catch (e: CancellationException) {
+    throw e
+} catch (e: Exception) {
+    throw GeminiResponseException("respuesta ilegible: ${e.message}")
+}
+
+private fun ensureSuccessful(response: Response<*>) {
     classifyHttpErrorCode(response.code())?.let { throw it }
     if (!response.isSuccessful) {
         throw GeminiResponseException("HTTP ${response.code()}")
     }
+}
+
+private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
+    val response = callGeminiApi { GeminiReceiptClient.api().createInteraction(apiKey, request) }
+    ensureSuccessful(response)
     return response.body() ?: throw GeminiResponseException("cuerpo de respuesta vacío")
 }
 
@@ -135,7 +167,7 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
 }
 
 /** Manda una foto de ticket a Gemini y devuelve las líneas ya estructuradas (sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
-suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String): List<ParsedReceiptLine> {
+suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): List<ParsedReceiptLine> {
     val imageBytes = try {
         loadReceiptImageBytes(context, imageUri)
     } catch (e: GeminiReceiptException) {
@@ -146,7 +178,7 @@ suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: 
     val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
 
     val request = GeminiInteractionRequest(
-        model = GEMINI_MODEL,
+        model = model,
         input = listOf(
             GeminiInputPart(type = "text", text = RECEIPT_PROMPT),
             GeminiInputPart(type = "image", data = base64Image, mimeType = "image/jpeg")
@@ -159,8 +191,14 @@ suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: 
     return mapGeminiOutputTextToLines(outputText)
 }
 
-/** Llamada mínima para confirmar que una API key es válida antes de guardarla. Lanza GeminiReceiptException si no lo es. */
-suspend fun validateGeminiApiKey(apiKey: String) {
-    val request = GeminiInteractionRequest(model = GEMINI_MODEL, input = listOf(GeminiInputPart(type = "text", text = "OK")))
-    callGemini(apiKey, request)
+/**
+ * Confirma que una API key es válida y el modelo elegido existe, antes de
+ * guardarlos -- usa la consulta de metadatos (sin generar contenido) en vez de
+ * una interacción completa, que en modelos con razonamiento puede tardar
+ * mucho más que el timeout razonable para un simple guardado. Lanza
+ * GeminiReceiptException si la key o el modelo no son válidos.
+ */
+suspend fun validateGeminiApiKey(apiKey: String, model: String) {
+    val response = callGeminiApi { GeminiReceiptClient.api().getModel(model, apiKey) }
+    ensureSuccessful(response)
 }

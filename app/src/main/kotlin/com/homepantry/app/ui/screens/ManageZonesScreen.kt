@@ -20,10 +20,15 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -54,6 +59,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.BuildConfig
 import com.homepantry.app.R
+import com.homepantry.app.data.GEMINI_MODEL_OPTIONS
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.validateGeminiApiKey
@@ -231,6 +237,7 @@ fun ManageZonesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GeminiApiKeyCard(
     geminiApiKeyStore: GeminiApiKeyStore,
@@ -239,6 +246,8 @@ private fun GeminiApiKeyCard(
 ) {
     var storedKey by remember { mutableStateOf<String?>(null) }
     var inputValue by remember { mutableStateOf("") }
+    var inputModel by remember { mutableStateOf("") }
+    var modelMenuExpanded by remember { mutableStateOf(false) }
     var showKey by remember { mutableStateOf(false) }
     var validating by remember { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
@@ -249,6 +258,7 @@ private fun GeminiApiKeyCard(
         val existing = geminiApiKeyStore.getApiKey()
         storedKey = existing
         inputValue = existing ?: ""
+        inputModel = geminiApiKeyStore.getModel()
     }
 
     Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
@@ -279,6 +289,35 @@ private fun GeminiApiKeyCard(
                     }
                 }
             )
+            ExposedDropdownMenuBox(
+                expanded = modelMenuExpanded,
+                onExpandedChange = { modelMenuExpanded = it },
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = inputModel,
+                    onValueChange = { inputModel = it },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryEditable),
+                    singleLine = true,
+                    label = { Text(stringResource(R.string.zones_gemini_model_label)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelMenuExpanded) }
+                )
+                DropdownMenu(
+                    expanded = modelMenuExpanded,
+                    onDismissRequest = { modelMenuExpanded = false },
+                    modifier = Modifier.exposedDropdownSize()
+                ) {
+                    GEMINI_MODEL_OPTIONS.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(option) },
+                            onClick = {
+                                inputModel = option
+                                modelMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
             TextButton(onClick = { uriHandler.openUri("https://aistudio.google.com/apikey") }) {
                 Text(stringResource(R.string.zones_gemini_api_key_help_link))
             }
@@ -289,6 +328,7 @@ private fun GeminiApiKeyCard(
                             geminiApiKeyStore.clear()
                             storedKey = null
                             inputValue = ""
+                            inputModel = geminiApiKeyStore.getModel()
                             snackbarHostState.showSnackbar(removedMessage)
                         }
                     }) {
@@ -296,15 +336,16 @@ private fun GeminiApiKeyCard(
                     }
                 }
                 Button(
-                    enabled = inputValue.isNotBlank() && !validating,
+                    enabled = inputValue.isNotBlank() && inputModel.isNotBlank() && !validating,
                     onClick = {
-                        val candidate = inputValue.trim()
+                        val candidateKey = inputValue.trim()
+                        val candidateModel = inputModel.trim()
                         validating = true
                         scope.launch {
                             try {
-                                validateGeminiApiKey(candidate)
-                                geminiApiKeyStore.save(candidate)
-                                storedKey = candidate
+                                validateGeminiApiKey(candidateKey, candidateModel)
+                                geminiApiKeyStore.save(candidateKey, candidateModel)
+                                storedKey = candidateKey
                                 snackbarHostState.showSnackbar(savedMessage)
                             } catch (e: Exception) {
                                 snackbarHostState.showSnackbar(e.message ?: "Error")
