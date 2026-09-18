@@ -22,12 +22,29 @@ android {
             "BUILD_TIME",
             "\"${SimpleDateFormat("dd/MM HH:mm").format(Date())}\""
         )
+
+        // La app es solo para un Samsung S25 (arm64 puro): sin esto el APK lleva
+        // también las librerías nativas de ML Kit/CameraX para x86 y armeabi-v7a.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
+    }
+
+    // Solo hay textos en español; descarta las traducciones de las librerías.
+    androidResources {
+        localeFilters += "es"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // R8 elimina el código y los iconos no usados (material-icons-extended
+            // es enorme) y shrinkResources quita los recursos que queden huérfanos.
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // Distribución por sideload personal: se firma con la clave de debug
+            // para que el APK sea instalable (uno sin firmar no lo es).
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
