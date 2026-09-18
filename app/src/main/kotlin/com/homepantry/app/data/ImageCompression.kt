@@ -30,22 +30,32 @@ fun computeResizedDimensions(width: Int, height: Int, maxSide: Int = MAX_PHOTO_S
  * este proyecto) — se verifica manualmente añadiendo una foto en la app.
  */
 object ImageCompressor {
+    /**
+     * Cualquier fallo al decodificar/reescalar/escribir (fichero corrupto,
+     * `cacheDir` sin espacio, etc.) hace que se suba la foto original sin
+     * comprimir en vez de tumbar la corrutina que llama a esto -- mismo
+     * criterio que ya usa esta función cuando `decodeStream` devuelve null.
+     */
     fun compress(context: Context, sourceUri: Uri): Uri {
-        val original = context.contentResolver.openInputStream(sourceUri).use { stream ->
-            BitmapFactory.decodeStream(stream)
-        } ?: return sourceUri
+        return try {
+            val original = context.contentResolver.openInputStream(sourceUri).use { stream ->
+                BitmapFactory.decodeStream(stream)
+            } ?: return sourceUri
 
-        val (targetWidth, targetHeight) = computeResizedDimensions(original.width, original.height)
-        val resized = if (targetWidth == original.width && targetHeight == original.height) {
-            original
-        } else {
-            Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true)
-        }
+            val (targetWidth, targetHeight) = computeResizedDimensions(original.width, original.height)
+            val resized = if (targetWidth == original.width && targetHeight == original.height) {
+                original
+            } else {
+                Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true)
+            }
 
-        val outFile = File.createTempFile("compressed_", ".jpg", context.cacheDir)
-        FileOutputStream(outFile).use { out ->
-            resized.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+            val outFile = File.createTempFile("compressed_", ".jpg", context.cacheDir)
+            FileOutputStream(outFile).use { out ->
+                resized.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+            }
+            Uri.fromFile(outFile)
+        } catch (e: Exception) {
+            sourceUri
         }
-        return Uri.fromFile(outFile)
     }
 }

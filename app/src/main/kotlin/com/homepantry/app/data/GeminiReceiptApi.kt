@@ -1,6 +1,8 @@
 package com.homepantry.app.data
 
 import com.google.gson.annotations.SerializedName
+import java.util.concurrent.TimeUnit
+import okhttp3.OkHttpClient
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -60,8 +62,20 @@ interface GeminiReceiptApi {
 }
 
 object GeminiReceiptClient {
+    /**
+     * Los 10s por defecto de Retrofit/OkHttp no dan para subir la foto de un
+     * ticket y esperar a un modelo con visión (sobre todo en datos móviles);
+     * cada timeout se convertiría en un fallback silencioso al OCR clásico.
+     */
+    private val httpClient = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .writeTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
+        .build()
+
     private val retrofit = Retrofit.Builder()
         .baseUrl("https://generativelanguage.googleapis.com/")
+        .client(httpClient)
         .addConverterFactory(GsonConverterFactory.create())
         .build()
 

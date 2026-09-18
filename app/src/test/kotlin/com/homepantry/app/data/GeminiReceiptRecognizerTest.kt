@@ -24,6 +24,15 @@ class GeminiReceiptRecognizerTest {
         assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputTextToLines(json))
     }
 
+    @Test fun `skips entries with a zero or negative price`() {
+        val json = """{"products":[
+            {"name":"TOMATE RAMA","price":1.5},
+            {"name":"GRATIS","price":0},
+            {"name":"DESCUENTO","price":-0.5}
+        ]}"""
+        assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputTextToLines(json))
+    }
+
     @Test fun `throws GeminiResponseException on malformed JSON`() {
         assertThrows(GeminiResponseException::class.java) { mapGeminiOutputTextToLines("not json") }
     }
@@ -46,12 +55,31 @@ class GeminiReceiptRecognizerTest {
         assertEquals("""{"products":[]}""", extractOutputText(response))
     }
 
+    @Test fun `joins every text part of the model_output step`() {
+        val response = GeminiInteractionResponse(
+            status = "completed",
+            steps = listOf(
+                GeminiStep(
+                    type = "model_output",
+                    content = listOf(
+                        GeminiStepContent(type = "text", text = "{\"products\":[{\"name\":\"PAN\","),
+                        GeminiStepContent(type = "thought", text = "ignorar esto"),
+                        GeminiStepContent(type = "text", text = "\"price\":1.2}]}")
+                    )
+                )
+            )
+        )
+        assertEquals("""{"products":[{"name":"PAN","price":1.2}]}""", extractOutputText(response))
+    }
+
     @Test fun `throws GeminiResponseException when there is no model_output step`() {
         val response = GeminiInteractionResponse(status = "failed", steps = emptyList())
         assertThrows(GeminiResponseException::class.java) { extractOutputText(response) }
     }
 
-    @Test fun `classifies 401 and 403 as auth errors`() {
+    @Test fun `classifies 400 401 and 403 as auth errors`() {
+        // generativelanguage devuelve 400 API_KEY_INVALID para una key mal formada.
+        assertTrue(classifyHttpErrorCode(400) is GeminiAuthException)
         assertTrue(classifyHttpErrorCode(401) is GeminiAuthException)
         assertTrue(classifyHttpErrorCode(403) is GeminiAuthException)
     }

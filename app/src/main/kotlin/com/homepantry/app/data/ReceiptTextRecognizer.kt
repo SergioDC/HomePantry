@@ -16,7 +16,7 @@ import kotlinx.coroutines.tasks.await
  * límite es independiente del usado para comprimir fotos antes de subirlas
  * (ver [ImageCompressor]), que apunta a un tamaño de almacenamiento menor.
  */
-private const val MAX_OCR_SIDE = 2000
+internal const val MAX_OCR_SIDE = 2000
 
 /**
  * OCR on-device con ML Kit (gratis, offline, sin backend propio -- spec
@@ -64,7 +64,7 @@ suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<Str
  * decodificada por debajo de `maxSide`, siguiendo el patrón estándar de
  * `BitmapFactory.Options.inJustDecodeBounds`.
  */
-private fun computeInSampleSize(width: Int, height: Int, maxSide: Int): Int {
+internal fun computeInSampleSize(width: Int, height: Int, maxSide: Int): Int {
     var sampleSize = 1
     var largestSide = maxOf(width, height)
     while (largestSide / 2 >= maxSide) {
@@ -82,7 +82,7 @@ private fun computeInSampleSize(width: Int, height: Int, maxSide: Int): Int {
  * habitualmente guardan fotos en modo retrato como un buffer de sensor en
  * modo paisaje más este tag, en vez de rotar los píxeles.
  */
-private fun readExifRotationDegrees(context: Context, imageUri: Uri): Int {
+internal fun readExifRotationDegrees(context: Context, imageUri: Uri): Int {
     val orientation = context.contentResolver.openInputStream(imageUri).use { stream ->
         stream?.let { ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
     } ?: ExifInterface.ORIENTATION_NORMAL

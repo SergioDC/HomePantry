@@ -109,7 +109,7 @@ fun PurchaseHistoryScreen(
             processingOcr = false
 
             when {
-                usedClassicAfterGeminiFailure && geminiFailureReason != null -> {
+                usedClassicAfterGeminiFailure -> {
                     scope.launch {
                         snackbarHostState.showSnackbar(
                             context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
