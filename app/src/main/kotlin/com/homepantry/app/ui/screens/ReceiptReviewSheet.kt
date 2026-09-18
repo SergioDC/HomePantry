@@ -18,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -48,6 +49,7 @@ fun ReceiptReviewSheet(
     viewModel: AppViewModel,
     initialLines: List<ParsedReceiptLine>,
     ticketPhotoUri: Uri?,
+    notice: String? = null,
     onDismiss: () -> Unit
 ) {
     val lines = remember(initialLines) {
@@ -65,6 +67,24 @@ fun ReceiptReviewSheet(
         ) {
             item {
                 Text(stringResource(R.string.receipt_review_title), style = MaterialTheme.typography.titleLarge)
+            }
+            // Un Snackbar del Scaffold queda detrás de esta hoja modal y caduca
+            // antes de que el usuario la cierre; el aviso va aquí, fijo.
+            if (notice != null) {
+                item {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                        shape = MaterialTheme.shapes.medium,
+                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                    ) {
+                        Text(
+                            notice,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp)
+                        )
+                    }
+                }
             }
             itemsIndexed(lines) { index, line ->
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {

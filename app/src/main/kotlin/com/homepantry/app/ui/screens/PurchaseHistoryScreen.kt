@@ -76,6 +76,7 @@ fun PurchaseHistoryScreen(
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var reviewLines by remember { mutableStateOf<List<ParsedReceiptLine>?>(null) }
     var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var reviewNotice by remember { mutableStateOf<String?>(null) }
     var processingOcr by remember { mutableStateOf(false) }
     var showScanDialog by remember { mutableStateOf(false) }
 
@@ -109,20 +110,14 @@ fun PurchaseHistoryScreen(
 
             processingOcr = false
 
-            when {
-                usedClassicAfterGeminiFailure -> {
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
-                        )
-                    }
-                }
-                classicFailed -> {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_error)) }
-                }
-                parsed.isEmpty() -> {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_ocr_empty)) }
-                }
+            // Estos avisos se muestran dentro de la hoja de revisión, no como
+            // Snackbar: la hoja es modal y taparía (y haría caducar) el snackbar.
+            reviewNotice = when {
+                usedClassicAfterGeminiFailure ->
+                    context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
+                classicFailed -> context.getString(R.string.purchase_history_ocr_error)
+                parsed.isEmpty() -> context.getString(R.string.purchase_history_ocr_empty)
+                else -> null
             }
 
             reviewLines = parsed
@@ -244,9 +239,11 @@ fun PurchaseHistoryScreen(
             viewModel = viewModel,
             initialLines = lines,
             ticketPhotoUri = reviewPhotoUri,
+            notice = reviewNotice,
             onDismiss = {
                 reviewLines = null
                 reviewPhotoUri = null
+                reviewNotice = null
             }
         )
     }

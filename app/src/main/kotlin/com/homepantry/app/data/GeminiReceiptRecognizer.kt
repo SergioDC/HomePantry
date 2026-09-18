@@ -7,10 +7,12 @@ import android.graphics.Matrix
 import android.net.Uri
 import android.util.Base64
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import retrofit2.Response
 
 sealed class GeminiReceiptException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -21,6 +23,11 @@ class GeminiModelUnavailableException : GeminiReceiptException(
 )
 class GeminiNetworkException(cause: Throwable) : GeminiReceiptException("Sin conexión con Gemini: ${cause.message}", cause)
 class GeminiResponseException(reason: String) : GeminiReceiptException("Respuesta inesperada de Gemini: $reason")
+
+/** Fallo temporal del lado de Google (típicamente 503 por saturación del modelo): reintentar puede bastar. */
+class GeminiServerException(code: Int, detail: String?) : GeminiReceiptException(
+    "Gemini no está disponible ahora mismo (HTTP $code${detail?.let { ": $it" }.orEmpty()})"
+)
 
 private val geminiGson = Gson()
 
@@ -37,6 +44,63 @@ internal fun classifyHttpErrorCode(code: Int): GeminiReceiptException? = when (c
     404 -> GeminiModelUnavailableException()
     429 -> GeminiQuotaException()
     else -> null
+}
+
+/** Errores de servidor que suelen desaparecer al reintentar (el 503 "model is overloaded" es el habitual). */
+internal fun isTransientHttpCode(code: Int): Boolean = code == 500 || code == 502 || code == 503 || code == 504
+
+/** Google devuelve los errores como `{"error":{"code":..,"message":"..","status":".."}}`. */
+internal fun extractGoogleErrorMessage(errorBody: String?): String? {
+    if (errorBody.isNullOrBlank()) return null
+    return try {
+        JsonParser.parseString(errorBody).asJsonObject
+            .getAsJsonObject("error")
+            ?.get("message")
+            ?.asString
+            ?.takeIf { it.isNotBlank() }
+    } catch (e: Exception) {
+        null
+    }
+}
+
+/**
+ * Convierte un HTTP no exitoso que [classifyHttpErrorCode] no reconoce en una
+ * excepción que incluye el código y el mensaje real de Google; un simple
+ * "HTTP 503" no dice si el modelo está saturado o la petición es errónea.
+ */
+internal fun httpFailure(code: Int, errorBody: String?): GeminiReceiptException {
+    val detail = extractGoogleErrorMessage(errorBody)
+    return if (isTransientHttpCode(code)) {
+        GeminiServerException(code, detail)
+    } else {
+        GeminiResponseException("HTTP $code${detail?.let { ": $it" }.orEmpty()}")
+    }
+}
+
+private const val GEMINI_MAX_ATTEMPTS = 3
+private const val GEMINI_RETRY_INITIAL_DELAY_MS = 2_000L
+
+/**
+ * Reintenta [block] cuando falla con [GeminiServerException], esperando el
+ * doble entre cada intento; cualquier otro error (clave, cuota, modelo, red)
+ * se propaga en el acto porque repetir la llamada no lo arregla.
+ */
+internal suspend fun <T> retryOnTransientGeminiError(
+    maxAttempts: Int = GEMINI_MAX_ATTEMPTS,
+    initialDelayMs: Long = GEMINI_RETRY_INITIAL_DELAY_MS,
+    sleep: suspend (Long) -> kotlin.Unit = { delay(it) },
+    block: suspend () -> T
+): T {
+    var wait = initialDelayMs
+    repeat(maxAttempts - 1) {
+        try {
+            return block()
+        } catch (e: GeminiServerException) {
+            sleep(wait)
+            wait *= 2
+        }
+    }
+    return block()
 }
 
 internal fun extractOutputText(response: GeminiInteractionResponse): String {
@@ -75,10 +139,11 @@ internal const val DEFAULT_GEMINI_MODEL = "gemini-3.8-flash"
  */
 val GEMINI_MODEL_OPTIONS: List<String> = listOf(
     "gemini-3.8-flash",
+    "gemini-3.7-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash",
     "gemini-3.5-flash-lite",
-    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
     "gemini-2.5-pro"
 )
 
@@ -110,13 +175,23 @@ private suspend fun <T> callGeminiApi(call: suspend () -> Response<T>): Response
 private fun ensureSuccessful(response: Response<*>) {
     classifyHttpErrorCode(response.code())?.let { throw it }
     if (!response.isSuccessful) {
-        throw GeminiResponseException("HTTP ${response.code()}")
+        val errorBody = try {
+            response.errorBody()?.string()
+        } catch (e: IOException) {
+            null
+        }
+        throw httpFailure(response.code(), errorBody)
     }
 }
 
+/** [callGeminiApi] + comprobación del código HTTP, reintentando los fallos temporales de Google. */
+private suspend fun <T> callGeminiChecked(call: suspend () -> Response<T>): Response<T> =
+    retryOnTransientGeminiError {
+        callGeminiApi(call).also { ensureSuccessful(it) }
+    }
+
 private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
-    val response = callGeminiApi { GeminiReceiptClient.api().createInteraction(apiKey, request) }
-    ensureSuccessful(response)
+    val response = callGeminiChecked { GeminiReceiptClient.api().createInteraction(apiKey, request) }
     return response.body() ?: throw GeminiResponseException("cuerpo de respuesta vacío")
 }
 
@@ -199,6 +274,5 @@ suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: 
  * GeminiReceiptException si la key o el modelo no son válidos.
  */
 suspend fun validateGeminiApiKey(apiKey: String, model: String) {
-    val response = callGeminiApi { GeminiReceiptClient.api().getModel(model, apiKey) }
-    ensureSuccessful(response)
+    callGeminiChecked { GeminiReceiptClient.api().getModel(model, apiKey) }
 }
