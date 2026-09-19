@@ -1,5 +1,6 @@
 package com.homepantry.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 
-/** Tarjeta de zona del dashboard "Almacén": icono de letra + color auto-derivados. */
+/** Tarjeta de zona del dashboard "Almacén": icono de letra y borde con el color de la zona. */
 @Composable
 fun ZoneCard(
     letter: String,
@@ -30,7 +31,11 @@ fun ZoneCard(
     val dotColor = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
         .getOrDefault(MaterialTheme.colorScheme.primary)
 
-    Card(onClick = onClick, modifier = modifier.fillMaxWidth().aspectRatio(1f)) {
+    Card(
+        onClick = onClick,
+        border = BorderStroke(2.dp, dotColor),
+        modifier = modifier.fillMaxWidth().aspectRatio(1f)
+    ) {
         Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Box(
                 modifier = Modifier.size(36.dp).background(dotColor, CircleShape),

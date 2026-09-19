@@ -415,18 +415,9 @@ fun AddItemSheet(
                             .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(6.dp))
                     )
                 }
-                Row(modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                    OutlinedButton(
-                        onClick = {
-                            photoPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) { Text(stringResource(R.string.add_item_photo)) }
-                    OutlinedButton(
-                        onClick = { showScanner = true },
-                        modifier = Modifier.weight(1f).padding(start = 8.dp)
-                    ) { Text(stringResource(R.string.add_item_scan)) }
-                }
+                // Los botones de foto (`photoPicker`) y de escáner (`showScanner`) se quitaron de la
+                // interfaz; su código se conserva a propósito porque la consulta a OpenFoodFacts
+                // puede volver a usarse más adelante.
             }
             item {
                 Button(
