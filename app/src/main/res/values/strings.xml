@@ -159,4 +159,17 @@
     <string name="purchase_detail_history_title">Historial de compras</string>
     <string name="purchase_detail_amount">%1$.2f €</string>
     <string name="purchase_detail_line_info">%1$s · %2$s %3$s</string>
+
+    <!-- PurchaseTicketDetailScreen / DeleteTicketDialog -->
+    <string name="purchase_ticket_title">%1$s · %2$s</string>
+    <string name="purchase_ticket_summary">%1$d línea(s) · %2$.2f €</string>
+    <string name="purchase_ticket_line_info">%1$s %2$s · %3$s</string>
+    <string name="purchase_ticket_delete_cd">Eliminar ticket</string>
+    <string name="purchase_ticket_delete_line_cd">Eliminar línea</string>
+    <string name="purchase_ticket_delete_title">¿Eliminar este ticket?</string>
+    <string name="purchase_ticket_delete_message">%1$s · %2$s · %3$.2f €\nSe borrarán sus %4$d línea(s).</string>
+    <string name="purchase_ticket_delete_confirm">Eliminar</string>
+    <string name="purchase_ticket_delete_cancel">Cancelar</string>
+    <string name="purchase_ticket_line_deleted">Línea eliminada</string>
+    <string name="purchase_ticket_undo">Deshacer</string>
 </resources>

@@ -57,6 +57,7 @@ import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
+import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
 import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
@@ -253,6 +254,14 @@ fun ListaDeLaCasaApp() {
                 PurchaseDetailScreen(
                     viewModel = viewModel,
                     normalizedName = Uri.decode(encodedName),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("purchaseTicket/{ticketKey}") { backStackEntry ->
+                val encodedKey = backStackEntry.arguments?.getString("ticketKey") ?: return@composable
+                PurchaseTicketDetailScreen(
+                    viewModel = viewModel,
+                    ticketKey = Uri.decode(encodedKey),
                     onBack = { navController.popBackStack() }
                 )
             }
