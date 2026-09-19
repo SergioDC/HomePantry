@@ -37,6 +37,32 @@ class ZoneTest {
         assertEquals(zoneColorFor(0), resolvedZoneColor(zone, index = 0))
     }
 
+    @Test fun `lightenedZoneColor keeps hue and saturation and raises lightness`() {
+        assertEquals("#FFCCCC", lightenedZoneColor("#FF0000"))
+        assertEquals("#CCFFCC", lightenedZoneColor("#00ff00"))
+        assertEquals("#CCCCFF", lightenedZoneColor(" #0000FF "))
+    }
+
+    @Test fun `lightenedZoneColor leaves grays as grays`() {
+        assertEquals("#E6E6E6", lightenedZoneColor("#808080"))
+    }
+
+    @Test fun `lightenedZoneColor makes every palette color lighter without changing its dominant channel`() {
+        fun channels(hex: String) = listOf(1, 3, 5).map { hex.substring(it, it + 2).toInt(16) }
+        ZONE_COLORS.forEach { hex ->
+            val original = channels(hex)
+            val lightened = channels(lightenedZoneColor(hex)!!)
+            assertTrue("$hex not lighter", lightened.sum() > original.sum())
+            assertEquals("$hex changed its dominant channel", original.indexOf(original.max()), lightened.indexOf(lightened.max()))
+        }
+    }
+
+    @Test fun `lightenedZoneColor is null for an invalid hex`() {
+        assertEquals(null, lightenedZoneColor("red"))
+        assertEquals(null, lightenedZoneColor("#FFF"))
+        assertEquals(null, lightenedZoneColor(""))
+    }
+
     @Test fun `resolvedZoneColor falls back to the index-derived color when blank`() {
         val zone = Zone(id = "z1", name = "Nevera", color = "  ")
         assertEquals(zoneColorFor(2), resolvedZoneColor(zone, index = 2))

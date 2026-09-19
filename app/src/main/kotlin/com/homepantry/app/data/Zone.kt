@@ -1,6 +1,8 @@
 package com.homepantry.app.data
 
 import com.google.firebase.firestore.DocumentId
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Zona de la despensa/casa donde se guarda o usa un producto
@@ -31,6 +33,50 @@ fun zoneColorFor(index: Int): String = ZONE_COLORS[index % ZONE_COLORS.size]
 
 /** Color a mostrar para una zona: el elegido por el usuario, o el derivado de su posición si no personalizó ninguno. */
 fun resolvedZoneColor(zone: Zone, index: Int): String = zone.color?.takeIf { it.isNotBlank() } ?: zoneColorFor(index)
+
+/** Fracción de luminosidad que le falta al color de la zona (hasta el blanco) que se le añade para el fondo de su tarjeta. */
+const val ZONE_TINT_LIGHTEN_FACTOR = 0.8f
+
+private val HEX_COLOR = Regex("^#([0-9A-Fa-f]{6})$")
+
+/**
+ * Versión más clara del color de una zona (hex "#RRGGBB"), para el fondo de su tarjeta: mismo
+ * tono y saturación (HSL) y luminosidad L' = L + (1 - L) * factor, así que siempre es más clara
+ * que el original. Devuelve null si el hex no es válido.
+ */
+fun lightenedZoneColor(hex: String, factor: Float = ZONE_TINT_LIGHTEN_FACTOR): String? {
+    val rgb = HEX_COLOR.matchEntire(hex.trim())?.groupValues?.get(1)?.toInt(16) ?: return null
+    val r = ((rgb shr 16) and 0xFF) / 255f
+    val g = ((rgb shr 8) and 0xFF) / 255f
+    val b = (rgb and 0xFF) / 255f
+
+    val max = maxOf(r, g, b)
+    val min = minOf(r, g, b)
+    val delta = max - min
+    val lightness = (max + min) / 2f
+    val saturation = if (delta == 0f) 0f else delta / (1f - abs(2f * lightness - 1f))
+    val hue = when {
+        delta == 0f -> 0f
+        max == r -> 60f * (((g - b) / delta).mod(6f))
+        max == g -> 60f * ((b - r) / delta + 2f)
+        else -> 60f * ((r - g) / delta + 4f)
+    }
+
+    val newLightness = lightness + (1f - lightness) * factor
+    val chroma = (1f - abs(2f * newLightness - 1f)) * saturation
+    val x = chroma * (1f - abs((hue / 60f).mod(2f) - 1f))
+    val m = newLightness - chroma / 2f
+    val (r1, g1, b1) = when ((hue / 60f).toInt()) {
+        0 -> Triple(chroma, x, 0f)
+        1 -> Triple(x, chroma, 0f)
+        2 -> Triple(0f, chroma, x)
+        3 -> Triple(0f, x, chroma)
+        4 -> Triple(x, 0f, chroma)
+        else -> Triple(chroma, 0f, x)
+    }
+    fun channel(value: Float) = ((value + m) * 255f).roundToInt().coerceIn(0, 255)
+    return "#%02X%02X%02X".format(channel(r1), channel(g1), channel(b1))
+}
 
 /**
  * Color de la paleta para una zona nueva: el menos usado entre las zonas existentes

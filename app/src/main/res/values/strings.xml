@@ -82,7 +82,7 @@
     <string name="nav_buscar">Buscar</string>
 
     <!-- ZonesDashboardScreen -->
-    <string name="dashboard_title">Alacena</string>
+    <string name="dashboard_title">SNHome</string>
     <string name="dashboard_greeting">Hola, %1$s</string>
     <string name="dashboard_summary_up_to_date">%1$d productos · al día</string>
     <string name="dashboard_summary_pending">%1$d productos · %2$d pendientes</string>
