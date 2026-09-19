@@ -8,7 +8,7 @@ import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.Member
 import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.PROTECTED_ZONE_NAME
-import com.homepantry.app.data.ParsedReceiptLine
+import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.PurchasesRepository
@@ -180,19 +180,24 @@ class AppViewModel(
     /**
      * Guarda todas las líneas confirmadas de un ticket escaneado como
      * Purchase independientes, subiendo la foto del ticket una vez y
-     * enlazándola desde cada línea (spec "Flujo de captura y parseo").
+     * enlazándola desde cada línea (spec "Flujo de captura y parseo"). El
+     * supermercado del ticket se copia a cada línea; en blanco se guarda null.
      */
-    fun savePurchaseBatch(lines: List<ParsedReceiptLine>, ticketPhotoLocalUri: android.net.Uri?) = viewModelScope.launch {
-        if (lines.isEmpty()) return@launch
+    fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?) = viewModelScope.launch {
+        if (receipt.lines.isEmpty()) return@launch
         runCatching {
             val batchId = java.util.UUID.randomUUID().toString()
             val photoUrl = ticketPhotoLocalUri?.let { uri -> storageRepository.uploadReceiptPhoto(batchId, uri) }
             val now = java.util.Date()
-            val purchases = lines.map { line ->
+            val store = receipt.store?.trim()?.takeIf { it.isNotEmpty() }
+            val purchases = receipt.lines.map { line ->
                 Purchase(
                     rawName = line.name,
                     normalizedName = normalizeProductName(line.name),
                     price = line.price,
+                    quantity = line.quantity,
+                    unit = line.unit,
+                    store = store,
                     date = now,
                     addedBy = userName,
                     ticketPhotoUrl = photoUrl

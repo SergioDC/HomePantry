@@ -47,7 +47,7 @@ import com.google.accompanist.permissions.rememberPermissionState
 import com.homepantry.app.R
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.GeminiReceiptException
-import com.homepantry.app.data.ParsedReceiptLine
+import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.createReceiptCaptureUri
 import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.recognizeReceiptTextLines
@@ -74,7 +74,7 @@ fun PurchaseHistoryScreen(
     val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var reviewLines by remember { mutableStateOf<List<ParsedReceiptLine>?>(null) }
+    var reviewReceipt by remember { mutableStateOf<ParsedReceipt?>(null) }
     var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var reviewNotice by remember { mutableStateOf<String?>(null) }
     var processingOcr by remember { mutableStateOf(false) }
@@ -84,16 +84,16 @@ fun PurchaseHistoryScreen(
         processingOcr = true
         scope.launch {
             val apiKey = geminiApiKeyStore.getApiKey()
-            var parsed: List<ParsedReceiptLine> = emptyList()
+            var parsed = ParsedReceipt(store = null, lines = emptyList())
             var geminiFailureReason: String? = null
             var usedClassicAfterGeminiFailure = false
 
             if (apiKey != null) {
                 val model = geminiApiKeyStore.getModel()
                 val geminiResult = runCatching { recognizeReceiptWithGemini(context, uri, apiKey, model) }
-                val geminiLines = geminiResult.getOrNull()?.lines
-                if (geminiLines != null) {
-                    parsed = geminiLines
+                val geminiReceipt = geminiResult.getOrNull()
+                if (geminiReceipt != null) {
+                    parsed = geminiReceipt
                 } else {
                     val failure = geminiResult.exceptionOrNull()
                     geminiFailureReason = (failure as? GeminiReceiptException)?.message ?: failure?.message ?: "error desconocido"
@@ -105,7 +105,7 @@ fun PurchaseHistoryScreen(
             if (apiKey == null || usedClassicAfterGeminiFailure) {
                 val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
                 classicFailed = ocrResult.isFailure
-                parsed = parseReceiptLines(ocrResult.getOrDefault(emptyList()))
+                parsed = ParsedReceipt(store = null, lines = parseReceiptLines(ocrResult.getOrDefault(emptyList())))
             }
 
             processingOcr = false
@@ -116,11 +116,11 @@ fun PurchaseHistoryScreen(
                 usedClassicAfterGeminiFailure ->
                     context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
                 classicFailed -> context.getString(R.string.purchase_history_ocr_error)
-                parsed.isEmpty() -> context.getString(R.string.purchase_history_ocr_empty)
+                parsed.lines.isEmpty() -> context.getString(R.string.purchase_history_ocr_empty)
                 else -> null
             }
 
-            reviewLines = parsed
+            reviewReceipt = parsed
             reviewPhotoUri = uri
         }
     }
@@ -233,15 +233,15 @@ fun PurchaseHistoryScreen(
         )
     }
 
-    val lines = reviewLines
-    if (lines != null) {
+    val receipt = reviewReceipt
+    if (receipt != null) {
         ReceiptReviewSheet(
             viewModel = viewModel,
-            initialLines = lines,
+            initialReceipt = receipt,
             ticketPhotoUri = reviewPhotoUri,
             notice = reviewNotice,
             onDismiss = {
-                reviewLines = null
+                reviewReceipt = null
                 reviewPhotoUri = null
                 reviewNotice = null
             }
