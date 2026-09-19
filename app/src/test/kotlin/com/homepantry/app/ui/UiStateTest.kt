@@ -82,4 +82,14 @@ class UiStateTest {
         assertEquals(1, state.purchaseSummaries.size)
         assertEquals(2.7, state.purchaseSummaries.single().allTimeTotal, 0.001)
     }
+
+    @Test fun `purchaseStoreSections groups purchases by store with no-store last`() {
+        val state = UiState(
+            purchases = listOf(
+                com.homepantry.app.data.Purchase(rawName = "Tomate", normalizedName = "tomate", price = 1.5, store = "Lidl"),
+                com.homepantry.app.data.Purchase(rawName = "Leche", normalizedName = "leche", price = 0.9)
+            )
+        )
+        assertEquals(listOf("lidl", ""), state.purchaseStoreSections.map { it.storeKey })
+    }
 }

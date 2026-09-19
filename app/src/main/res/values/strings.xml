@@ -143,7 +143,9 @@
     <string name="purchase_history_ocr_error">No se pudo procesar la foto. Inténtalo de nuevo.</string>
     <string name="purchase_history_gemini_fallback">No se pudo usar IA (%1$s); se ha usado el modo clásico.</string>
     <string name="purchase_history_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
-    <string name="purchase_history_summary">Este mes: %1$.2f € · Total: %2$.2f €</string>
+    <string name="purchase_history_no_store">Sin supermercado</string>
+    <string name="purchase_history_unit_price">%1$.2f €/%2$s</string>
+    <string name="purchase_history_last_purchase">Última compra %1$s · %2$d compra(s)</string>
     <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
     <string name="purchase_history_scan_dialog_camera">Sacar foto</string>
     <string name="purchase_history_scan_dialog_gallery">Elegir de galería</string>
@@ -153,4 +155,5 @@
     <string name="purchase_detail_monthly_title">Gasto por mes</string>
     <string name="purchase_detail_history_title">Historial de compras</string>
     <string name="purchase_detail_amount">%1$.2f €</string>
+    <string name="purchase_detail_line_info">%1$s · %2$s %3$s</string>
 </resources>

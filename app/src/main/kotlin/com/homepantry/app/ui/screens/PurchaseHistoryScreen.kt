@@ -21,6 +21,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -52,8 +54,11 @@ import com.homepantry.app.data.createReceiptCaptureUri
 import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.recognizeReceiptTextLines
 import com.homepantry.app.data.recognizeReceiptWithGemini
+import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 /**
  * Pantalla "Historial de compras": lista de productos agrupados (spec
@@ -152,6 +157,8 @@ fun PurchaseHistoryScreen(
         }
     }
 
+    val dateFormat = remember { SimpleDateFormat("d MMM", Locale("es", "ES")) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -176,27 +183,45 @@ fun PurchaseHistoryScreen(
                     CircularProgressIndicator()
                 }
             }
-            state.purchaseSummaries.isEmpty() -> {
+            state.purchaseStoreSections.isEmpty() -> {
                 Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                     Text(stringResource(R.string.purchase_history_empty))
                 }
             }
             else -> {
                 LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    items(state.purchaseSummaries, key = { it.normalizedName }) { summary ->
-                        ListItem(
-                            headlineContent = { Text(summary.displayName) },
-                            supportingContent = {
-                                Text(
-                                    stringResource(
-                                        R.string.purchase_history_summary,
-                                        summary.currentMonthTotal,
-                                        summary.allTimeTotal
+                    state.purchaseStoreSections.forEach { section ->
+                        item(key = "store/${section.storeKey}") {
+                            Text(
+                                text = section.displayName.ifEmpty { stringResource(R.string.purchase_history_no_store) },
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
+                            )
+                        }
+                        items(section.products, key = { "${section.storeKey}/${it.normalizedName}" }) { summary ->
+                            ListItem(
+                                headlineContent = { Text(summary.displayName) },
+                                supportingContent = {
+                                    Text(
+                                        stringResource(
+                                            R.string.purchase_history_last_purchase,
+                                            dateFormat.format(summary.purchases.first().date),
+                                            summary.purchases.size
+                                        )
                                     )
-                                )
-                            },
-                            modifier = Modifier.clickable { onOpenProduct(summary.normalizedName) }
-                        )
+                                },
+                                trailingContent = {
+                                    Text(
+                                        stringResource(
+                                            R.string.purchase_history_unit_price,
+                                            summary.latestUnitPrice,
+                                            unitSuffix(summary.latestUnit)
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.clickable { onOpenProduct(summary.normalizedName) }
+                            )
+                        }
                     }
                 }
             }

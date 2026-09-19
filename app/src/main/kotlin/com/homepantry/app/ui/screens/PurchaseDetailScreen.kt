@@ -1,6 +1,7 @@
 package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -24,7 +25,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
+import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.monthlySpend
+import com.homepantry.app.data.unitPrice
+import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -86,7 +90,33 @@ fun PurchaseDetailScreen(
                 items(summary.purchases, key = { it.id }) { purchase ->
                     ListItem(
                         headlineContent = { Text(dateFormat.format(purchase.date)) },
-                        trailingContent = { Text(stringResource(R.string.purchase_detail_amount, purchase.price)) }
+                        supportingContent = {
+                            Text(
+                                stringResource(
+                                    R.string.purchase_detail_line_info,
+                                    purchase.store?.takeIf { it.isNotBlank() }
+                                        ?: stringResource(R.string.purchase_history_no_store),
+                                    formatQuantity(purchase.quantity),
+                                    unitSuffix(purchase.unit)
+                                )
+                            )
+                        },
+                        trailingContent = {
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    stringResource(
+                                        R.string.purchase_history_unit_price,
+                                        purchase.unitPrice(),
+                                        unitSuffix(purchase.unit)
+                                    )
+                                )
+                                Text(
+                                    stringResource(R.string.purchase_detail_amount, purchase.price),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     )
                 }
             }

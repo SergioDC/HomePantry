@@ -112,7 +112,7 @@ pedido juntos, pero cada uno debe poder implementarse y probarse por separado.
   con el orden descrito arriba, agrupando por clave de supermercado y luego por
   `normalizedName`. `productSummaries` se conserva para el detalle (agrupa por
   producto sin distinguir supermercado).
-- `UiState` expone `storeSections` junto a `purchaseSummaries`.
+- `UiState` expone `purchaseStoreSections` junto a `purchaseSummaries`.
 
 ### Compatibilidad
 
@@ -185,7 +185,7 @@ pedido juntos, pero cada uno debe poder implementarse y probarse por separado.
   los campos nuevos.
 - `ItemListLogicTest`: secciones de una zona raíz (propia + subzonas, subzonas
   vacías, solo `done`, zona sin subzonas).
-- `UiStateTest`: `storeSections` expuesto en el estado.
+- `UiStateTest`: `purchaseStoreSections` expuesto en el estado.
 - UI (`ReceiptReviewSheet`, `PurchaseHistoryScreen`, `PurchaseDetailScreen`,
   `ZoneDetailScreen`, `AddItemSheet`): se comprueba que compila y se revisa en
   el dispositivo.

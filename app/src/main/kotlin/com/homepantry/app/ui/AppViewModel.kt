@@ -13,10 +13,12 @@ import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
+import com.homepantry.app.data.StoreSection
 import com.homepantry.app.data.Zone
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.data.normalizeProductName
 import com.homepantry.app.data.productSummaries
+import com.homepantry.app.data.storeSections
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,6 +40,9 @@ data class UiState(
     val progress: String get() = progressText(items)
 
     val purchaseSummaries: List<ProductSummary> get() = productSummaries(purchases)
+
+    /** Historial agrupado por supermercado (el nombre difiere de `storeSections` para no tapar la función). */
+    val purchaseStoreSections: List<StoreSection> get() = storeSections(purchases)
 
     // Lista de la compra: solo lo pendiente. Un producto "done" = ya lo tienes (lo compraste
     // o lo añadiste directamente a una Zona como inventario), así que no tiene sentido que
