@@ -98,6 +98,9 @@
     <string name="zone_detail_new_subzone_title">Nueva subzona</string>
     <string name="zone_detail_section_empty">Nada por aquí todavía</string>
     <string name="zone_detail_add_to_section_cd">Añadir a %1$s</string>
+    <string name="zone_detail_expand_cd">Expandir %1$s</string>
+    <string name="zone_detail_collapse_cd">Colapsar %1$s</string>
+    <string name="zone_detail_open_subzone_cd">Abrir %1$s</string>
     <string name="zone_detail_remove_title">Quitar \"%1$s\"</string>
     <string name="zone_detail_remove_message">¿Lo añadimos a la lista de la compra o lo eliminamos del todo?</string>
     <string name="zone_detail_remove_to_list">Añadir a la lista</string>

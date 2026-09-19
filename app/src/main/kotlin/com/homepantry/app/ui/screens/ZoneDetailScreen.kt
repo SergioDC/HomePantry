@@ -15,10 +15,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,6 +90,8 @@ fun ZoneDetailScreen(
     var showColorDialog by remember { mutableStateOf(false) }
     var showAddSubzoneDialog by remember { mutableStateOf(false) }
     var newSubzoneName by remember { mutableStateOf("") }
+    // Ids de las subzonas colapsadas; por defecto todas expandidas.
+    var collapsedIds by rememberSaveable { mutableStateOf(setOf<String>()) }
 
     val protected = zone != null && isProtectedZone(zone)
     val canDeleteZone = zone != null && !protected && state.zones.size > 1 && subzones.isEmpty()
@@ -140,6 +146,7 @@ fun ZoneDetailScreen(
             contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 96.dp)
         ) {
             sections.forEach { section ->
+                val collapsed = section.isSubzone && section.zone.id in collapsedIds
                 if (showHeaders) {
                     item(key = "header/${section.zone.id}") {
                         ZoneSectionHeader(
@@ -150,11 +157,18 @@ fun ZoneDetailScreen(
                             } else {
                                 currentColor
                             },
+                            collapsible = section.isSubzone,
+                            collapsed = collapsed,
+                            onToggleCollapse = {
+                                val id = section.zone.id
+                                collapsedIds = if (id in collapsedIds) collapsedIds - id else collapsedIds + id
+                            },
                             onOpen = if (section.isSubzone) ({ onOpenZone(section.zone.id) }) else null,
                             onAdd = { onAddItem(section.zone.id) }
                         )
                     }
                 }
+                if (collapsed) return@forEach
                 if (section.items.isEmpty()) {
                     item(key = "empty/${section.zone.id}") {
                         Text(
@@ -343,14 +357,18 @@ fun ZoneDetailScreen(
 
 /**
  * Encabezado de una sección (zona o subzona) con su color, contador y un "+"
- * que añade un producto directamente a ella. Si `onOpen` no es null, tocar el
- * encabezado abre la pantalla propia de esa subzona.
+ * que añade un producto directamente a ella. Si `collapsible`, tocar el encabezado
+ * colapsa o expande la sección; si `onOpen` no es null, un botón abre la pantalla
+ * propia de esa subzona.
  */
 @Composable
 private fun ZoneSectionHeader(
     title: String,
     count: Int,
     colorHex: String?,
+    collapsible: Boolean,
+    collapsed: Boolean,
+    onToggleCollapse: () -> Unit,
     onOpen: (() -> Unit)?,
     onAdd: () -> Unit
 ) {
@@ -359,9 +377,19 @@ private fun ZoneSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .padding(top = 8.dp)
-            .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier),
+            .then(if (collapsible) Modifier.clickable(onClick = onToggleCollapse) else Modifier),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (collapsible) {
+            Icon(
+                if (collapsed) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
+                contentDescription = stringResource(
+                    if (collapsed) R.string.zone_detail_expand_cd else R.string.zone_detail_collapse_cd,
+                    title
+                ),
+                modifier = Modifier.padding(end = 4.dp)
+            )
+        }
         if (dotColor != null) {
             Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
         }
@@ -375,6 +403,11 @@ private fun ZoneSectionHeader(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        if (onOpen != null) {
+            IconButton(onClick = onOpen) {
+                Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(R.string.zone_detail_open_subzone_cd, title))
+            }
+        }
         IconButton(onClick = onAdd) {
             Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zone_detail_add_to_section_cd, title))
         }
