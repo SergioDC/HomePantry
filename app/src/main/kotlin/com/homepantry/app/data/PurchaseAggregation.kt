@@ -29,6 +29,20 @@ data class StoreSection(
     val products: List<ProductSummary>
 )
 
+/**
+ * Un ticket escaneado: las líneas de un mismo escaneo con su total. `store` vacío
+ * corresponde a un ticket sin supermercado.
+ */
+data class Ticket(
+    val key: String,
+    val storeKey: String,
+    val store: String,
+    val date: Date,
+    val purchases: List<Purchase>,
+    val total: Double,
+    val possibleDuplicate: Boolean
+)
+
 private fun yearMonthOf(date: Date): String = SimpleDateFormat("yyyy-MM", Locale.US).format(date)
 
 /** Precio por unidad (ud, kg o l): total de la línea entre la cantidad; una cantidad no positiva cuenta como 1. */
@@ -112,3 +126,41 @@ fun storeSections(purchases: List<Purchase>, referenceDate: Date = Date()): List
             compareBy<Pair<StoreSection, Date>>({ it.first.storeKey.isEmpty() }, { -it.second.time })
         )
         .map { it.first }
+
+/**
+ * Clave del ticket de una línea: su `ticketId` o, en las compras antiguas, el supermercado
+ * más la fecha exacta del escaneo (todas las líneas de un escaneo comparten la misma `date`).
+ */
+fun ticketKey(purchase: Purchase): String =
+    purchase.ticketId ?: "legacy:${storeKey(purchase.store)}:${purchase.date.time}"
+
+private fun dayOf(date: Date): String = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(date)
+
+/**
+ * Agrupa las compras en tickets, del más reciente al más antiguo. Un ticket es un posible
+ * duplicado cuando otro comparte supermercado, total (en céntimos) y día: se marcan todos
+ * menos el más antiguo del grupo.
+ */
+fun tickets(purchases: List<Purchase>): List<Ticket> {
+    val built = purchases.groupBy { ticketKey(it) }.map { (key, group) ->
+        val newest = group.maxBy { it.date }
+        Ticket(
+            key = key,
+            storeKey = storeKey(newest.store),
+            store = newest.store?.trim().orEmpty(),
+            date = newest.date,
+            purchases = group.sortedBy { it.rawName.lowercase() },
+            total = group.sumOf { it.price },
+            possibleDuplicate = false
+        )
+    }
+    val duplicateKeys = built
+        .groupBy { Triple(it.storeKey, Math.round(it.total * 100), dayOf(it.date)) }
+        .values
+        .filter { it.size > 1 }
+        .flatMap { group -> group.sortedWith(compareBy<Ticket>({ it.date }, { it.key })).drop(1).map { it.key } }
+        .toSet()
+    return built
+        .map { it.copy(possibleDuplicate = it.key in duplicateKeys) }
+        .sortedWith(compareByDescending<Ticket> { it.date }.thenBy { it.key })
+}

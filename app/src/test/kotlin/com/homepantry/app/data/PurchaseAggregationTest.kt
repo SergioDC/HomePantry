@@ -1,6 +1,7 @@
 package com.homepantry.app.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -8,6 +9,12 @@ import java.util.Locale
 class PurchaseAggregationTest {
     private val format = SimpleDateFormat("yyyy-MM-dd", Locale.US)
     private fun date(s: String) = format.parse(s)!!
+
+    private val timeFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US)
+    private fun at(s: String) = timeFormat.parse(s)!!
+
+    private fun ticketLine(id: String, store: String, total: Double, time: String) =
+        Purchase(rawName = "X", price = total, date = at(time), store = store, ticketId = id)
 
     @Test fun `monthlySpend groups purchases by year-month regardless of product`() {
         val purchases = listOf(
@@ -139,5 +146,72 @@ class PurchaseAggregationTest {
         assertEquals("2", formatQuantity(2.0))
         assertEquals("0,85", formatQuantity(0.85))
         assertEquals("1,5", formatQuantity(1.5))
+    }
+
+    @Test fun `ticketKey uses the ticketId, or store plus exact scan time for old purchases`() {
+        val scanned = at("2026-03-12 10:00")
+        assertEquals("t1", ticketKey(Purchase(ticketId = "t1", store = "Lidl", date = scanned)))
+        assertEquals("legacy:mercadona:${scanned.time}", ticketKey(Purchase(store = " Mercadona ", date = scanned)))
+        assertEquals("legacy::${scanned.time}", ticketKey(Purchase(date = scanned)))
+    }
+
+    @Test fun `tickets groups the lines of a scan, sorted newest first with lines by name`() {
+        val purchases = listOf(
+            Purchase(rawName = "Pan", price = 1.2, date = at("2026-03-10 18:00"), store = "Lidl", ticketId = "a"),
+            Purchase(rawName = "leche", price = 0.9, date = at("2026-03-10 18:00"), store = "Lidl", ticketId = "a"),
+            Purchase(rawName = "Atún", price = 2.0, date = at("2026-03-12 09:00"), store = "Mercadona", ticketId = "b")
+        )
+        val result = tickets(purchases)
+
+        assertEquals(listOf("b", "a"), result.map { it.key })
+        val a = result[1]
+        assertEquals("Lidl", a.store)
+        assertEquals("lidl", a.storeKey)
+        assertEquals(2.1, a.total, 0.001)
+        assertEquals(listOf("leche", "Pan"), a.purchases.map { it.rawName })
+    }
+
+    @Test fun `tickets groups old purchases by store and exact scan time`() {
+        val first = at("2026-03-10 18:00")
+        val second = at("2026-03-11 12:00")
+        val purchases = listOf(
+            Purchase(rawName = "A", price = 1.0, date = first),
+            Purchase(rawName = "B", price = 2.0, date = first),
+            Purchase(rawName = "C", price = 4.0, date = second)
+        )
+        val result = tickets(purchases)
+
+        assertEquals(listOf(4.0, 3.0), result.map { it.total })
+        assertEquals(listOf("", ""), result.map { it.store })
+    }
+
+    @Test fun `tickets is empty when there are no purchases`() {
+        assertEquals(emptyList<Ticket>(), tickets(emptyList()))
+    }
+
+    @Test fun `tickets flags every copy but the oldest when store, total and day match`() {
+        val result = tickets(
+            listOf(
+                ticketLine("a", "Mercadona", 47.32, "2026-03-12 10:00"),
+                ticketLine("b", "MERCADONA", 47.32, "2026-03-12 10:05"),
+                ticketLine("c", "mercadona ", 47.32, "2026-03-12 18:30")
+            )
+        )
+        assertEquals(
+            mapOf("a" to false, "b" to true, "c" to true),
+            result.associate { it.key to it.possibleDuplicate }
+        )
+    }
+
+    @Test fun `tickets does not flag a different total, day or store`() {
+        val result = tickets(
+            listOf(
+                ticketLine("a", "Mercadona", 47.32, "2026-03-12 10:00"),
+                ticketLine("b", "Mercadona", 47.33, "2026-03-12 10:05"),
+                ticketLine("c", "Mercadona", 47.32, "2026-03-13 10:05"),
+                ticketLine("d", "Lidl", 47.32, "2026-03-12 10:05")
+            )
+        )
+        assertTrue(result.none { it.possibleDuplicate })
     }
 }

@@ -23,5 +23,7 @@ data class Purchase(
     /** Nombre de un valor de [Unit]: UD, KG o L. */
     val unit: String = Unit.UD.name,
     /** Supermercado de la compra, tal y como se muestra. Null = desconocido (compras antiguas). */
-    val store: String? = null
+    val store: String? = null,
+    /** Id del escaneo (ticket) al que pertenece la línea. Null en compras anteriores a los tickets. */
+    val ticketId: String? = null
 )
