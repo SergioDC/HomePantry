@@ -214,4 +214,36 @@ class PurchaseAggregationTest {
         )
         assertTrue(result.none { it.possibleDuplicate })
     }
+
+    @Test fun `ticketsByMonth groups tickets by year-month, newest month first, with the month total`() {
+        val result = ticketsByMonth(
+            tickets(
+                listOf(
+                    ticketLine("a", "Mercadona", 10.0, "2026-03-05 10:00"),
+                    ticketLine("b", "Lidl", 5.5, "2026-04-02 10:00"),
+                    ticketLine("c", "Mercadona", 20.25, "2026-03-20 10:00")
+                )
+            )
+        )
+        assertEquals(listOf("2026-04", "2026-03"), result.map { it.yearMonth })
+        assertEquals(listOf(5.5, 30.25), result.map { it.total })
+        assertEquals(listOf("c", "a"), result[1].tickets.map { it.key })
+    }
+
+    @Test fun `ticketsByMonth counts possible duplicates in the month total`() {
+        val result = ticketsByMonth(
+            tickets(
+                listOf(
+                    ticketLine("a", "Mercadona", 47.32, "2026-03-12 10:00"),
+                    ticketLine("b", "Mercadona", 47.32, "2026-03-12 10:05")
+                )
+            )
+        )
+        assertEquals(1, result.size)
+        assertEquals(94.64, result[0].total, 0.001)
+    }
+
+    @Test fun `ticketsByMonth is empty when there are no tickets`() {
+        assertEquals(emptyList<MonthSection>(), ticketsByMonth(emptyList()))
+    }
 }

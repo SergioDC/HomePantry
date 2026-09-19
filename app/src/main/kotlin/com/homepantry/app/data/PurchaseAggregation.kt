@@ -43,6 +43,9 @@ data class Ticket(
     val possibleDuplicate: Boolean
 )
 
+/** Tickets de un mes (`yearMonth` con formato "yyyy-MM") y su gasto total. */
+data class MonthSection(val yearMonth: String, val total: Double, val tickets: List<Ticket>)
+
 private fun yearMonthOf(date: Date): String = SimpleDateFormat("yyyy-MM", Locale.US).format(date)
 
 /** Precio por unidad (ud, kg o l): total de la línea entre la cantidad; una cantidad no positiva cuenta como 1. */
@@ -164,3 +167,12 @@ fun tickets(purchases: List<Purchase>): List<Ticket> {
         .map { it.copy(possibleDuplicate = it.key in duplicateKeys) }
         .sortedWith(compareByDescending<Ticket> { it.date }.thenBy { it.key })
 }
+
+/**
+ * Agrupa tickets por mes, el más reciente primero, con el gasto total del mes (suma de todos
+ * sus tickets, también los posibles duplicados). Conserva el orden de `tickets` dentro del mes.
+ */
+fun ticketsByMonth(tickets: List<Ticket>): List<MonthSection> =
+    tickets.groupBy { yearMonthOf(it.date) }
+        .map { (yearMonth, group) -> MonthSection(yearMonth, group.sumOf { it.total }, group) }
+        .sortedByDescending { it.yearMonth }

@@ -7,6 +7,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,6 +27,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -33,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -71,7 +75,7 @@ fun PurchaseHistoryScreen(
     geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
     onOpenProduct: (String) -> Unit,
-    onOpenTickets: () -> Unit
+    onOpenTicket: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -85,6 +89,7 @@ fun PurchaseHistoryScreen(
     var reviewNotice by remember { mutableStateOf<String?>(null) }
     var processingOcr by remember { mutableStateOf(false) }
     var showScanDialog by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     fun processReceiptUri(uri: Uri) {
         processingOcr = true
@@ -168,11 +173,6 @@ fun PurchaseHistoryScreen(
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
                     }
-                },
-                actions = {
-                    TextButton(onClick = onOpenTickets) {
-                        Text(stringResource(R.string.purchase_history_tickets))
-                    }
                 }
             )
         },
@@ -183,50 +183,65 @@ fun PurchaseHistoryScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
-        when {
-            processingOcr -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text(stringResource(R.string.purchase_history_tab_months)) }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text(stringResource(R.string.purchase_history_tab_products)) }
+                )
             }
-            state.purchaseStoreSections.isEmpty() -> {
-                Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                    Text(stringResource(R.string.purchase_history_empty))
+            when {
+                processingOcr -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
                 }
-            }
-            else -> {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
-                    state.purchaseStoreSections.forEach { section ->
-                        item(key = "store/${section.storeKey}") {
-                            Text(
-                                text = section.displayName.ifEmpty { stringResource(R.string.purchase_history_no_store) },
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
-                            )
-                        }
-                        items(section.products, key = { "${section.storeKey}/${it.normalizedName}" }) { summary ->
-                            ListItem(
-                                headlineContent = { Text(summary.displayName) },
-                                supportingContent = {
-                                    Text(
-                                        stringResource(
-                                            R.string.purchase_history_last_purchase,
-                                            dateFormat.format(summary.purchases.first().date),
-                                            summary.purchases.size
+                state.purchaseStoreSections.isEmpty() -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(stringResource(R.string.purchase_history_empty))
+                    }
+                }
+                selectedTab == 0 -> PurchaseMonthsTab(viewModel = viewModel, onOpenTicket = onOpenTicket)
+                else -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        state.purchaseStoreSections.forEach { section ->
+                            item(key = "store/${section.storeKey}") {
+                                Text(
+                                    text = section.displayName.ifEmpty { stringResource(R.string.purchase_history_no_store) },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp)
+                                )
+                            }
+                            items(section.products, key = { "${section.storeKey}/${it.normalizedName}" }) { summary ->
+                                ListItem(
+                                    headlineContent = { Text(summary.displayName) },
+                                    supportingContent = {
+                                        Text(
+                                            stringResource(
+                                                R.string.purchase_history_last_purchase,
+                                                dateFormat.format(summary.purchases.first().date),
+                                                summary.purchases.size
+                                            )
                                         )
-                                    )
-                                },
-                                trailingContent = {
-                                    Text(
-                                        stringResource(
-                                            R.string.purchase_history_unit_price,
-                                            summary.latestUnitPrice,
-                                            unitSuffix(summary.latestUnit)
+                                    },
+                                    trailingContent = {
+                                        Text(
+                                            stringResource(
+                                                R.string.purchase_history_unit_price,
+                                                summary.latestUnitPrice,
+                                                unitSuffix(summary.latestUnit)
+                                            )
                                         )
-                                    )
-                                },
-                                modifier = Modifier.clickable { onOpenProduct(summary.normalizedName) }
-                            )
+                                    },
+                                    modifier = Modifier.clickable { onOpenProduct(summary.normalizedName) }
+                                )
+                            }
                         }
                     }
                 }
