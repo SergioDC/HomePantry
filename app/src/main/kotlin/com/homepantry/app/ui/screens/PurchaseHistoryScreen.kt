@@ -70,7 +70,8 @@ fun PurchaseHistoryScreen(
     viewModel: AppViewModel,
     geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
-    onOpenProduct: (String) -> Unit
+    onOpenProduct: (String) -> Unit,
+    onOpenTickets: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -166,6 +167,11 @@ fun PurchaseHistoryScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                },
+                actions = {
+                    TextButton(onClick = onOpenTickets) {
+                        Text(stringResource(R.string.purchase_history_tickets))
                     }
                 }
             )

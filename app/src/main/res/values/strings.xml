@@ -152,6 +152,7 @@
     <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
     <string name="purchase_history_scan_dialog_camera">Sacar foto</string>
     <string name="purchase_history_scan_dialog_gallery">Elegir de galería</string>
+    <string name="purchase_history_tickets">Tickets</string>
 
     <!-- PurchaseDetailScreen -->
     <string name="purchase_detail_not_found">No se encontró el producto</string>
@@ -172,4 +173,11 @@
     <string name="purchase_ticket_delete_cancel">Cancelar</string>
     <string name="purchase_ticket_line_deleted">Línea eliminada</string>
     <string name="purchase_ticket_undo">Deshacer</string>
+
+    <!-- PurchaseTicketsScreen -->
+    <string name="purchase_tickets_title">Tickets</string>
+    <string name="purchase_tickets_empty">Aún no hay tickets. Escanea uno desde el historial.</string>
+    <string name="purchase_tickets_all">Todos</string>
+    <string name="purchase_tickets_duplicate">Posible duplicado</string>
+    <string name="purchase_tickets_delete">Eliminar</string>
 </resources>

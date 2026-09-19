@@ -58,6 +58,7 @@ import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
+import com.homepantry.app.ui.screens.PurchaseTicketsScreen
 import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
@@ -246,7 +247,8 @@ fun ListaDeLaCasaApp() {
                     onBack = { navController.popBackStack() },
                     onOpenProduct = { normalizedName ->
                         navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
-                    }
+                    },
+                    onOpenTickets = { navController.navigate("purchaseTickets") }
                 )
             }
             composable("purchaseDetail/{normalizedName}") { backStackEntry ->
@@ -263,6 +265,15 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     ticketKey = Uri.decode(encodedKey),
                     onBack = { navController.popBackStack() }
+                )
+            }
+            composable("purchaseTickets") {
+                PurchaseTicketsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenTicket = { ticketKey ->
+                        navController.navigate("purchaseTicket/${Uri.encode(ticketKey)}")
+                    }
                 )
             }
         }
