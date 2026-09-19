@@ -108,11 +108,12 @@ class AppViewModel(
                     // Zonas anteriores a los colores fijos: se les fija uno una sola vez para que todas
                     // las pantallas coincidan. Es idempotente: con los colores ya guardados el mapa queda vacío.
                     // La escritura va en su propia corrutina para que un commit sin conexión no bloquee el flujo de zonas.
+                    // Es de mejor esfuerzo: un fallo se ignora a propósito (se reintenta en el siguiente snapshot de
+                    // zonas y, mientras tanto, la UI usa el color derivado del índice) para no lanzar errores en pantalla.
                     val backfill = zoneColorBackfill(zones)
                     if (backfill.isNotEmpty()) {
                         viewModelScope.launch {
                             runCatching { zonesRepository.updateZoneColors(backfill) }
-                                .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
                         }
                     }
                 }
