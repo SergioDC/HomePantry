@@ -62,7 +62,7 @@ import com.homepantry.app.data.Item
 import com.homepantry.app.data.OpenFoodFactsClient
 import com.homepantry.app.data.parseQtyOrDefault
 import com.homepantry.app.data.resolvedZoneColor
-import com.homepantry.app.data.zoneDisplayLabel
+import com.homepantry.app.data.subzonesOf
 import com.homepantry.app.data.Unit as ItemUnit
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.BarcodeScannerView
@@ -88,6 +88,7 @@ fun AddItemSheet(
 ) {
     val state by viewModel.state.collectAsState()
     val zones = state.zones.sortedBy { it.order }
+    val rootZones = zones.filter { it.parentZoneId == null }
     val isEditing = itemToEdit != null
 
     var name by remember(itemToEdit) { mutableStateOf(itemToEdit?.name ?: "") }
@@ -103,6 +104,11 @@ fun AddItemSheet(
     var selectedZoneId by remember(itemToEdit) {
         mutableStateOf(itemToEdit?.zone ?: initialZoneId?.takeIf { it != "ALL" } ?: "")
     }
+    // El destino es siempre un único id de zona; si es una subzona, la fila de raíces
+    // marca su padre y la fila "Subzona" la marca a ella.
+    val selectedZone = zones.firstOrNull { it.id == selectedZoneId }
+    val selectedRootId = selectedZone?.parentZoneId ?: selectedZone?.id
+    val subzoneOptions = selectedRootId?.let { subzonesOf(it, state.zones) } ?: emptyList()
     var newZoneName by remember { mutableStateOf("") }
     var photoUri by remember(itemToEdit) { mutableStateOf<Uri?>(null) }
     var barcode by remember(itemToEdit) { mutableStateOf(itemToEdit?.barcode) }
@@ -159,7 +165,7 @@ fun AddItemSheet(
     // selección actual debe conservarse.
     LaunchedEffect(zones) {
         if (selectedZoneId.isBlank() || zones.none { it.id == selectedZoneId }) {
-            zones.firstOrNull()?.let { selectedZoneId = it.id }
+            rootZones.firstOrNull()?.let { selectedZoneId = it.id }
         }
     }
 
@@ -299,13 +305,40 @@ fun AddItemSheet(
                     modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    zones.forEachIndexed { index, zone ->
+                    rootZones.forEach { zone ->
                         ZoneChip(
-                            label = zoneDisplayLabel(zone, zones),
-                            colorHex = resolvedZoneColor(zone, index),
-                            selected = zone.id == selectedZoneId,
+                            label = zone.name,
+                            colorHex = resolvedZoneColor(zone, zones.indexOfFirst { it.id == zone.id }),
+                            selected = zone.id == selectedRootId,
                             onClick = { selectedZoneId = zone.id }
                         )
+                    }
+                }
+            }
+            if (subzoneOptions.isNotEmpty()) {
+                item {
+                    Text(
+                        stringResource(R.string.add_item_subzone),
+                        style = MaterialTheme.typography.labelLarge,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)
+                    )
+                }
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        subzoneOptions.forEach { subzone ->
+                            ZoneChip(
+                                label = subzone.name,
+                                colorHex = resolvedZoneColor(subzone, zones.indexOfFirst { it.id == subzone.id }),
+                                selected = subzone.id == selectedZoneId,
+                                // Tocar la subzona ya elegida la deselecciona y vuelve a la raíz.
+                                onClick = {
+                                    selectedZoneId = if (subzone.id == selectedZoneId) selectedRootId.orEmpty() else subzone.id
+                                }
+                            )
+                        }
                     }
                 }
             }

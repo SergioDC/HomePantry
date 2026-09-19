@@ -39,6 +39,7 @@
     <string name="add_item_photo">📷 Foto</string>
     <string name="add_item_scan">📊 Escanear</string>
     <string name="add_item_new_zone">+ nueva zona</string>
+    <string name="add_item_subzone">Subzona (opcional)</string>
     <string name="add_item_save">Guardar</string>
     <string name="add_item_save_edit">Guardar cambios</string>
     <string name="add_item_barcode_not_found">No se encontró el producto. Completa el nombre a mano.</string>
