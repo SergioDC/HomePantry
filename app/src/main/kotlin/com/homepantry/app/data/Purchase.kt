@@ -17,5 +17,11 @@ data class Purchase(
     val price: Double = 0.0,
     val date: Date = Date(),
     val addedBy: String? = null,
-    val ticketPhotoUrl: String? = null
+    val ticketPhotoUrl: String? = null,
+    /** Cantidad comprada en la línea (en `unit`). `price` sigue siendo el total de la línea. */
+    val quantity: Double = 1.0,
+    /** Nombre de un valor de [Unit]: UD, KG o L. */
+    val unit: String = Unit.UD.name,
+    /** Supermercado de la compra, tal y como se muestra. Null = desconocido (compras antiguas). */
+    val store: String? = null
 )
