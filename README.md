@@ -1,4 +1,4 @@
-# Lista de la Casa (Android)
+# SNHome (Android)
 
 App nativa Android para gestionar la lista de compra/despensa compartida entre los
 miembros de una casa, en tiempo real.

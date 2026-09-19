@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Lista de la Casa</string>
+    <string name="app_name">SNHome</string>
 
     <!-- JoinHouseholdScreen -->
     <string name="join_title">Bienvenido/a</string>

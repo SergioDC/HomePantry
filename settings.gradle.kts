@@ -13,5 +13,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Lista de la Casa"
+rootProject.name = "SNHome"
 include(":app")

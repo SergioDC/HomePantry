@@ -1,4 +1,4 @@
-# Lista de la Casa — App Android nativa
+# SNHome — App Android nativa
 
 ## Contexto para Claude Code
 Este proyecto es la versión nativa Android de una app web ya validada con el usuario
@@ -135,7 +135,7 @@ service cloud.firestore {
       tiempo real
 - [x] Manejo de estados vacíos, errores de red, y permisos de cámara (runtime
       permissions)
-- [x] Ícono de app y nombre "Lista de la Casa"
+- [x] Ícono de app y nombre "SNHome"
 - [x] Verificar que compila con `./gradlew assembleDebug` (BUILD SUCCESSFUL,
       `app/build/outputs/apk/debug/app-debug.apk` generado)
 - [ ] Crear repo en GitHub y subir el proyecto (el remoto `origin` ya existe y
