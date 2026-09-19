@@ -30,12 +30,29 @@ class PurchasesRepository(
         awaitClose { registration.remove() }
     }
 
-    /** Alta masiva: todas las líneas confirmadas de un mismo ticket se escriben juntas. */
-    suspend fun addPurchases(purchases: List<Purchase>) {
-        if (purchases.isEmpty()) return
+    /**
+     * Alta masiva: todas las líneas confirmadas de un mismo ticket se escriben juntas.
+     * Devuelve los ids de los documentos creados (para enlazarles la foto después).
+     */
+    suspend fun addPurchases(purchases: List<Purchase>): List<String> {
+        if (purchases.isEmpty()) return emptyList()
         val batch = firestore.batch()
-        purchases.forEach { purchase -> batch.set(collection().document(), purchase) }
+        val ids = purchases.map { purchase ->
+            val document = collection().document()
+            batch.set(document, purchase)
+            document.id
+        }
         batch.commit().await()
+        return ids
+    }
+
+    /** Enlaza la foto del ticket, subida después de guardar las compras, a las líneas de ese ticket. */
+    suspend fun attachTicketPhoto(ids: List<String>, photoUrl: String) {
+        ids.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { id -> batch.update(collection().document(id), "ticketPhotoUrl", photoUrl) }
+            batch.commit().await()
+        }
     }
 
     /** Borra las compras indicadas; Firestore admite como máximo 500 operaciones por lote. */

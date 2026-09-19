@@ -201,34 +201,41 @@ class AppViewModel(
     }
 
     /**
-     * Guarda todas las líneas confirmadas de un ticket escaneado como
-     * Purchase independientes, subiendo la foto del ticket una vez y
-     * enlazándola desde cada línea (spec "Flujo de captura y parseo"). El
-     * supermercado del ticket se copia a cada línea; en blanco se guarda null.
+     * Guarda todas las líneas confirmadas de un ticket escaneado como Purchase
+     * independientes (spec "Flujo de captura y parseo"). El supermercado del
+     * ticket se copia a cada línea; en blanco se guarda null.
+     *
+     * Las compras se escriben primero: Firestore actualiza la lista al instante, sin
+     * esperar a la red. La foto del ticket se sube después y se enlaza a esas líneas;
+     * es opcional (no se muestra en la app), así que si falla las compras ya están guardadas.
      */
     fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?) = viewModelScope.launch {
         if (receipt.lines.isEmpty()) return@launch
-        runCatching {
-            val batchId = java.util.UUID.randomUUID().toString()
-            val photoUrl = ticketPhotoLocalUri?.let { uri -> storageRepository.uploadReceiptPhoto(batchId, uri) }
-            val now = java.util.Date()
-            val store = receipt.store?.trim()?.takeIf { it.isNotEmpty() }
-            val purchases = receipt.lines.map { line ->
-                Purchase(
-                    rawName = line.name,
-                    normalizedName = normalizeProductName(line.name),
-                    price = line.price,
-                    quantity = line.quantity,
-                    unit = line.unit,
-                    store = store,
-                    ticketId = batchId,
-                    date = now,
-                    addedBy = userName,
-                    ticketPhotoUrl = photoUrl
-                )
+        val batchId = java.util.UUID.randomUUID().toString()
+        val now = java.util.Date()
+        val store = receipt.store?.trim()?.takeIf { it.isNotEmpty() }
+        val purchases = receipt.lines.map { line ->
+            Purchase(
+                rawName = line.name,
+                normalizedName = normalizeProductName(line.name),
+                price = line.price,
+                quantity = line.quantity,
+                unit = line.unit,
+                store = store,
+                ticketId = batchId,
+                date = now,
+                addedBy = userName
+            )
+        }
+        val ids = runCatching { purchasesRepository.addPurchases(purchases) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+            .getOrNull() ?: return@launch
+        if (ticketPhotoLocalUri != null) {
+            runCatching {
+                val photoUrl = storageRepository.uploadReceiptPhoto(batchId, ticketPhotoLocalUri)
+                purchasesRepository.attachTicketPhoto(ids, photoUrl)
             }
-            purchasesRepository.addPurchases(purchases)
-        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+        }
     }
 
     /** Borra todas las líneas de un ticket (por su clave de `UiState.purchaseTickets`). */
