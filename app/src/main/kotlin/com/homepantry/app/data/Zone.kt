@@ -32,6 +32,49 @@ fun zoneColorFor(index: Int): String = ZONE_COLORS[index % ZONE_COLORS.size]
 /** Color a mostrar para una zona: el elegido por el usuario, o el derivado de su posición si no personalizó ninguno. */
 fun resolvedZoneColor(zone: Zone, index: Int): String = zone.color?.takeIf { it.isNotBlank() } ?: zoneColorFor(index)
 
+/**
+ * Color de la paleta para una zona nueva: el menos usado entre las zonas existentes
+ * (el hex se compara sin distinguir mayúsculas); en un empate, el primero de la paleta.
+ */
+fun nextZoneColor(zones: List<Zone>): String {
+    val usage = zones.mapNotNull { it.color?.trim()?.uppercase()?.takeIf { hex -> hex.isNotEmpty() } }
+        .groupingBy { it }
+        .eachCount()
+    return ZONE_COLORS.minByOrNull { usage[it.uppercase()] ?: 0 } ?: ZONE_COLORS.first()
+}
+
+/**
+ * Colores a fijar en zonas que aún no tienen ninguno (zonas anteriores a los colores fijos):
+ * las raíces reciben el color que Almacén ya mostraba (por su posición entre las raíces) y
+ * cada subzona recibe uno propio de la paleta, en un orden estable (por el `order` de su
+ * zona padre y luego el suyo; las huérfanas al final). Devuelve id de zona a hex, solo para
+ * las zonas que lo necesitan.
+ */
+fun zoneColorBackfill(zones: List<Zone>): Map<String, String> {
+    val result = linkedMapOf<String, String>()
+    val roots = zones.filter { it.parentZoneId == null }.sortedBy { it.order }
+    roots.forEachIndexed { index, zone ->
+        if (zone.color.isNullOrBlank()) result[zone.id] = zoneColorFor(index)
+    }
+
+    val rootPosition = roots.withIndex().associate { (index, zone) -> zone.id to index }
+    val working = zones.map { zone -> zone.copy(color = result[zone.id] ?: zone.color) }.toMutableList()
+    zones.filter { it.parentZoneId != null && it.color.isNullOrBlank() }
+        .sortedWith(
+            compareBy<Zone>(
+                { zone -> zone.parentZoneId?.let { parentId -> rootPosition[parentId] } ?: Int.MAX_VALUE },
+                { zone -> zone.order }
+            )
+        )
+        .forEach { subzone ->
+            val color = nextZoneColor(working)
+            result[subzone.id] = color
+            val position = working.indexOfFirst { it.id == subzone.id }
+            working[position] = working[position].copy(color = color)
+        }
+    return result
+}
+
 const val PROTECTED_ZONE_NAME = "Otros"
 
 /** "Otros" es la zona de reserva de reasignación y no se puede renombrar/eliminar (cierre de huecos §4). */

@@ -71,4 +71,88 @@ class ZoneTest {
         val orphan = Zone(id = "z2", name = "Puerta", parentZoneId = "missing")
         assertEquals("Puerta", zoneDisplayLabel(orphan, listOf(orphan)))
     }
+
+    @Test fun `nextZoneColor picks the first palette color when no zone has one`() {
+        assertEquals(ZONE_COLORS[0], nextZoneColor(emptyList()))
+        assertEquals(ZONE_COLORS[0], nextZoneColor(listOf(Zone(id = "z1", name = "Nevera"))))
+    }
+
+    @Test fun `nextZoneColor skips colors already in use`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "A", color = ZONE_COLORS[0]),
+            Zone(id = "z2", name = "B", color = ZONE_COLORS[1])
+        )
+        assertEquals(ZONE_COLORS[2], nextZoneColor(zones))
+    }
+
+    @Test fun `nextZoneColor ignores the case of the hex`() {
+        val zones = listOf(Zone(id = "z1", name = "A", color = ZONE_COLORS[0].lowercase()))
+        assertEquals(ZONE_COLORS[1], nextZoneColor(zones))
+    }
+
+    @Test fun `nextZoneColor picks the least used color once the palette is exhausted`() {
+        val zones = ZONE_COLORS.mapIndexed { index, hex -> Zone(id = "z$index", name = "Z$index", color = hex) } +
+            Zone(id = "extra", name = "Extra", color = ZONE_COLORS[0])
+        // El color 0 se usa dos veces y los demás una: el primero menos usado es el 1.
+        assertEquals(ZONE_COLORS[1], nextZoneColor(zones))
+    }
+
+    @Test fun `zoneColorBackfill colors uncolored roots by their position among roots`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "Nevera", order = 0),
+            Zone(id = "z2", name = "Despensa", order = 1),
+            Zone(id = "z3", name = "Otros", order = 2)
+        )
+        assertEquals(
+            mapOf("z1" to zoneColorFor(0), "z2" to zoneColorFor(1), "z3" to zoneColorFor(2)),
+            zoneColorBackfill(zones)
+        )
+    }
+
+    @Test fun `zoneColorBackfill leaves colored zones alone but still counts their position`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "Nevera", order = 0, color = "#123456"),
+            Zone(id = "z2", name = "Despensa", order = 1)
+        )
+        assertEquals(mapOf("z2" to zoneColorFor(1)), zoneColorBackfill(zones))
+    }
+
+    @Test fun `zoneColorBackfill is empty when every zone already has a color`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "Nevera", color = "#123456"),
+            Zone(id = "z2", name = "Cajón", parentZoneId = "z1", color = "#654321")
+        )
+        assertEquals(emptyMap<String, String>(), zoneColorBackfill(zones))
+    }
+
+    @Test fun `zoneColorBackfill gives each uncolored subzone its own color in a stable order`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "Nevera", order = 0),
+            Zone(id = "z2", name = "Despensa", order = 1),
+            Zone(id = "s2", name = "Estante", order = 6, parentZoneId = "z1"),
+            Zone(id = "s1", name = "Cajón", order = 5, parentZoneId = "z1"),
+            Zone(id = "s3", name = "Balda", order = 4, parentZoneId = "z2")
+        )
+        val result = zoneColorBackfill(zones)
+
+        assertEquals(zoneColorFor(0), result["z1"])
+        assertEquals(zoneColorFor(1), result["z2"])
+        // Primero las subzonas de Nevera (por order) y luego las de Despensa; con los colores 0 y 1
+        // ya en uso, la paleta sigue por el 2, el 3 y el 4.
+        assertEquals(ZONE_COLORS[2], result["s1"])
+        assertEquals(ZONE_COLORS[3], result["s2"])
+        assertEquals(ZONE_COLORS[4], result["s3"])
+    }
+
+    @Test fun `zoneColorBackfill puts a subzone whose parent is missing last`() {
+        val zones = listOf(
+            Zone(id = "z1", name = "Nevera", order = 0),
+            Zone(id = "orphan", name = "Huérfana", order = 0, parentZoneId = "missing"),
+            Zone(id = "s1", name = "Cajón", order = 9, parentZoneId = "z1")
+        )
+        val result = zoneColorBackfill(zones)
+
+        assertEquals(ZONE_COLORS[1], result["s1"])
+        assertEquals(ZONE_COLORS[2], result["orphan"])
+    }
 }
