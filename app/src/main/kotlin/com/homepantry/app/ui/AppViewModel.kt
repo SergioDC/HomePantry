@@ -16,9 +16,11 @@ import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.StoreSection
 import com.homepantry.app.data.Zone
 import com.homepantry.app.data.ZonesRepository
+import com.homepantry.app.data.nextZoneColor
 import com.homepantry.app.data.normalizeProductName
 import com.homepantry.app.data.productSummaries
 import com.homepantry.app.data.storeSections
+import com.homepantry.app.data.zoneColorBackfill
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -98,6 +100,13 @@ class AppViewModel(
             runCatching {
                 zonesRepository.observeZones().collect { zones ->
                     _state.value = _state.value.copy(zones = zones)
+                    // Zonas anteriores a los colores fijos: se les fija uno una sola vez para que todas
+                    // las pantallas coincidan. Es idempotente: con los colores ya guardados el mapa queda vacío.
+                    val backfill = zoneColorBackfill(zones)
+                    if (backfill.isNotEmpty()) {
+                        runCatching { zonesRepository.updateZoneColors(backfill) }
+                            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+                    }
                 }
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message)
@@ -248,8 +257,9 @@ class AppViewModel(
     }
 
     fun createZone(name: String, parentZoneId: String? = null) = viewModelScope.launch {
-        val nextOrder = (_state.value.zones.maxOfOrNull { it.order } ?: -1) + 1
-        runCatching { zonesRepository.addZone(name, nextOrder, parentZoneId) }
+        val zones = _state.value.zones
+        val nextOrder = (zones.maxOfOrNull { it.order } ?: -1) + 1
+        runCatching { zonesRepository.addZone(name, nextOrder, parentZoneId, nextZoneColor(zones)) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 

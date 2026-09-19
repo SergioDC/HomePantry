@@ -30,8 +30,8 @@ class ZonesRepository(
         awaitClose { registration.remove() }
     }
 
-    suspend fun addZone(name: String, order: Int, parentZoneId: String? = null) {
-        collection().add(Zone(name = name, order = order, parentZoneId = parentZoneId)).await()
+    suspend fun addZone(name: String, order: Int, parentZoneId: String? = null, color: String? = null) {
+        collection().add(Zone(name = name, order = order, color = color, parentZoneId = parentZoneId)).await()
     }
 
     suspend fun renameZone(zoneId: String, newName: String) {
@@ -42,6 +42,14 @@ class ZonesRepository(
         collection().document(zoneId).update("color", colorHex).await()
     }
 
+    /** Fija varios colores de golpe (relleno de zonas antiguas que aún no tenían ninguno). */
+    suspend fun updateZoneColors(colors: Map<String, String>) {
+        if (colors.isEmpty()) return
+        val batch = firestore.batch()
+        colors.forEach { (zoneId, colorHex) -> batch.update(collection().document(zoneId), "color", colorHex) }
+        batch.commit().await()
+    }
+
     /** Eliminar zona. Reasignar productos a "Otros" debe hacerse ANTES desde
      *  ItemsRepository.reassignZone(), avisando al usuario cuántos productos afecta. */
     suspend fun deleteZone(zoneId: String) {
@@ -50,7 +58,7 @@ class ZonesRepository(
 
     suspend fun seedDefaultZones() {
         DEFAULT_ZONE_NAMES.forEachIndexed { index, name ->
-            addZone(name, index)
+            addZone(name, index, color = zoneColorFor(index))
         }
     }
 
