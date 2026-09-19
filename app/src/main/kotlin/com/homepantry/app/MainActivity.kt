@@ -216,8 +216,8 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     zoneId = zoneId,
                     onBack = { navController.popBackStack() },
-                    onAddItem = {
-                        addItemZoneOverride = zoneId
+                    onAddItem = { targetZoneId ->
+                        addItemZoneOverride = targetZoneId
                         showAddItem = true
                     },
                     onEditItem = { item -> itemBeingEdited = item },

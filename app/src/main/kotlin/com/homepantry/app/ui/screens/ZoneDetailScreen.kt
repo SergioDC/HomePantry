@@ -3,10 +3,7 @@ package com.homepantry.app.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,20 +12,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,8 +52,7 @@ import com.homepantry.app.data.subzonesOf
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.ItemPillRow
 import com.homepantry.app.ui.components.NocturneFab
-import com.homepantry.app.ui.components.ZoneChip
-import com.homepantry.app.ui.groupAndSort
+import com.homepantry.app.ui.zoneDetailSections
 
 /**
  * Pantalla de detalle de una zona, abierta desde el dashboard "Almacén" (Nocturne).
@@ -71,7 +67,7 @@ fun ZoneDetailScreen(
     viewModel: AppViewModel,
     zoneId: String,
     onBack: () -> Unit,
-    onAddItem: () -> Unit,
+    onAddItem: (String) -> Unit,
     onEditItem: (Item) -> Unit,
     onOpenZone: (String) -> Unit = {}
 ) {
@@ -80,8 +76,8 @@ fun ZoneDetailScreen(
     // Solo lo que tienes (done=true): lo pendiente de esta zona vive en Lista de la
     // compra, no aquí -- si no, marcar "agotado" o "añadir a la lista" no lo quitaba
     // realmente de la vista de la zona (seguía apareciendo, solo sin tachar).
-    val zoneItems = (groupAndSort(state.items, state.zones, filterZoneId = zoneId).firstOrNull()?.items ?: emptyList())
-        .filter { it.done }
+    // Una zona raíz muestra además sus subzonas, cada una como sección propia.
+    val sections = zoneDetailSections(zoneId, state.items, state.zones)
     val subzones = subzonesOf(zoneId, state.zones)
     var itemPendingDelete by remember { mutableStateOf<Item?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
@@ -132,56 +128,62 @@ fun ZoneDetailScreen(
             )
         },
         floatingActionButton = {
-            NocturneFab(onClick = onAddItem, contentDescription = stringResource(R.string.main_add_item_cd))
+            NocturneFab(onClick = { onAddItem(zoneId) }, contentDescription = stringResource(R.string.main_add_item_cd))
         }
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (zone != null && zone.parentZoneId == null) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    subzones.forEachIndexed { index, subzone ->
-                        ZoneChip(
-                            label = subzone.name,
-                            colorHex = resolvedZoneColor(subzone, index),
-                            selected = false,
-                            onClick = { onOpenZone(subzone.id) }
+        // Con subzonas hay un encabezado por sección; sin ellas la lista es la de siempre.
+        val showHeaders = sections.size > 1
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(padding),
+            // bottom = 96.dp: deja hueco para que el último producto no quede tapado
+            // detrás del FAB flotante de "añadir".
+            contentPadding = PaddingValues(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 96.dp)
+        ) {
+            sections.forEach { section ->
+                if (showHeaders) {
+                    item(key = "header/${section.zone.id}") {
+                        ZoneSectionHeader(
+                            title = section.zone.name,
+                            count = section.items.size,
+                            colorHex = if (section.isSubzone) {
+                                resolvedZoneColor(section.zone, subzones.indexOfFirst { it.id == section.zone.id }.coerceAtLeast(0))
+                            } else {
+                                currentColor
+                            },
+                            onOpen = if (section.isSubzone) ({ onOpenZone(section.zone.id) }) else null,
+                            onAdd = { onAddItem(section.zone.id) }
                         )
                     }
-                    AssistChip(
-                        onClick = { showAddSubzoneDialog = true },
-                        label = { Text(stringResource(R.string.zone_detail_new_subzone_chip)) }
+                }
+                if (section.items.isEmpty()) {
+                    item(key = "empty/${section.zone.id}") {
+                        Text(
+                            text = stringResource(
+                                if (showHeaders) R.string.zone_detail_section_empty else R.string.main_empty_list
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 24.dp)
+                        )
+                    }
+                }
+                items(section.items, key = { it.id }) { product ->
+                    ItemPillRow(
+                        item = product,
+                        dimWhenDone = false,
+                        onToggleDone = { viewModel.toggleDone(product) },
+                        onDelete = { itemPendingDelete = product },
+                        onEdit = { onEditItem(product) }
                     )
                 }
             }
-            if (zoneItems.isEmpty()) {
-                Box(Modifier.fillMaxSize().weight(1f), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = stringResource(R.string.main_empty_list),
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 32.dp)
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().weight(1f),
-                    // bottom = 96.dp: deja hueco para que el último producto no quede tapado
-                    // detrás del FAB flotante de "añadir".
-                    contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp)
-                ) {
-                    items(zoneItems, key = { it.id }) { product ->
-                        ItemPillRow(
-                            item = product,
-                            dimWhenDone = false,
-                            onToggleDone = { viewModel.toggleDone(product) },
-                            onDelete = { itemPendingDelete = product },
-                            onEdit = { onEditItem(product) }
-                        )
-                    }
+            if (zone != null && zone.parentZoneId == null) {
+                item(key = "new-subzone") {
+                    OutlinedButton(
+                        onClick = { showAddSubzoneDialog = true },
+                        modifier = Modifier.padding(top = 16.dp)
+                    ) { Text(stringResource(R.string.zone_detail_new_subzone_chip)) }
                 }
             }
         }
@@ -336,5 +338,45 @@ fun ZoneDetailScreen(
                 TextButton(onClick = { showDeleteZoneConfirm = false }) { Text("Cancelar") }
             }
         )
+    }
+}
+
+/**
+ * Encabezado de una sección (zona o subzona) con su color, contador y un "+"
+ * que añade un producto directamente a ella. Si `onOpen` no es null, tocar el
+ * encabezado abre la pantalla propia de esa subzona.
+ */
+@Composable
+private fun ZoneSectionHeader(
+    title: String,
+    count: Int,
+    colorHex: String?,
+    onOpen: (() -> Unit)?,
+    onAdd: () -> Unit
+) {
+    val dotColor = colorHex?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .then(if (onOpen != null) Modifier.clickable(onClick = onOpen) else Modifier),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (dotColor != null) {
+            Box(modifier = Modifier.size(10.dp).background(dotColor, CircleShape))
+        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.weight(1f).padding(start = if (dotColor != null) 8.dp else 0.dp)
+        )
+        Text(
+            text = count.toString(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        IconButton(onClick = onAdd) {
+            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.zone_detail_add_to_section_cd, title))
+        }
     }
 }
