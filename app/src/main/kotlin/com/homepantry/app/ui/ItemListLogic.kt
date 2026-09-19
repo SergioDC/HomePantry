@@ -102,3 +102,24 @@ fun zoneSummaries(items: List<Item>, zones: List<Zone>): List<ZoneSummary> {
         ZoneSummary(zone = zone, itemCount = zoneItems.count { it.done }, pendingCount = zoneItems.count { !it.done })
     }
 }
+
+/** Sección de la pantalla de una zona raíz: la propia zona o una de sus subzonas, con lo que tienes en ella. */
+data class ZoneDetailSection(val zone: Zone, val items: List<Item>, val isSubzone: Boolean)
+
+/**
+ * Secciones de la pantalla de detalle de una zona: primero la propia zona y,
+ * si es raíz, después cada una de sus subzonas (también las vacías, para poder
+ * añadir en ellas). Solo cuenta lo que tienes (done=true); lo pendiente vive en
+ * la Lista de la compra. Una subzona (sin subzonas propias) devuelve solo su
+ * sección; una zona desconocida, ninguna.
+ */
+fun zoneDetailSections(zoneId: String, items: List<Item>, zones: List<Zone>): List<ZoneDetailSection> {
+    val zone = zones.firstOrNull { it.id == zoneId } ?: return emptyList()
+    val owned = items.filter { it.done }
+    fun itemsOf(id: String): List<Item> =
+        groupAndSort(owned, zones, filterZoneId = id).firstOrNull()?.items ?: emptyList()
+
+    val own = ZoneDetailSection(zone, itemsOf(zone.id), isSubzone = false)
+    if (zone.parentZoneId != null) return listOf(own)
+    return listOf(own) + subzonesOf(zone.id, zones).map { ZoneDetailSection(it, itemsOf(it.id), isSubzone = true) }
+}

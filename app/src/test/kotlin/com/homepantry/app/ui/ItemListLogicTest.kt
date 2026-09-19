@@ -205,4 +205,51 @@ class ItemListLogicTest {
         val rows = flattenAndSort(items, listOf(nevera, puerta), SortMode.NEWEST_FIRST)
         assertEquals("Nevera > Puerta", rows.single().zoneName)
     }
+
+    @Test fun `zoneDetailSections lists the zone itself then each subzone, with only owned items`() {
+        val cajon = Zone(id = "z3", name = "Cajón", order = 2, parentZoneId = "z1")
+        val estante = Zone(id = "z4", name = "Estante", order = 3, parentZoneId = "z1")
+        val items = listOf(
+            Item(id = "1", name = "Leche", zone = "z1", done = true),
+            Item(id = "2", name = "Pan", zone = "z1", done = false),
+            Item(id = "3", name = "Queso", zone = "z3", done = true),
+            Item(id = "4", name = "Arroz", zone = "z2", done = true)
+        )
+        val sections = zoneDetailSections("z1", items, listOf(nevera, despensa, cajon, estante))
+
+        assertEquals(listOf("z1", "z3", "z4"), sections.map { it.zone.id })
+        assertEquals(listOf(false, true, true), sections.map { it.isSubzone })
+        assertEquals(listOf("1"), sections[0].items.map { it.id })
+        assertEquals(listOf("3"), sections[1].items.map { it.id })
+        // Una subzona vacía se incluye igualmente, para poder añadir en ella.
+        assertEquals(emptyList<String>(), sections[2].items.map { it.id })
+    }
+
+    @Test fun `zoneDetailSections orders subzones by their order field`() {
+        val segunda = Zone(id = "z4", name = "Segunda", order = 5, parentZoneId = "z1")
+        val primera = Zone(id = "z3", name = "Primera", order = 2, parentZoneId = "z1")
+        val sections = zoneDetailSections("z1", emptyList(), listOf(nevera, segunda, primera))
+        assertEquals(listOf("z1", "z3", "z4"), sections.map { it.zone.id })
+    }
+
+    @Test fun `zoneDetailSections of a subzone is just that subzone`() {
+        val cajon = Zone(id = "z3", name = "Cajón", order = 2, parentZoneId = "z1")
+        val items = listOf(Item(id = "3", name = "Queso", zone = "z3", done = true))
+        val sections = zoneDetailSections("z3", items, listOf(nevera, cajon))
+
+        assertEquals(listOf("z3"), sections.map { it.zone.id })
+        assertEquals(listOf(false), sections.map { it.isSubzone })
+        assertEquals(listOf("3"), sections.single().items.map { it.id })
+    }
+
+    @Test fun `zoneDetailSections of a zone without subzones is a single section`() {
+        val items = listOf(Item(id = "4", name = "Arroz", zone = "z2", done = true))
+        val sections = zoneDetailSections("z2", items, listOf(nevera, despensa))
+        assertEquals(listOf("z2"), sections.map { it.zone.id })
+        assertEquals(listOf("4"), sections.single().items.map { it.id })
+    }
+
+    @Test fun `zoneDetailSections of an unknown zone is empty`() {
+        assertEquals(emptyList<ZoneDetailSection>(), zoneDetailSections("nope", emptyList(), listOf(nevera)))
+    }
 }
