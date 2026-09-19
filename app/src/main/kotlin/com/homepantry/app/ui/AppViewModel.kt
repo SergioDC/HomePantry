@@ -14,12 +14,14 @@ import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.StoreSection
+import com.homepantry.app.data.Ticket
 import com.homepantry.app.data.Zone
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.data.nextZoneColor
 import com.homepantry.app.data.normalizeProductName
 import com.homepantry.app.data.productSummaries
 import com.homepantry.app.data.storeSections
+import com.homepantry.app.data.tickets
 import com.homepantry.app.data.zoneColorBackfill
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -45,6 +47,9 @@ data class UiState(
 
     /** Historial agrupado por supermercado (el nombre difiere de `storeSections` para no tapar la función). */
     val purchaseStoreSections: List<StoreSection> get() = storeSections(purchases)
+
+    /** Historial agrupado en tickets (un escaneo = un ticket), del más reciente al más antiguo. */
+    val purchaseTickets: List<Ticket> get() = tickets(purchases)
 
     // Lista de la compra: solo lo pendiente. Un producto "done" = ya lo tienes (lo compraste
     // o lo añadiste directamente a una Zona como inventario), así que no tiene sentido que
@@ -215,6 +220,7 @@ class AppViewModel(
                     quantity = line.quantity,
                     unit = line.unit,
                     store = store,
+                    ticketId = batchId,
                     date = now,
                     addedBy = userName,
                     ticketPhotoUrl = photoUrl
@@ -222,6 +228,25 @@ class AppViewModel(
             }
             purchasesRepository.addPurchases(purchases)
         }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /** Borra todas las líneas de un ticket (por su clave de `UiState.purchaseTickets`). */
+    fun deleteTicket(ticketKey: String) = viewModelScope.launch {
+        val ids = _state.value.purchaseTickets.firstOrNull { it.key == ticketKey }?.purchases?.map { it.id }
+            ?: return@launch
+        runCatching { purchasesRepository.deletePurchases(ids) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    fun deletePurchase(purchaseId: String) = viewModelScope.launch {
+        runCatching { purchasesRepository.deletePurchases(listOf(purchaseId)) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /** Deshace el borrado de una línea. */
+    fun restorePurchase(purchase: Purchase) = viewModelScope.launch {
+        runCatching { purchasesRepository.restorePurchase(purchase) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */

@@ -37,4 +37,18 @@ class PurchasesRepository(
         purchases.forEach { purchase -> batch.set(collection().document(), purchase) }
         batch.commit().await()
     }
+
+    /** Borra las compras indicadas; Firestore admite como máximo 500 operaciones por lote. */
+    suspend fun deletePurchases(ids: List<String>) {
+        ids.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { id -> batch.delete(collection().document(id)) }
+            batch.commit().await()
+        }
+    }
+
+    /** Deshace un borrado: vuelve a escribir la compra en su mismo documento. */
+    suspend fun restorePurchase(purchase: Purchase) {
+        collection().document(purchase.id).set(purchase).await()
+    }
 }

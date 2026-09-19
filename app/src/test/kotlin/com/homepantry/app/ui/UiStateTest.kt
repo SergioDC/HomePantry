@@ -92,4 +92,16 @@ class UiStateTest {
         )
         assertEquals(listOf("lidl", ""), state.purchaseStoreSections.map { it.storeKey })
     }
+
+    @Test fun `purchaseTickets groups purchases by ticket`() {
+        val state = UiState(
+            purchases = listOf(
+                com.homepantry.app.data.Purchase(rawName = "Tomate", price = 1.5, ticketId = "t1"),
+                com.homepantry.app.data.Purchase(rawName = "Leche", price = 0.9, ticketId = "t1"),
+                com.homepantry.app.data.Purchase(rawName = "Pan", price = 1.2, ticketId = "t2")
+            )
+        )
+        assertEquals(setOf("t1", "t2"), state.purchaseTickets.map { it.key }.toSet())
+        assertEquals(2, state.purchaseTickets.first { it.key == "t1" }.purchases.size)
+    }
 }
