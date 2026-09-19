@@ -13,7 +13,7 @@ class GeminiReceiptRecognizerTest {
         val json = """{"products":[{"name":"TOMATE RAMA","price":1.5},{"name":"LECHE ENTERA","price":0.89}]}"""
         assertEquals(
             listOf(ParsedReceiptLine("TOMATE RAMA", 1.5), ParsedReceiptLine("LECHE ENTERA", 0.89)),
-            mapGeminiOutputTextToLines(json)
+            mapGeminiOutputText(json).lines
         )
     }
 
@@ -23,7 +23,7 @@ class GeminiReceiptRecognizerTest {
             {"name":null,"price":2.0},
             {"name":"SIN PRECIO","price":null}
         ]}"""
-        assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputTextToLines(json))
+        assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputText(json).lines)
     }
 
     @Test fun `skips entries with a zero or negative price`() {
@@ -32,15 +32,55 @@ class GeminiReceiptRecognizerTest {
             {"name":"GRATIS","price":0},
             {"name":"DESCUENTO","price":-0.5}
         ]}"""
-        assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputTextToLines(json))
+        assertEquals(listOf(ParsedReceiptLine("TOMATE RAMA", 1.5)), mapGeminiOutputText(json).lines)
+    }
+
+    @Test fun `reads store, quantity and unit when Gemini provides them`() {
+        val json = """{"store":"  Mercadona ","products":[
+            {"name":"PLATANO","price":3.39,"quantity":0.85,"unit":"KG"},
+            {"name":"YOGUR","price":2.5,"quantity":2,"unit":"UD"}
+        ]}"""
+        val receipt = mapGeminiOutputText(json)
+        assertEquals("Mercadona", receipt.store)
+        assertEquals(
+            listOf(
+                ParsedReceiptLine("PLATANO", 3.39, 0.85, "KG"),
+                ParsedReceiptLine("YOGUR", 2.5, 2.0, "UD")
+            ),
+            receipt.lines
+        )
+    }
+
+    @Test fun `defaults quantity to one and unit to UD when they are missing or invalid`() {
+        val json = """{"products":[
+            {"name":"A","price":1.0},
+            {"name":"B","price":1.0,"quantity":0,"unit":"CAJAS"},
+            {"name":"C","price":1.0,"quantity":-2,"unit":null},
+            {"name":"D","price":1.0,"quantity":1.5,"unit":"l"}
+        ]}"""
+        assertEquals(
+            listOf(
+                ParsedReceiptLine("A", 1.0, 1.0, "UD"),
+                ParsedReceiptLine("B", 1.0, 1.0, "UD"),
+                ParsedReceiptLine("C", 1.0, 1.0, "UD"),
+                ParsedReceiptLine("D", 1.0, 1.5, "L")
+            ),
+            mapGeminiOutputText(json).lines
+        )
+    }
+
+    @Test fun `store is null when Gemini omits it or returns a blank one`() {
+        assertNull(mapGeminiOutputText("""{"products":[]}""").store)
+        assertNull(mapGeminiOutputText("""{"store":"   ","products":[]}""").store)
+        assertNull(mapGeminiOutputText("""{"store":null,"products":[]}""").store)
     }
 
     @Test fun `throws GeminiResponseException on malformed JSON`() {
-        assertThrows(GeminiResponseException::class.java) { mapGeminiOutputTextToLines("not json") }
+        assertThrows(GeminiResponseException::class.java) { mapGeminiOutputText("not json") }
     }
 
     @Test fun `throws GeminiResponseException when the products field is missing`() {
-        assertThrows(GeminiResponseException::class.java) { mapGeminiOutputTextToLines("""{"other":"field"}""") }
+        assertThrows(GeminiResponseException::class.java) { mapGeminiOutputText("""{"other":"field"}""") }
     }
 
     @Test fun `extracts the model_output text from a well-formed interaction response`() {

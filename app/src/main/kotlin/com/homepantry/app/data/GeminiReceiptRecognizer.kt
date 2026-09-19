@@ -31,8 +31,8 @@ class GeminiServerException(code: Int, detail: String?) : GeminiReceiptException
 
 private val geminiGson = Gson()
 
-private data class GeminiProduct(val name: String?, val price: Double?)
-private data class GeminiProductsPayload(val products: List<GeminiProduct>?)
+private data class GeminiProduct(val name: String?, val price: Double?, val quantity: Double?, val unit: String?)
+private data class GeminiProductsPayload(val store: String?, val products: List<GeminiProduct>?)
 
 /**
  * La API de `generativelanguage` devuelve 400 con `API_KEY_INVALID` (no 401/403)
@@ -114,18 +114,28 @@ internal fun extractOutputText(response: GeminiInteractionResponse): String {
     return texts.joinToString("")
 }
 
-internal fun mapGeminiOutputTextToLines(outputText: String): List<ParsedReceiptLine> {
+internal fun mapGeminiOutputText(outputText: String): ParsedReceipt {
     val payload = try {
         geminiGson.fromJson(outputText, GeminiProductsPayload::class.java)
     } catch (e: JsonSyntaxException) {
         throw GeminiResponseException("el JSON de productos no es válido")
     }
     val products = payload?.products ?: throw GeminiResponseException("falta el campo 'products'")
-    return products.mapNotNull { product ->
+    val lines = products.mapNotNull { product ->
         val name = product.name?.trim()
         val price = product.price
-        if (name.isNullOrEmpty() || price == null || price <= 0) null else ParsedReceiptLine(name, price)
+        if (name.isNullOrEmpty() || price == null || price <= 0) {
+            null
+        } else {
+            ParsedReceiptLine(
+                name = name,
+                price = price,
+                quantity = product.quantity?.takeIf { it > 0 } ?: 1.0,
+                unit = product.unit?.trim()?.uppercase()?.takeIf { it in RECEIPT_UNITS } ?: Unit.UD.name
+            )
+        }
     }
+    return ParsedReceipt(store = payload.store?.trim()?.takeIf { it.isNotEmpty() }, lines = lines)
 }
 
 /** Modelo usado si el usuario nunca ha elegido uno explícitamente en Ajustes. */
@@ -150,11 +160,19 @@ val GEMINI_MODEL_OPTIONS: List<String> = listOf(
 private val RECEIPT_PROMPT = """
     Eres un asistente que extrae la lista de la compra de la foto de un
     ticket de supermercado español. Devuelve TODOS los productos comprados
-    con el precio final de esa línea (el que aparece impreso, ya con
-    descuentos de esa línea aplicados si los hay). Ignora totales,
-    subtotales, líneas de IVA, cambio, tarjeta/efectivo, datos de la
-    tienda, promociones sueltas y cualquier línea que no sea un producto
-    comprado.
+    con estos campos:
+    - name: el nombre del producto tal y como aparece impreso.
+    - price: el importe final de esa línea (el total impreso, ya con los
+      descuentos de esa línea aplicados; NO el precio por unidad).
+    - quantity y unit: cuánto se compró cuando el ticket lo indica
+      ("2 x 1,25" es quantity 2 y unit UD; "0,850 kg x 3,99 €/kg" es
+      quantity 0.85 y unit KG; los líquidos por litros, unit L). Si el
+      ticket no lo indica, quantity 1 y unit UD.
+    Devuelve además store: el nombre del supermercado o cadena que aparece en
+    la cabecera del ticket (por ejemplo "Mercadona" o "Lidl"), sin dirección
+    ni CIF; omítelo si no se lee con claridad.
+    Ignora totales, subtotales, líneas de IVA, cambio, tarjeta/efectivo,
+    promociones sueltas y cualquier línea que no sea un producto comprado.
 """.trimIndent()
 
 /**
@@ -241,8 +259,8 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
     return output.toByteArray()
 }
 
-/** Manda una foto de ticket a Gemini y devuelve las líneas ya estructuradas (sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
-suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): List<ParsedReceiptLine> {
+/** Manda una foto de ticket a Gemini y devuelve el ticket ya estructurado (supermercado y líneas; sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
+suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedReceipt {
     val imageBytes = try {
         loadReceiptImageBytes(context, imageUri)
     } catch (e: GeminiReceiptException) {
@@ -263,7 +281,7 @@ suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: 
 
     val body = callGemini(apiKey, request)
     val outputText = extractOutputText(body)
-    return mapGeminiOutputTextToLines(outputText)
+    return mapGeminiOutputText(outputText)
 }
 
 /**

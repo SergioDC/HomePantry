@@ -40,13 +40,16 @@ data class GeminiInteractionResponse(val status: String? = null, val steps: List
 val PRODUCTS_JSON_SCHEMA: Map<String, Any> = mapOf(
     "type" to "object",
     "properties" to mapOf(
+        "store" to mapOf("type" to "string"),
         "products" to mapOf(
             "type" to "array",
             "items" to mapOf(
                 "type" to "object",
                 "properties" to mapOf(
                     "name" to mapOf("type" to "string"),
-                    "price" to mapOf("type" to "number")
+                    "price" to mapOf("type" to "number"),
+                    "quantity" to mapOf("type" to "number"),
+                    "unit" to mapOf("type" to "string", "enum" to RECEIPT_UNITS)
                 ),
                 "required" to listOf("name", "price")
             )

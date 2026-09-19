@@ -1,7 +1,21 @@
 package com.homepantry.app.data
 
-/** Una línea de ticket ya separada en nombre de producto + precio total. */
-data class ParsedReceiptLine(val name: String, val price: Double)
+/** Unidades que admite una línea de ticket (nombres de [Unit]). */
+val RECEIPT_UNITS: List<String> = listOf(Unit.UD.name, Unit.KG.name, Unit.L.name)
+
+/**
+ * Una línea de ticket ya separada en nombre de producto + precio total de la
+ * línea, con la cantidad comprada (1 ud si el ticket no la indica).
+ */
+data class ParsedReceiptLine(
+    val name: String,
+    val price: Double,
+    val quantity: Double = 1.0,
+    val unit: String = Unit.UD.name
+)
+
+/** Resultado de leer un ticket: supermercado (si se detectó) y sus líneas. */
+data class ParsedReceipt(val store: String?, val lines: List<ParsedReceiptLine>)
 
 /**
  * Muchos tickets imprimen la categoría de IVA de cada producto justo después
