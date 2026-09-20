@@ -187,5 +187,15 @@
     <string name="nav_menu">Menú</string>
     <string name="menu_tab_menu">Menú</string>
     <string name="menu_tab_dishes">Platos</string>
+    <string name="menu_prev_cd">Anterior</string>
+    <string name="menu_next_cd">Siguiente</string>
+    <string name="menu_today">Hoy</string>
+    <string name="menu_mode_week">Semana</string>
+    <string name="menu_mode_month">Mes</string>
+    <string name="menu_more_cd">Más opciones</string>
+    <string name="menu_share_week">Compartir semana</string>
+    <string name="menu_duplicate_week">Duplicar semana</string>
+    <string name="menu_empty_week">Aún no hay menú</string>
+    <string name="menu_empty_week_start">Empezar</string>
     <!-- /Menú semanal -->
 </resources>
