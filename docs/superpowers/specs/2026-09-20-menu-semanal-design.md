@@ -21,6 +21,7 @@ por Firestore (`households/{code}/...`).
 |---|---|
 | Ingredientes | Lista de texto libre por plato (nombre, cantidad y unidad opcionales), comparada por nombre normalizado con los productos de las zonas. |
 | Calendario | Vista semana por defecto, con selector para pasar a vista mes. |
+| Navegación entre semanas | Deslizar en horizontal (semana a semana, o mes a mes en la vista mes); scroll vertical dentro de cada semana. Flechas y «Hoy» como alternativa. |
 | Duplicar semana | Si el destino está vacío copia directamente; si tiene platos, pregunta entre reemplazar y combinar. |
 | Zona de lo que falta | Una hoja tras guardar el plato, con selector de zona por ingrediente (por defecto «Otros»). |
 | Almacenamiento | Un documento por entrada de menú, no por día ni por semana. |
@@ -86,6 +87,9 @@ existe se trata como null al mostrar). Al borrar un plato se avisa de cuántas e
 - `weekDays(start: LocalDate): List<LocalDate>` → los 7 días.
 - `monthGrid(month: YearMonth): List<LocalDate>` → semanas completas (lunes a domingo) que cubren
   el mes, con los días de relleno de los meses vecinos.
+- `pageWeekStart(anchor: LocalDate, page: Int, anchorPage: Int): LocalDate` y
+  `pageMonth(anchor: YearMonth, page: Int, anchorPage: Int): YearMonth` → la semana o el mes que
+  corresponde a una página del pager, con la página de «hoy» como ancla (`anchorPage`).
 - `shiftEntries(entries, fromWeekStart, toWeekStart): List<MealEntry>` → copias sin `id` con la
   fecha desplazada, manteniendo día de la semana, franja y orden.
 
@@ -131,9 +135,11 @@ Mismo estilo que `ItemsRepository` (`callbackFlow` con `addSnapshotListener`, `a
   - `addEntry`, `updateEntry`, `deleteEntry`.
   - `applyBatch(toWrite, toDelete)`: escritura en lote para duplicar.
 
-`observeRange` solo escucha el rango visible (la semana o el mes con relleno). Al navegar se
-cancela la suscripción anterior y se abre otra. Así la colección puede crecer sin que la app
-cargue todo el histórico.
+`observeRange` escucha el rango de la página visible **más la anterior y la siguiente** (tres
+semanas, o tres meses con relleno en la vista mes), para que al deslizar la página vecina ya
+esté cargada y no aparezca vacía un instante. Al cambiar de página se cancela la suscripción y
+se abre una nueva con el rango desplazado; Firestore sirve de su caché local lo que ya había
+leído. Así la colección puede crecer sin que la app cargue todo el histórico.
 
 ## ViewModel
 
@@ -158,11 +164,19 @@ que se muestra como en el resto de la app.
 
 - Cabecera: rango de la semana («21–27 sep»), flechas anterior y siguiente, botón «Hoy», un
   `SegmentedToggle` Semana/Mes y un menú ⋮ con «Compartir semana» y «Duplicar semana».
+- **Navegación:** el contenido es un `HorizontalPager` (de `compose.foundation`, ya incluido en
+  el BOM del proyecto, sin dependencias nuevas). Deslizar en horizontal pasa a la semana
+  anterior o siguiente (o al mes anterior o siguiente en la vista mes), y las flechas y «Hoy»
+  hacen lo mismo con animación. Las páginas son relativas a la semana actual y el pager se
+  sitúa en la de «hoy»; se puede ir tan lejos al pasado o al futuro como se quiera, sin límite
+  fijo. La cabecera se actualiza con la página visible.
 - **Semana:** 7 filas (lunes a domingo). Cada una muestra el día, resaltado si es hoy, y 3 líneas
-  (desayuno, comida, cena) con sus platos en chips. Se navega libremente a semanas pasadas y
-  futuras.
-- **Mes:** cuadrícula de lunes a domingo con un punto en los días que tienen algo. Pulsar un día
-  cambia a la vista semana de esa semana.
+  (desayuno, comida, cena) con sus platos en chips. Como los 7 días con sus franjas pueden no
+  caber en pantalla, cada página hace **scroll vertical** por su cuenta.
+- **Mes:** cuadrícula de lunes a domingo con un punto en los días que tienen algo; se desliza
+  entre meses con el mismo pager. Pulsar un día cambia a la vista semana de esa semana.
+- Al cambiar entre Semana y Mes se conserva la fecha de referencia (la semana visible pasa al mes
+  que la contiene, y el mes pasa a su primera semana).
 - Semana sin entradas: texto «Aún no hay menú» con un botón para empezar.
 
 ### Hoja del día
@@ -223,8 +237,9 @@ manifest). Los días sin platos se muestran como «—».
 
 JUnit 4, sin dependencias nuevas, en `app/src/test/kotlin/com/homepantry/app/data/`:
 
-- `MenuCalendarTest`: semana de lunes a domingo, cambio de mes y de año, rejilla del mes y
-  `shiftEntries` (día de la semana, franja y orden se conservan).
+- `MenuCalendarTest`: semana de lunes a domingo, cambio de mes y de año, rejilla del mes,
+  `pageWeekStart` y `pageMonth` (página de «hoy», anteriores y posteriores, cruzando fin de año)
+  y `shiftEntries` (día de la semana, franja y orden se conservan).
 - `IngredientCheckTest`: no sugiere lo que tienes, no sugiere lo ya pendiente, coincide sin
   distinguir mayúsculas, acentos ni plural simple, no repite ingredientes y ignora nombres en
   blanco.
