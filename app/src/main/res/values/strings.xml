@@ -197,5 +197,14 @@
     <string name="menu_duplicate_week">Duplicar semana</string>
     <string name="menu_empty_week">Aún no hay menú</string>
     <string name="menu_empty_week_start">Empezar</string>
+    <string name="menu_day_empty">Nada planeado para %1$s</string>
+    <string name="menu_entry_hint">Plato o comida</string>
+    <string name="menu_entry_add">Añadir</string>
+    <string name="menu_entry_save">Guardar</string>
+    <string name="menu_entry_cancel_edit">Cancelar</string>
+    <string name="menu_entry_edit_cd">Editar</string>
+    <string name="menu_entry_delete_cd">Borrar</string>
+    <string name="menu_entry_deleted">Eliminado</string>
+    <string name="menu_entry_undo">Deshacer</string>
     <!-- /Menú semanal -->
 </resources>
