@@ -182,4 +182,10 @@
     <string name="purchase_tickets_all">Todos</string>
     <string name="purchase_tickets_duplicate">Posible duplicado</string>
     <string name="purchase_tickets_delete">Eliminar</string>
+
+    <!-- Menú semanal -->
+    <string name="nav_menu">Menú</string>
+    <string name="menu_tab_menu">Menú</string>
+    <string name="menu_tab_dishes">Platos</string>
+    <!-- /Menú semanal -->
 </resources>
