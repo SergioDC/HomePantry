@@ -214,21 +214,24 @@ no se permite.
 
 ### Compartir
 
-`WeekShareCard` es una tarjeta pensada para captura, no la pantalla tal cual: marca SNHome,
-rango de fechas y los 7 días con sus 3 franjas. Se renderiza a `Bitmap` fuera de pantalla, se
-guarda como PNG en `cacheDir` y se envía con `Intent.ACTION_SEND` mediante el `FileProvider`
-que ya existe (`file_paths.xml` declara `cache-path path="."`, así que no hay que tocar el
-manifest). Los días sin platos se muestran como «—».
+La imagen es una tarjeta clara pensada para captura, no la pantalla tal cual: marca SNHome,
+rango de fechas y los 7 días con sus 3 franjas. Se dibuja a `Bitmap` con `android.graphics.Canvas`
+y `StaticLayout` (en `WeekShare.kt`, sin un composable ni montar Compose fuera de pantalla, así
+el tamaño es fijo y no depende del tema), se guarda como PNG en `cacheDir` y se envía con
+`Intent.ACTION_SEND` mediante el `FileProvider` que ya existe (`file_paths.xml` declara
+`cache-path path="."`, así que no hay que tocar el manifest). Las franjas sin platos se
+muestran como «—».
 
 ## Estructura de archivos
 
 **Datos** (`app/src/main/kotlin/com/homepantry/app/data/`): `Dish.kt`, `MealEntry.kt`,
 `DishesRepository.kt`, `MealEntriesRepository.kt`, `MenuCalendar.kt`, `IngredientCheck.kt`,
-`WeekShare.kt` (render a bitmap y envío).
+`MealEntriesLogic.kt` (duplicado, orden y coincidencia de platos), `WeekShare.kt` (render a
+bitmap y envío).
 
 **UI** (`ui/`): `screens/MenuScreen.kt`, `MenuCalendarTab.kt`, `DayMealsSheet.kt`,
 `DishesTab.kt`, `DishFormSheet.kt`, `MissingIngredientsSheet.kt`, `DuplicateWeekDialog.kt`;
-`components/WeekShareCard.kt`; `MenuViewModel.kt`.
+`MenuViewModel.kt`.
 
 **Existentes que cambian:** `MainActivity.kt` (4ª pestaña, ruta `menu`, repositorios y
 `MenuViewModel`) y `res/values/strings.xml` (textos nuevos).
