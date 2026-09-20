@@ -26,7 +26,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -58,11 +57,12 @@ fun DishesTab(state: MenuUiState, appState: UiState, viewModel: MenuViewModel) {
     var showForm by remember { mutableStateOf(false) }
     var editingDish by remember { mutableStateOf<Dish?>(null) }
     var dishToDelete by remember { mutableStateOf<Dish?>(null) }
-    var deleteUsage by remember { mutableIntStateOf(0) }
+    var deleteUsage by remember { mutableStateOf<Int?>(null) }
     var missing by remember { mutableStateOf<List<Ingredient>>(emptyList()) }
 
     LaunchedEffect(dishToDelete) {
-        deleteUsage = dishToDelete?.let { viewModel.countEntriesForDish(it.id) } ?: 0
+        deleteUsage = null
+        deleteUsage = dishToDelete?.let { viewModel.countEntriesForDish(it.id) }
     }
 
     val normalizedQuery = normalizeProductName(query)
@@ -160,11 +160,14 @@ fun DishesTab(state: MenuUiState, appState: UiState, viewModel: MenuViewModel) {
         AlertDialog(
             onDismissRequest = { dishToDelete = null },
             title = { Text(stringResource(R.string.menu_dish_delete_title, dish.name)) },
-            text = {
-                Text(
-                    if (deleteUsage == 0) stringResource(R.string.menu_dish_delete_message_unused)
-                    else resources.getQuantityString(R.plurals.menu_dish_delete_message_used, deleteUsage, deleteUsage)
-                )
+            // Sin recuento (cargando o consulta fallida) no se afirma nada sobre si el plato está en uso.
+            text = deleteUsage?.let { usage ->
+                {
+                    Text(
+                        if (usage == 0) stringResource(R.string.menu_dish_delete_message_unused)
+                        else resources.getQuantityString(R.plurals.menu_dish_delete_message_used, usage, usage)
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {

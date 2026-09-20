@@ -120,8 +120,15 @@ class MenuViewModel(
     /** Las entradas del menú que usaban el plato se quedan como texto libre (conservan su nombre). */
     fun deleteDish(dishId: String) = launchCatching { dishesRepository.deleteDish(dishId) }
 
-    suspend fun countEntriesForDish(dishId: String): Int =
-        runCatching { entriesRepository.countByDish(dishId) }.getOrDefault(0)
+    /** Cuántas entradas del menú usan el plato, o null si no se ha podido consultar. */
+    suspend fun countEntriesForDish(dishId: String): Int? =
+        try {
+            entriesRepository.countByDish(dishId)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
 
     fun addMissingToShoppingList(choices: List<MissingChoice>) = launchCatching {
         itemsRepository.addItems(itemsForMissing(choices, userName))
