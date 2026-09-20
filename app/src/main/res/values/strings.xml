@@ -206,5 +206,36 @@
     <string name="menu_entry_delete_cd">Borrar</string>
     <string name="menu_entry_deleted">Eliminado</string>
     <string name="menu_entry_undo">Deshacer</string>
+    <string name="menu_dishes_search">Buscar plato…</string>
+    <string name="menu_dishes_empty">Aún no tienes platos. Crea el primero con el botón +.</string>
+    <string name="menu_dishes_no_results">Ningún plato coincide</string>
+    <string name="menu_dish_add_cd">Nuevo plato</string>
+    <string name="menu_dish_form_new">Nuevo plato</string>
+    <string name="menu_dish_form_edit">Editar plato</string>
+    <string name="menu_dish_name">Nombre del plato</string>
+    <string name="menu_dish_note">Nota (opcional)</string>
+    <string name="menu_dish_ingredients">Ingredientes</string>
+    <string name="menu_dish_ingredient_hint">Ingrediente</string>
+    <string name="menu_dish_qty_hint">Cant.</string>
+    <string name="menu_dish_add_ingredient">+ Ingrediente</string>
+    <string name="menu_dish_remove_ingredient_cd">Quitar ingrediente</string>
+    <string name="menu_dish_save">Guardar</string>
+    <string name="menu_dish_delete_cd">Borrar plato</string>
+    <string name="menu_dish_delete_title">Borrar \"%1$s\"</string>
+    <string name="menu_dish_delete_message_unused">Este plato no está en ningún menú.</string>
+    <string name="menu_dish_delete_confirm">Borrar</string>
+    <string name="menu_cancel">Cancelar</string>
+    <plurals name="menu_dish_ingredient_count">
+        <item quantity="one">%1$d ingrediente</item>
+        <item quantity="other">%1$d ingredientes</item>
+    </plurals>
+    <plurals name="menu_dish_delete_message_used">
+        <item quantity="one">Está en %1$d entrada del menú, que se quedará como texto libre.</item>
+        <item quantity="other">Está en %1$d entradas del menú, que se quedarán como texto libre.</item>
+    </plurals>
+    <string name="menu_missing_title">Te faltan estos ingredientes</string>
+    <string name="menu_missing_subtitle">Elige cuáles añadir a la lista de la compra y en qué zona.</string>
+    <string name="menu_missing_add">Añadir a la lista (%1$d)</string>
+    <string name="menu_missing_skip">Ahora no</string>
     <!-- /Menú semanal -->
 </resources>
