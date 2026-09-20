@@ -237,5 +237,14 @@
     <string name="menu_missing_subtitle">Elige cuáles añadir a la lista de la compra y en qué zona.</string>
     <string name="menu_missing_add">Añadir a la lista (%1$d)</string>
     <string name="menu_missing_skip">Ahora no</string>
+    <string name="menu_duplicate_title">Duplicar semana</string>
+    <string name="menu_duplicate_message">Copiar la semana %1$s a:</string>
+    <string name="menu_duplicate_confirm">Duplicar</string>
+    <string name="menu_duplicate_conflict_title">La semana ya tiene platos</string>
+    <string name="menu_duplicate_conflict_message">La semana de destino ya tiene %1$d entradas del menú. Puedes reemplazarlas o combinarlas con las copiadas.</string>
+    <string name="menu_duplicate_replace">Reemplazar</string>
+    <string name="menu_duplicate_merge">Combinar</string>
+    <string name="menu_duplicate_done">Semana duplicada</string>
+    <string name="menu_share_chooser">Compartir menú</string>
     <!-- /Menú semanal -->
 </resources>
