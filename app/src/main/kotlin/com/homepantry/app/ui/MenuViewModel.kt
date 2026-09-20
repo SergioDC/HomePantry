@@ -17,6 +17,7 @@ import com.homepantry.app.data.nextEntryOrder
 import com.homepantry.app.data.planDuplicateWeek
 import com.homepantry.app.data.visibleRange
 import java.time.LocalDate
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -79,7 +80,13 @@ class MenuViewModel(
     }
 
     private fun launchCatching(block: suspend () -> Unit) = viewModelScope.launch {
-        runCatching { block() }.onFailure { e -> error.value = e.message }
+        try {
+            block()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            error.value = e.message ?: e.toString()
+        }
     }
 
     fun setVisibleDate(date: LocalDate) {
