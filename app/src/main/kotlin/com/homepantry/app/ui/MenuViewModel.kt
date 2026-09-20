@@ -19,6 +19,7 @@ import com.homepantry.app.data.visibleRange
 import java.time.LocalDate
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -164,10 +165,24 @@ class MenuViewModel(
             entriesRepository.getRange(weekStart.toString(), weekStart.plusDays(6).toString()).size
         }.getOrDefault(0)
 
-    fun duplicateWeek(from: LocalDate, to: LocalDate, mode: DuplicateMode) = launchCatching {
-        val source = entriesRepository.getRange(from.toString(), from.plusDays(6).toString())
-        val target = entriesRepository.getRange(to.toString(), to.plusDays(6).toString())
-        val plan = planDuplicateWeek(source, target, from, to, mode)
-        entriesRepository.applyBatch(plan.toWrite, plan.toDelete)
-    }
+    /**
+     * Copia la semana [from] a [to] y espera a que termine. Devuelve true si se copió; si falla,
+     * publica el error y devuelve false. La escritura corre en el scope del ViewModel, así que
+     * cerrar el diálogo que la lanzó no la deja a medias.
+     */
+    suspend fun duplicateWeek(from: LocalDate, to: LocalDate, mode: DuplicateMode): Boolean =
+        viewModelScope.async {
+            try {
+                val source = entriesRepository.getRange(from.toString(), from.plusDays(6).toString())
+                val target = entriesRepository.getRange(to.toString(), to.plusDays(6).toString())
+                val plan = planDuplicateWeek(source, target, from, to, mode)
+                entriesRepository.applyBatch(plan.toWrite, plan.toDelete)
+                true
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error.value = e.message ?: e.toString()
+                false
+            }
+        }.await()
 }

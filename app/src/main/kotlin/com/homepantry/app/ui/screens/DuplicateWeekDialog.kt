@@ -79,8 +79,9 @@ fun DuplicateWeekDialog(
                         scope.launch {
                             val count = viewModel.countEntriesInWeek(target)
                             if (count == 0) {
-                                viewModel.duplicateWeek(source, target, DuplicateMode.MERGE)
-                                onDone()
+                                val copied = viewModel.duplicateWeek(source, target, DuplicateMode.MERGE)
+                                busy = false
+                                if (copied) onDone() else onDismiss()
                             } else {
                                 conflictCount = count
                                 busy = false
@@ -99,16 +100,21 @@ fun DuplicateWeekDialog(
             title = { Text(stringResource(R.string.menu_duplicate_conflict_title)) },
             text = { Text(stringResource(R.string.menu_duplicate_conflict_message, conflictCount)) },
             confirmButton = {
+                fun apply(mode: DuplicateMode) {
+                    busy = true
+                    scope.launch {
+                        val copied = viewModel.duplicateWeek(source, target, mode)
+                        busy = false
+                        if (copied) onDone() else onDismiss()
+                    }
+                }
                 Row {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.menu_cancel)) }
-                    TextButton(onClick = {
-                        viewModel.duplicateWeek(source, target, DuplicateMode.MERGE)
-                        onDone()
-                    }) { Text(stringResource(R.string.menu_duplicate_merge)) }
-                    TextButton(onClick = {
-                        viewModel.duplicateWeek(source, target, DuplicateMode.REPLACE)
-                        onDone()
-                    }) {
+                    TextButton(onClick = onDismiss, enabled = !busy) { Text(stringResource(R.string.menu_cancel)) }
+                    TextButton(
+                        onClick = { apply(DuplicateMode.MERGE) },
+                        enabled = !busy
+                    ) { Text(stringResource(R.string.menu_duplicate_merge)) }
+                    TextButton(onClick = { apply(DuplicateMode.REPLACE) }, enabled = !busy) {
                         Text(
                             stringResource(R.string.menu_duplicate_replace),
                             color = MaterialTheme.colorScheme.error
