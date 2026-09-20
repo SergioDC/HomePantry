@@ -17,6 +17,7 @@ import com.homepantry.app.data.nextEntryOrder
 import com.homepantry.app.data.planDuplicateWeek
 import com.homepantry.app.data.visibleRange
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -91,6 +92,18 @@ class MenuViewModel(
     }
 
     fun setVisibleDate(date: LocalDate) {
+        position.value = position.value.copy(date = date)
+    }
+
+    /**
+     * La vista mes se asentó en [month]. Si la fecha de referencia ya cae en ese mes no se toca:
+     * así, cambiar de Semana a Mes y volver conserva la misma semana. Si es otro mes, se lleva a
+     * hoy cuando hoy está en él, y si no al día 1.
+     */
+    fun setVisibleMonth(month: YearMonth) {
+        if (YearMonth.from(position.value.date) == month) return
+        val today = LocalDate.now()
+        val date = if (YearMonth.from(today) == month) today else month.atDay(1)
         position.value = position.value.copy(date = date)
     }
 

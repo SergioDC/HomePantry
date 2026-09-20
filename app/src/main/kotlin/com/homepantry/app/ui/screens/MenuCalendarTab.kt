@@ -109,11 +109,11 @@ fun MenuCalendarTab(
         // La fecha de referencia sigue a la página asentada (no a la intermedia de un deslizamiento).
         LaunchedEffect(pagerState, mode) {
             snapshotFlow { pagerState.settledPage }.collect { page ->
-                val date = when (mode) {
-                    CalendarMode.WEEK -> pageWeekStart(today, page, PAGER_ANCHOR_PAGE)
-                    CalendarMode.MONTH -> pageMonth(YearMonth.from(today), page, PAGER_ANCHOR_PAGE).atDay(1)
+                when (mode) {
+                    CalendarMode.WEEK -> viewModel.setVisibleDate(pageWeekStart(today, page, PAGER_ANCHOR_PAGE))
+                    CalendarMode.MONTH ->
+                        viewModel.setVisibleMonth(pageMonth(YearMonth.from(today), page, PAGER_ANCHOR_PAGE))
                 }
-                viewModel.setVisibleDate(date)
             }
         }
 
