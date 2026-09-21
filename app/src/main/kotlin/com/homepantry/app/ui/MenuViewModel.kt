@@ -184,17 +184,18 @@ class MenuViewModel(
     // ---- Importar menú desde una foto ----
 
     /**
-     * Vuelca [menu] (ya revisado) en la comida de [month] y espera a que termine. Lee las entradas
+     * Vuelca [menu] (ya revisado) en la comida de [month], asignado a [person] (null = toda la
+     * familia), y espera a que termine. Lee las entradas
      * del mes en el momento, no de la caché de la pantalla: el mes elegido puede no estar cargado.
      * Escribe primero los platos nuevos y después las entradas, para que ninguna apunte a un plato
      * que no llegó a crearse. Devuelve el plan aplicado (para el resumen) o null si falla, con el
      * error publicado. Corre en el scope del ViewModel: cerrar la hoja no lo deja a medias.
      */
-    suspend fun importMenu(menu: ParsedMenu, month: YearMonth): MenuImportPlan? =
+    suspend fun importMenu(menu: ParsedMenu, month: YearMonth, person: String?): MenuImportPlan? =
         viewModelScope.async {
             try {
                 val existing = entriesRepository.getRange(month.atDay(1).toString(), month.atEndOfMonth().toString())
-                val plan = planMenuImport(menu, month, dishes.value, existing, dishesRepository::newId, userName)
+                val plan = planMenuImport(menu, month, dishes.value, existing, dishesRepository::newId, userName, person)
                 dishesRepository.addDishes(plan.newDishes)
                 entriesRepository.applyBatch(plan.entries, emptyList())
                 plan

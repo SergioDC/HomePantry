@@ -168,6 +168,52 @@ class MenuImportTest {
         assertEquals(listOf("A", "C"), result.newDishes.map { it.name }.sorted())
     }
 
+    // ---- planMenuImport con persona ----
+
+    private fun planFor(
+        person: String?,
+        menu: ParsedMenu,
+        existing: List<MealEntry> = emptyList(),
+        dishes: List<Dish> = emptyList()
+    ) = planMenuImport(menu, september, dishes, existing, ids(), addedBy = "Ana", person = person)
+
+    @Test fun `plan gives every entry the chosen person`() {
+        val result = planFor("Pepe", menu(7 to listOf("Lentejas", "Fruta"), 8 to listOf("Paella")))
+        assertEquals(listOf("Pepe"), result.entries.map { it.person }.distinct())
+    }
+
+    @Test fun `plan leaves the person empty when it is for the family`() {
+        assertNull(plan(menu(7 to listOf("Lentejas"))).entries.single().person)
+    }
+
+    @Test fun `the same dish for another person the same day is not a duplicate`() {
+        val family = listOf(MealEntry(date = "2026-09-07", slot = MealSlot.LUNCH.name, name = "Fruta", order = 0))
+        val result = planFor("Pepe", menu(7 to listOf("Fruta")), existing = family)
+        assertEquals(1, result.entries.size)
+        assertEquals(0, result.alreadyPresent)
+    }
+
+    @Test fun `importing the same photo again for the same person adds nothing, whatever the case`() {
+        val photo = menu(7 to listOf("Lentejas", "Fruta"))
+        val first = planFor("Pepe", photo)
+        val second = planFor("pepe", photo, existing = first.entries, dishes = first.newDishes)
+        assertTrue(second.entries.isEmpty())
+        assertEquals(2, second.alreadyPresent)
+    }
+
+    @Test fun `a family dish already there is not repeated when importing for the family`() {
+        val existing = listOf(MealEntry(date = "2026-09-07", slot = MealSlot.LUNCH.name, name = "Fruta", order = 0, person = "Pepe"))
+        val result = plan(menu(7 to listOf("Fruta")), existing = existing)
+        assertEquals(1, result.entries.size)
+    }
+
+    @Test fun `dishes are shared across people, so a dish is created once even for different people`() {
+        val forPepe = planFor("Pepe", menu(7 to listOf("Fruta")))
+        val forAna = planFor("Ana", menu(7 to listOf("Fruta")), dishes = forPepe.newDishes)
+        assertTrue(forAna.newDishes.isEmpty())
+        assertEquals(forPepe.newDishes.single().id, forAna.entries.single().dishId)
+    }
+
     // ---- weekendDayCount ----
 
     @Test fun `weekend count is the number of read days that fall on saturday or sunday`() {

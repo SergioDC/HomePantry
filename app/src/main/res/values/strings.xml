@@ -254,6 +254,9 @@
     <string name="menu_import_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="menu_import_title">Revisa el menú</string>
     <string name="menu_import_subtitle">Comprueba el mes y corrige lo que Gemini haya leído mal. Todo va a la comida de cada día.</string>
+    <string name="menu_import_for_whom">Para quién</string>
+    <string name="menu_import_family">Familia</string>
+    <string name="menu_import_person_hint">Otra persona (vacío = Familia)</string>
     <string name="menu_import_month_cd">Mes del menú</string>
     <string name="menu_import_use_detected">Usar %1$s (leído en la foto)</string>
     <string name="menu_import_weekend_warning">%2$d días del menú caen en fin de semana en %1$s. ¿Es el mes correcto?</string>

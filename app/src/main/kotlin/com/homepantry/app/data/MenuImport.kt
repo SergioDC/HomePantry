@@ -60,7 +60,9 @@ fun cleanParsedMenu(month: YearMonth?, days: List<ParsedMenuDay>): ParsedMenu {
  * Plan para volcar [menu] en [month]: cada plato va como entrada de la comida de su día. Nunca
  * borra nada: va detrás de lo que ya haya en esa comida y omite lo que ya está (mismo nombre
  * normalizado), de modo que importar dos veces la misma foto no duplica. Un plato sin coincidencia
- * exacta con [dishes] se crea una sola vez aunque salga en muchos días; [newId] da su id.
+ * exacta con [dishes] se crea una sola vez aunque salga en muchos días; [newId] da su id. Todas las
+ * entradas van a [person] (null = toda la familia, ver [normalizePerson]); el mismo plato para otra
+ * persona el mismo día no cuenta como repetido, pero el plato en sí se comparte entre personas.
  */
 fun planMenuImport(
     menu: ParsedMenu,
@@ -68,8 +70,10 @@ fun planMenuImport(
     dishes: List<Dish>,
     existing: List<MealEntry>,
     newId: () -> String,
-    addedBy: String
+    addedBy: String,
+    person: String? = null
 ): MenuImportPlan {
+    val targetPerson = personKey(person.orEmpty())
     val lunchByDate = existing.filter { it.slot == MealSlot.LUNCH.name }.groupBy { it.date }
     val newDishes = linkedMapOf<String, Dish>()
     val entries = mutableListOf<MealEntry>()
@@ -83,7 +87,11 @@ fun planMenuImport(
         }
         val date = month.atDay(day.day).toString()
         val present = lunchByDate[date].orEmpty()
-        val seen = present.map { normalizeProductName(it.name) }.toMutableSet()
+        // Lo ya presente cuenta solo para la misma persona: (plato normalizado, persona normalizada).
+        val seen = present
+            .filter { personKey(it.person.orEmpty()) == targetPerson }
+            .map { normalizeProductName(it.name) }
+            .toMutableSet()
         var order = (present.maxOfOrNull { it.order } ?: -1) + 1
         for (raw in day.dishes) {
             val name = raw.trim()
@@ -101,7 +109,8 @@ fun planMenuImport(
                 dishId = dish.id,
                 name = dish.name,
                 order = order++,
-                addedBy = addedBy
+                addedBy = addedBy,
+                person = person
             )
         }
     }

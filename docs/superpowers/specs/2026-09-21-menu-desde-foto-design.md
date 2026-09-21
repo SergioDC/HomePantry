@@ -133,7 +133,7 @@ descarta nada; decide el usuario.
   confirmar, no de la caché de la pantalla: el mes elegido puede no estar entre los cargados.
 - La escritura corre en el scope del `MenuViewModel` (como `duplicateWeek`): cerrar la hoja no la
   deja a medias. Si falla, se publica en `error`.
-- Cambios en `Dish`, `MealEntry` y `firestore.rules`: ninguno.
+- Cambios en `Dish` y `firestore.rules`: ninguno (`MealEntry` gana `person` en la ampliación del final).
 
 ## Errores
 
@@ -190,3 +190,33 @@ La UI de Compose no lleva tests, como el resto de pantallas del proyecto; se com
 - Importar ingredientes.
 - Fines de semana (el menú no los trae; los días leídos que caigan en uno solo generan el aviso).
 - Una alternativa sin API key (OCR clásico).
+
+## Ampliación: asignar el menú importado a una persona
+
+Decidido en un segundo brainstorming, sobre lo anterior:
+
+| Tema | Decisión |
+|---|---|
+| Quién | Nombres libres. `Familia` es el valor por defecto y equivale a no tener persona. No hay lista que mantener ni pantalla nueva. |
+| Alcance | Una persona para toda la importación (un selector en la hoja de revisión), no por día ni por plato. |
+| Modelo | `MealEntry.person: String? = null` (`null` = Familia). Las entradas anteriores siguen valiendo sin migrar; `Dish` no cambia. |
+| Duplicados | La clave para omitir lo ya presente pasa a ser día + comida + plato normalizado + persona normalizada: el mismo plato para otra persona el mismo día no es un duplicado. Los platos siguen compartidos entre personas. |
+| Nombres | En blanco o «familia» = Familia. Un nombre que coincide con uno ya usado (sin mayúsculas ni acentos) reutiliza su grafía. Máximo 30 caracteres. La clave de comparación no quita la «s» final (Marco y Marcos son distintos). |
+| Atajos | Los chips de la hoja de revisión salen de las entradas que el calendario tiene cargadas; si la persona no está ahí se escribe una vez. |
+| Fuera de alcance | Elegir persona al añadir a mano en la hoja del día, y cambiar la persona de una entrada ya guardada. |
+
+**Cómo se ve.** Los platos de una franja se agrupan por persona (`groupByPerson`: primero la familia y
+luego cada persona por orden de aparición) y el nombre sale **una sola vez** por grupo, en verde menta:
+
+- Semana: dentro del mismo `FlowRow`, delante de sus chips (`Comida  Pepe [Lentejas] [Merluza]…`).
+- Hoja del día: como subtítulo sobre sus platos.
+- Imagen de compartir: `Pepe: Lentejas, Merluza, …`, y cada grupo en su línea si hay más de uno.
+- Vista mes: sin cambios.
+
+Menta clara (`Mint400`) en la app, de tema oscuro; menta oscura (`MintPrimary`) en la imagen de
+compartir, de fondo blanco, donde la clara casi no se leería.
+
+**Archivos:** `MealEntry.kt`, `MealEntriesLogic.kt` (`groupByPerson`, `normalizePerson`, `knownPeople`),
+`MenuImport.kt` (parámetro `person`), `MenuViewModel.kt`, `MenuImportSheet.kt`, `MenuScreen.kt`,
+`MenuCalendarTab.kt`, `DayMealsSheet.kt`, `WeekShare.kt`, `ui/components/PersonLabel.kt`, `strings.xml`.
+Tests en `MealEntryPersonTest` y `MenuImportTest`.

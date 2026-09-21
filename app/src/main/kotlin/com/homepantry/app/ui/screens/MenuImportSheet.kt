@@ -2,6 +2,8 @@ package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -18,6 +20,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +42,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Dish
+import com.homepantry.app.data.MAX_PERSON_LENGTH
 import com.homepantry.app.data.MenuImportPlan
 import com.homepantry.app.data.ParsedMenu
 import com.homepantry.app.data.ParsedMenuDay
@@ -46,6 +50,8 @@ import com.homepantry.app.data.cleanParsedMenu
 import com.homepantry.app.data.dayLabel
 import com.homepantry.app.data.matchDish
 import com.homepantry.app.data.monthLabel
+import com.homepantry.app.data.normalizePerson
+import com.homepantry.app.data.personKey
 import com.homepantry.app.data.suggestDishes
 import com.homepantry.app.data.weekendDayCount
 import com.homepantry.app.ui.MenuViewModel
@@ -60,12 +66,13 @@ import kotlinx.coroutines.launch
  * elegido se avisa, porque el menú es de lunes a viernes y lo más probable es que el mes no sea el de
  * la foto.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun MenuImportSheet(
     menu: ParsedMenu,
     defaultMonth: YearMonth,
     dishes: List<Dish>,
+    people: List<String>,
     viewModel: MenuViewModel,
     onDismiss: () -> Unit,
     onDone: (MenuImportPlan) -> Unit
@@ -73,6 +80,9 @@ fun MenuImportSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var month by remember { mutableStateOf(defaultMonth) }
+    // Lo escrito para «Para quién»; en blanco (o «familia») es toda la familia.
+    var personText by remember { mutableStateOf("") }
+    val person = normalizePerson(personText, people)
     var days by remember { mutableStateOf(menu.days) }
     var busy by remember { mutableStateOf(false) }
     var failed by remember { mutableStateOf(false) }
@@ -145,7 +155,33 @@ fun MenuImportSheet(
                 )
             }
 
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 360.dp)) {
+            Text(text = stringResource(R.string.menu_import_for_whom), style = MaterialTheme.typography.titleSmall)
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                FilterChip(
+                    selected = person == null,
+                    onClick = { personText = "" },
+                    label = { Text(stringResource(R.string.menu_import_family)) }
+                )
+                people.forEach { name ->
+                    FilterChip(
+                        selected = person != null && personKey(person) == personKey(name),
+                        onClick = { personText = name },
+                        label = { Text(name) }
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = personText,
+                onValueChange = { personText = it.take(MAX_PERSON_LENGTH) },
+                label = { Text(stringResource(R.string.menu_import_person_hint)) },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            LazyColumn(Modifier.fillMaxWidth().heightIn(max = 300.dp)) {
                 itemsIndexed(days, key = { _, day -> day.day }) { dayIndex, day ->
                     DayReview(
                         day = day,
@@ -176,7 +212,7 @@ fun MenuImportSheet(
                         busy = true
                         failed = false
                         scope.launch {
-                            val plan = viewModel.importMenu(cleanParsedMenu(null, days), month)
+                            val plan = viewModel.importMenu(cleanParsedMenu(null, days), month, person)
                             busy = false
                             if (plan != null) onDone(plan) else failed = true
                         }

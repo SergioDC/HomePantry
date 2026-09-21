@@ -45,6 +45,7 @@ import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.ParsedMenu
 import com.homepantry.app.data.WeekShare
 import com.homepantry.app.data.createReceiptCaptureUri
+import com.homepantry.app.data.knownPeople
 import com.homepantry.app.data.recognizeMenuWithGemini
 import com.homepantry.app.data.weekDays
 import com.homepantry.app.ui.AppViewModel
@@ -208,6 +209,7 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
             menu = parsed,
             defaultMonth = YearMonth.from(state.position.date),
             dishes = state.dishes,
+            people = knownPeople(state.entries),
             viewModel = menuViewModel,
             onDismiss = { importedMenu = null },
             onDone = { plan ->

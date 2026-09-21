@@ -61,6 +61,7 @@ import com.homepantry.app.data.MealSlot
 import com.homepantry.app.data.PAGER_ANCHOR_PAGE
 import com.homepantry.app.data.PAGER_PAGE_COUNT
 import com.homepantry.app.data.entriesFor
+import com.homepantry.app.data.groupByPerson
 import com.homepantry.app.data.monthGrid
 import com.homepantry.app.data.monthLabel
 import com.homepantry.app.data.pageForMonth
@@ -72,6 +73,7 @@ import com.homepantry.app.data.weekRangeLabel
 import com.homepantry.app.data.weekStart
 import com.homepantry.app.ui.MenuUiState
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.components.PersonLabel
 import com.homepantry.app.ui.components.SegmentedToggle
 import java.time.LocalDate
 import java.time.YearMonth
@@ -309,7 +311,10 @@ private fun DayRow(day: LocalDate, entries: List<MealEntry>, isToday: Boolean, o
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                slotEntries.forEach { MealChip(it.name) }
+                                groupByPerson(slotEntries).forEach { group ->
+                                    group.person?.let { PersonLabel(it) }
+                                    group.entries.forEach { MealChip(it.name) }
+                                }
                             }
                         }
                     }

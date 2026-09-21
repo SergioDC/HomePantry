@@ -41,9 +41,11 @@ import com.homepantry.app.data.MealEntry
 import com.homepantry.app.data.MealSlot
 import com.homepantry.app.data.dayLabel
 import com.homepantry.app.data.entriesFor
+import com.homepantry.app.data.groupByPerson
 import com.homepantry.app.data.suggestDishes
 import com.homepantry.app.ui.MenuUiState
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.components.PersonLabel
 import java.time.LocalDate
 
 /**
@@ -108,32 +110,38 @@ fun DayMealsSheet(
                         )
                     }
                 }
-                items(dayEntries, key = { it.id }) { entry ->
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = entry.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.weight(1f)
-                        )
-                        IconButton(onClick = {
-                            editing = entry
-                            text = entry.name
-                        }) {
-                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.menu_entry_edit_cd))
-                        }
-                        IconButton(onClick = {
-                            viewModel.deleteEntry(entry)
-                            lastDeleted = entry
-                            if (editing?.id == entry.id) resetInput()
-                        }) {
-                            Icon(
-                                Icons.Filled.Delete,
-                                contentDescription = stringResource(R.string.menu_entry_delete_cd),
-                                tint = MaterialTheme.colorScheme.error
+                groupByPerson(dayEntries).forEach { group ->
+                    // El nombre de la persona va una sola vez sobre sus platos, no en cada fila.
+                    group.person?.let { person ->
+                        item(key = "person/$person") { PersonLabel(person, Modifier.padding(top = 8.dp)) }
+                    }
+                    items(group.entries, key = { it.id }) { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = entry.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
                             )
+                            IconButton(onClick = {
+                                editing = entry
+                                text = entry.name
+                            }) {
+                                Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.menu_entry_edit_cd))
+                            }
+                            IconButton(onClick = {
+                                viewModel.deleteEntry(entry)
+                                lastDeleted = entry
+                                if (editing?.id == entry.id) resetInput()
+                            }) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = stringResource(R.string.menu_entry_delete_cd),
+                                    tint = MaterialTheme.colorScheme.error
+                                )
+                            }
                         }
                     }
                 }

@@ -6,8 +6,12 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.text.SpannableStringBuilder
+import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import androidx.core.content.FileProvider
 import java.io.File
 import java.time.LocalDate
@@ -23,6 +27,29 @@ object WeekShare {
     private val SOFT = 0xFF6E6F80.toInt()
     private val BRAND = 0xFF6C5CE7.toInt()
     private val LINE = 0xFFE3E3EA.toInt()
+    // Menta oscura (MintPrimary): la clara de la app casi no se lee sobre este fondo blanco.
+    private val MINT = 0xFF0F6E56.toInt()
+
+    /**
+     * Platos de una franja separados por comas; cada persona con su nombre en menta una sola vez
+     * («Pepe: Lentejas, Fruta») y en su propia línea si hay más de un grupo.
+     */
+    private fun slotText(entries: List<MealEntry>): CharSequence {
+        if (entries.isEmpty()) return "—"
+        val text = SpannableStringBuilder()
+        groupByPerson(entries).forEachIndexed { index, group ->
+            if (index > 0) text.append('\n')
+            group.person?.let { person ->
+                val start = text.length
+                text.append("$person:")
+                text.setSpan(ForegroundColorSpan(MINT), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                text.setSpan(StyleSpan(Typeface.BOLD), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                text.append(' ')
+            }
+            text.append(group.entries.joinToString(", ") { it.name })
+        }
+        return text
+    }
 
     private fun textPaint(size: Float, color: Int, bold: Boolean = false) = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
         this.color = color
@@ -48,7 +75,7 @@ object WeekShare {
         fun draw(canvas: Canvas?): Int {
             var y = MARGIN
 
-            fun block(text: String, paint: TextPaint, x: Int, width: Int): Int {
+            fun block(text: CharSequence, paint: TextPaint, x: Int, width: Int): Int {
                 val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, width).build()
                 if (canvas != null) {
                     canvas.save()
@@ -65,10 +92,10 @@ object WeekShare {
                 y += block(dayLabel(day), dayPaint, MARGIN, contentWidth) + 10
                 val dayEntries = byDate[day.toString()].orEmpty()
                 MealSlot.values().forEach { slot ->
-                    val names = entriesFor(dayEntries, day.toString(), slot).joinToString(", ") { it.name }
+                    val names = slotText(entriesFor(dayEntries, day.toString(), slot))
                     val labelHeight = block(slot.label, labelPaint, MARGIN, LABEL_WIDTH)
                     val valueHeight = block(
-                        names.ifEmpty { "—" },
+                        names,
                         valuePaint,
                         MARGIN + LABEL_WIDTH,
                         contentWidth - LABEL_WIDTH
