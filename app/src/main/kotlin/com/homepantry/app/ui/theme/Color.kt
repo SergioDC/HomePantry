@@ -42,6 +42,8 @@ val ZoneColors = listOf(
 val NocturneBackground = Color(0xFF161826)
 val NocturneSurface = Color(0xFF232532)
 val NocturneSurfaceVariant = Color(0xFF2A2C3C)
+// Sheets, diálogos y menús desplegables: más claros que el fondo y las tarjetas para que resalten.
+val NocturnePopupSurface = Color(0xFF383B54)
 val NocturnePrimary = Color(0xFF9184D9)
 val NocturneOnPrimary = Color(0xFF161826)
 val NocturnePrimaryContainer = Color(0xFF2E2A44)

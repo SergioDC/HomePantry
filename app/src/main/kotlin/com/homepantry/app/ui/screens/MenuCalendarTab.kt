@@ -326,11 +326,12 @@ private fun DayRow(day: LocalDate, entries: List<MealEntry>, isToday: Boolean, o
 
 @Composable
 private fun MealChip(name: String) {
-    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
+    // secondaryContainer is nearly the same as the card / today background, so tint the primary instead.
+    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) {
         Text(
             text = name,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
         )
     }
