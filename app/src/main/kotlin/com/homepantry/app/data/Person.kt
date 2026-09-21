@@ -2,7 +2,11 @@ package com.homepantry.app.data
 
 import com.google.firebase.firestore.DocumentId
 
-/** Nombre con el que se guarda y se muestra a la familia, que es la «persona» sin nombre (null en la entrada). */
+/**
+ * La familia es una persona como cualquier otra: se guarda en la entrada con este nombre, con su
+ * documento, su color y su etiqueta en el calendario. `null` en la entrada no es la familia sino
+ * «sin asignar» (antes se confundían y asignar a Familia no cambiaba nada).
+ */
 const val FAMILY_NAME = "Familia"
 
 /**
@@ -21,16 +25,17 @@ data class Person(
 
 /**
  * Id del documento de una persona: su clave de comparación (sin mayúsculas ni acentos), para que
- * «José» y «jose» sean el mismo documento. En blanco o null es la familia (`"familia"`). Sin «/»,
- * que Firestore leería como ruta.
+ * «José» y «jose» sean el mismo documento (la familia es `"familia"`). Sin «/», que Firestore leería
+ * como ruta.
  */
-fun personDocId(name: String?): String {
-    val key = personKey(name.orEmpty())
-    return if (key.isEmpty()) personKey(FAMILY_NAME) else key.replace('/', '-')
-}
+fun personDocId(name: String): String = personKey(name).replace('/', '-')
 
-/** El color elegido para [person] (null = la familia), o null si no tiene documento, color o el id ya no existe. */
+/**
+ * El color elegido para [person], o null si no tiene documento, color o el id ya no existe. Sin
+ * persona (null o en blanco) tampoco hay color: son las entradas sin asignar.
+ */
 fun colorFor(person: String?, people: List<Person>): PersonColor? {
+    if (person.isNullOrBlank()) return null
     val id = personDocId(person)
     return personColorOf(people.firstOrNull { it.id == id }?.color)
 }

@@ -65,11 +65,9 @@ fun PeopleColorsSheet(state: MenuUiState, viewModel: MenuViewModel, onDismiss: (
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = 420.dp)) {
-                item(key = "familia") {
-                    PersonColorRow(person = null, label = stringResource(R.string.menu_import_family), state = state, viewModel = viewModel)
-                }
+                // Familia va la primera de la lista y se colorea como cualquier otra persona.
                 items(names, key = { "person/$it" }) { name ->
-                    PersonColorRow(person = name, label = name, state = state, viewModel = viewModel)
+                    PersonColorRow(person = name, state = state, viewModel = viewModel)
                 }
             }
         }
@@ -78,12 +76,14 @@ fun PeopleColorsSheet(state: MenuUiState, viewModel: MenuViewModel, onDismiss: (
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PersonColorRow(person: String?, label: String, state: MenuUiState, viewModel: MenuViewModel) {
+private fun PersonColorRow(person: String, state: MenuUiState, viewModel: MenuViewModel) {
     val selected = colorFor(person, state.people)
-    val labelColor = chosenTint(person, state.people)
-        ?: if (person != null) Mint400 else MaterialTheme.colorScheme.onSurface
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(text = label, style = MaterialTheme.typography.titleMedium, color = labelColor)
+        Text(
+            text = person,
+            style = MaterialTheme.typography.titleMedium,
+            color = chosenTint(person, state.people) ?: Mint400
+        )
         FlowRow(
             modifier = Modifier.padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),

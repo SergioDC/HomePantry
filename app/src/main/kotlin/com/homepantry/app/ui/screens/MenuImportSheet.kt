@@ -78,7 +78,7 @@ fun MenuImportSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     var month by remember { mutableStateOf(defaultMonth) }
-    // Lo escrito para «Para quién»; en blanco (o «familia») es toda la familia.
+    // Lo escrito para «Para quién»; en blanco es «sin asignar».
     var personText by remember { mutableStateOf("") }
     val person = normalizePerson(personText, names)
     var days by remember { mutableStateOf(menu.days) }

@@ -52,7 +52,7 @@ class MealEntriesRepository(
         collection().document(entry.id).set(entry).await()
     }
 
-    /** Asigna [person] (null = la familia) a las entradas [ids], en lotes de como mucho 500 operaciones. */
+    /** Asigna [person] (null = sin asignar) a las entradas [ids], en lotes de como mucho 500 operaciones. */
     suspend fun updatePerson(ids: List<String>, person: String?) {
         ids.chunked(500).forEach { chunk ->
             val batch = firestore.batch()

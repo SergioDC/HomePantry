@@ -167,7 +167,7 @@ class MenuViewModel(
 
     /**
      * Añade texto al menú; si coincide con un plato creado se enlaza a él, si no queda como texto
-     * libre. [person] es a quién va (null = la familia), ya normalizado con `normalizePerson`.
+     * libre. [person] es a quién va (null = sin asignar), ya normalizado con `normalizePerson`.
      */
     fun addEntry(date: LocalDate, slot: MealSlot, text: String, person: String?) = launchCatching {
         val name = text.trim()
@@ -198,8 +198,8 @@ class MenuViewModel(
 
     // ---- Personas ----
 
-    /** Guarda el color de [person] (null = la familia), visible para toda la casa. */
-    fun setPersonColor(person: String?, color: PersonColor) = launchCatching {
+    /** Guarda el color de [person] (Familia incluida), visible para toda la casa. */
+    fun setPersonColor(person: String, color: PersonColor) = launchCatching {
         peopleRepository.setColor(person, color)
     }
 
@@ -217,7 +217,7 @@ class MenuViewModel(
         }
 
     /**
-     * Asigna [person] (null = la familia) a las entradas de [from] a [to] (ambos incluidos) y espera
+     * Asigna [person] (null = dejarlas sin asignar) a las entradas de [from] a [to] (ambos incluidos) y espera
      * a que termine. Lee el rango en el momento, no de la caché de la pantalla. Devuelve cuántas
      * cambió, o null si falla, con el error publicado. Corre en el scope del ViewModel: cerrar el
      * diálogo no lo deja a medias.
@@ -246,8 +246,8 @@ class MenuViewModel(
     // ---- Importar menú desde una foto ----
 
     /**
-     * Vuelca [menu] (ya revisado) en la comida de [month], asignado a [person] (null = toda la
-     * familia), y espera a que termine. Lee las entradas
+     * Vuelca [menu] (ya revisado) en la comida de [month], asignado a [person] (null = sin
+     * asignar), y espera a que termine. Lee las entradas
      * del mes en el momento, no de la caché de la pantalla: el mes elegido puede no estar cargado.
      * Escribe primero los platos nuevos y después las entradas, para que ninguna apunte a un plato
      * que no llegó a crearse. Devuelve el plan aplicado (para el resumen) o null si falla, con el

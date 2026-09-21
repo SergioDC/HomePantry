@@ -61,7 +61,7 @@ fun cleanParsedMenu(month: YearMonth?, days: List<ParsedMenuDay>): ParsedMenu {
  * borra nada: va detrás de lo que ya haya en esa comida y omite lo que ya está (mismo nombre
  * normalizado), de modo que importar dos veces la misma foto no duplica. Un plato sin coincidencia
  * exacta con [dishes] se crea una sola vez aunque salga en muchos días; [newId] da su id. Todas las
- * entradas van a [person] (null = toda la familia, ver [normalizePerson]); el mismo plato para otra
+ * entradas van a [person] (null = sin asignar, ver [normalizePerson]); el mismo plato para otra
  * persona el mismo día no cuenta como repetido, pero el plato en sí se comparte entre personas.
  */
 fun planMenuImport(

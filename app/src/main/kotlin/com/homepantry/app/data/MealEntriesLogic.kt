@@ -74,18 +74,19 @@ internal fun personKey(name: String): String =
     Normalizer.normalize(name.trim().lowercase().replace(Regex("\\s+"), " "), Normalizer.Form.NFD)
         .replace(Regex("\\p{Mn}+"), "")
 
-/** Las entradas de una franja que van a la misma persona; `person == null` es toda la familia. */
+/** Las entradas de una franja que van a la misma persona; `person == null` son las que aún no tienen ninguna. */
 data class PersonGroup(val person: String?, val entries: List<MealEntry>)
 
 /**
- * Agrupa las entradas por persona para mostrar su nombre una sola vez: primero la familia y luego
- * cada persona por orden de aparición. Nombres que solo difieren en mayúsculas o acentos son la
- * misma persona y se muestran con la primera grafía. Dentro de un grupo se conserva el orden.
+ * Agrupa las entradas por persona para mostrar su nombre una sola vez: primero las que no tienen
+ * persona y luego cada persona, Familia incluida, por orden de aparición. Nombres que solo difieren
+ * en mayúsculas o acentos son la misma persona y se muestran con la primera grafía. Dentro de un
+ * grupo se conserva el orden.
  */
 fun groupByPerson(entries: List<MealEntry>): List<PersonGroup> {
     val groups = mutableListOf<PersonGroup>()
-    val family = entries.filter { it.person.isNullOrBlank() }
-    if (family.isNotEmpty()) groups += PersonGroup(null, family)
+    val unassigned = entries.filter { it.person.isNullOrBlank() }
+    if (unassigned.isNotEmpty()) groups += PersonGroup(null, unassigned)
     entries.filter { !it.person.isNullOrBlank() }
         .groupBy { personKey(it.person!!) }
         .values
@@ -94,32 +95,36 @@ fun groupByPerson(entries: List<MealEntry>): List<PersonGroup> {
 }
 
 /**
- * Persona a guardar a partir de lo que escribió el usuario: en blanco o «familia» es toda la
- * familia (null); si coincide con un nombre de [known] (sin distinguir mayúsculas ni acentos) se
- * reutiliza su grafía, para no acabar con «Pepe» y «pepe»; si no, se limpia y se pone mayúscula inicial.
+ * Persona a guardar a partir de lo que escribió el usuario: en blanco es null (sin asignar) y
+ * «familia» es la persona [FAMILY_NAME], que se guarda y se muestra como cualquier otra; si coincide
+ * con un nombre de [known] (sin distinguir mayúsculas ni acentos) se reutiliza su grafía, para no
+ * acabar con «Pepe» y «pepe»; si no, se limpia y se pone mayúscula inicial.
  */
 fun normalizePerson(input: String, known: List<String>): String? {
     val cleaned = input.trim().replace(Regex("\\s+"), " ").take(MAX_PERSON_LENGTH).trimEnd()
     val key = personKey(cleaned)
-    if (key.isEmpty() || key == FAMILY_KEY) return null
+    if (key.isEmpty()) return null
+    if (key == FAMILY_KEY) return FAMILY_NAME
     return known.firstOrNull { personKey(it) == key } ?: cleaned.replaceFirstChar { it.uppercase() }
 }
 
 /**
  * Personas para ofrecer como atajo: las guardadas en [people] más las que aparezcan en [entries]
- * (por si alguna entrada es anterior a su documento), sin repetir (primera grafía, con la de
- * [people] por delante), sin la familia y ordenadas.
+ * (por si alguna entrada es anterior a su documento), sin repetir y ordenadas. Familia se ofrece
+ * siempre, la primera y con su grafía, aunque nadie se haya asignado aún; del resto vale la primera
+ * grafía, con la de [people] por delante.
  */
 fun knownPeople(entries: List<MealEntry>, people: List<Person> = emptyList()): List<String> =
-    (people.map { it.name } + entries.mapNotNull { it.person })
+    (listOf(FAMILY_NAME) + people.map { it.name } + entries.mapNotNull { it.person })
         .map { it.trim() }
-        .filter { it.isNotEmpty() && personKey(it) != FAMILY_KEY }
+        .filter { it.isNotEmpty() }
         .distinctBy { personKey(it) }
-        .sortedBy { personKey(it) }
+        .sortedWith(compareBy({ personKey(it) != FAMILY_KEY }, { personKey(it) }))
 
 /**
- * Entradas de [entries] que hay que cambiar para asignarlas a [person] (null = la familia): las que
- * ya son de esa persona no se tocan, y con [onlyUnassigned] tampoco las que ya son de otra.
+ * Entradas de [entries] que hay que cambiar para asignarlas a [person] (null = dejarlas sin
+ * asignar): las que ya son de esa persona no se tocan, y con [onlyUnassigned] tampoco las que ya
+ * son de otra.
  */
 fun assignableEntries(entries: List<MealEntry>, person: String?, onlyUnassigned: Boolean): List<MealEntry> {
     val target = personKey(person.orEmpty())

@@ -44,10 +44,15 @@ class MealEntryPersonTest {
         assertEquals(listOf("A", "B", "C"), groups.single().entries.map { it.name })
     }
 
-    @Test fun `a blank person counts as family`() {
+    @Test fun `a blank person counts as unassigned`() {
         val groups = groupByPerson(listOf(entry("A", person = "  "), entry("B")))
         assertEquals(1, groups.size)
         assertNull(groups.single().person)
+    }
+
+    @Test fun `the family is a named group like any other person, so it shows its name`() {
+        val groups = groupByPerson(listOf(entry("Fruta"), entry("Sopa", person = "Familia"), entry("Pasta", person = "Pepe")))
+        assertEquals(listOf(null, "Familia", "Pepe"), groups.map { it.person })
     }
 
     @Test fun `no entries give no groups`() {
@@ -56,11 +61,15 @@ class MealEntryPersonTest {
 
     // ---- normalizePerson ----
 
-    @Test fun `a blank name or the word family means the whole family`() {
+    @Test fun `a blank name means nobody is assigned`() {
         assertNull(normalizePerson("", emptyList()))
         assertNull(normalizePerson("   ", emptyList()))
-        assertNull(normalizePerson("familia", emptyList()))
-        assertNull(normalizePerson("  FAMILIA ", emptyList()))
+    }
+
+    @Test fun `the word family is a real person, always spelled Familia`() {
+        assertEquals("Familia", normalizePerson("familia", emptyList()))
+        assertEquals("Familia", normalizePerson("  FAMILIA ", listOf("Pepe")))
+        assertEquals("Familia", normalizePerson("Família", emptyList()))
     }
 
     @Test fun `a name that matches a known one reuses its spelling ignoring case and accents`() {
@@ -82,12 +91,20 @@ class MealEntryPersonTest {
 
     // ---- knownPeople ----
 
-    @Test fun `known people are the distinct names used, sorted, without blanks or duplicates`() {
+    @Test fun `known people are the distinct names used, sorted, without blanks or duplicates, with the family first`() {
         val entries = listOf(
             entry("A", person = "Pepe"), entry("B"), entry("C", person = "ana"),
             entry("D", person = "PEPE"), entry("E", person = " ")
         )
-        assertEquals(listOf("ana", "Pepe"), knownPeople(entries))
+        assertEquals(listOf("Familia", "ana", "Pepe"), knownPeople(entries))
+    }
+
+    @Test fun `the family is always offered, even before anyone was assigned to it`() {
+        assertEquals(listOf("Familia"), knownPeople(emptyList()))
+    }
+
+    @Test fun `the family keeps its own spelling however it was written in the entries`() {
+        assertEquals(listOf("Familia"), knownPeople(listOf(entry("A", person = "FAMILIA"))))
     }
 }
 
@@ -97,11 +114,9 @@ class PeopleLogicTest {
 
     // ---- personDocId ----
 
-    @Test fun `the document id of a person ignores case and accents, and blank or family is the family id`() {
+    @Test fun `the document id of a person ignores case and accents`() {
         assertEquals("jose", personDocId("José"))
         assertEquals("jose", personDocId("  JOSE "))
-        assertEquals("familia", personDocId(null))
-        assertEquals("familia", personDocId(""))
         assertEquals("familia", personDocId("Familia"))
     }
 
@@ -117,9 +132,16 @@ class PeopleLogicTest {
         assertEquals(PersonColor.CORAL, colorFor("PEPE", people))
     }
 
-    @Test fun `no person means the family and uses the family color`() {
+    @Test fun `the family has its own color like anyone else`() {
         val people = listOf(Person(id = "familia", name = "Familia", color = "SKY"))
-        assertEquals(PersonColor.SKY, colorFor(null, people))
+        assertEquals(PersonColor.SKY, colorFor("Familia", people))
+        assertEquals(PersonColor.SKY, colorFor("FAMILIA", people))
+    }
+
+    @Test fun `an unassigned entry has no color, even if the family has one`() {
+        val people = listOf(Person(id = "familia", name = "Familia", color = "SKY"))
+        assertNull(colorFor(null, people))
+        assertNull(colorFor("  ", people))
     }
 
     @Test fun `there is no color for someone without a document, without a color or with an unknown one`() {
@@ -139,7 +161,7 @@ class PeopleLogicTest {
             Person(id = "pepe", name = "Pepe")
         )
         val entries = listOf(entry("pepe"), entry("Ana"), entry(null))
-        assertEquals(listOf("Ana", "Juan", "Pepe"), knownPeople(entries, people))
+        assertEquals(listOf("Familia", "Ana", "Juan", "Pepe"), knownPeople(entries, people))
     }
 
     // ---- assignableEntries ----
@@ -154,13 +176,19 @@ class PeopleLogicTest {
         assertEquals(listOf("a", "b"), assignableEntries(entries, "Pepe", onlyUnassigned = false).map { it.id })
     }
 
-    @Test fun `assigning to the family clears the person of the entries that had one`() {
+    @Test fun `assigning to nobody clears the person of the entries that had one`() {
         val entries = listOf(entry(null, "a"), entry("Juan", "b"))
         assertEquals(listOf("b"), assignableEntries(entries, null, onlyUnassigned = false).map { it.id })
     }
 
-    @Test fun `assigning only the unassigned to the family changes nothing`() {
+    @Test fun `assigning only the unassigned to nobody changes nothing`() {
         val entries = listOf(entry(null, "a"), entry("Juan", "b"))
         assertTrue(assignableEntries(entries, null, onlyUnassigned = true).isEmpty())
+    }
+
+    @Test fun `assigning the unassigned to the family does change them, which used to be a silent no-op`() {
+        val entries = listOf(entry(null, "a"), entry("Juan", "b"), entry("familia", "c"))
+        assertEquals(listOf("a"), assignableEntries(entries, "Familia", onlyUnassigned = true).map { it.id })
+        assertEquals(listOf("a", "b"), assignableEntries(entries, "Familia", onlyUnassigned = false).map { it.id })
     }
 }

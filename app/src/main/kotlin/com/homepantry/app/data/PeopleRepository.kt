@@ -30,17 +30,17 @@ class PeopleRepository(
         awaitClose { registration.remove() }
     }
 
-    /** Crea el documento de [name] (null = la familia) si no existe, sin tocar su color. */
-    suspend fun ensure(name: String?) {
+    /** Crea el documento de [name] si no existe, sin tocar su color. */
+    suspend fun ensure(name: String) {
         collection().document(personDocId(name))
-            .set(mapOf("name" to (name ?: FAMILY_NAME)), SetOptions.merge())
+            .set(mapOf("name" to name), SetOptions.merge())
             .await()
     }
 
-    /** Guarda el color de [name] (null = la familia), creando el documento si hace falta. */
-    suspend fun setColor(name: String?, color: PersonColor) {
+    /** Guarda el color de [name], creando el documento si hace falta. */
+    suspend fun setColor(name: String, color: PersonColor) {
         collection().document(personDocId(name))
-            .set(mapOf("name" to (name ?: FAMILY_NAME), "color" to color.name), SetOptions.merge())
+            .set(mapOf("name" to name, "color" to color.name), SetOptions.merge())
             .await()
     }
 }

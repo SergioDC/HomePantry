@@ -13,8 +13,8 @@ import com.homepantry.app.data.colorFor
 import com.homepantry.app.ui.theme.Mint400
 
 /**
- * El color elegido para [person] (null = la familia) como `Color` de Compose, en el tono claro que
- * se lee sobre el tema oscuro de la app, o null si nadie ha elegido ninguno.
+ * El color elegido para [person] como `Color` de Compose (null si no hay persona o no eligieron), en el tono claro que
+ * se lee sobre el tema oscuro de la app.
  */
 fun chosenTint(person: String?, people: List<Person>): Color? =
     colorFor(person, people)?.let { Color(it.onDark) }

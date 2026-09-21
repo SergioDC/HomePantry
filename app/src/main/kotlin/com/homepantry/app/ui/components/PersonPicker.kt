@@ -26,9 +26,9 @@ import com.homepantry.app.data.personKey
 import com.homepantry.app.ui.theme.Mint400
 
 /**
- * Selector de «Para quién»: un chip para la familia y otro por cada persona conocida (con su
- * color), más un campo para escribir un nombre nuevo. Lo escrito vive en [personText] (en blanco o
- * «familia» es toda la familia); quien lo use obtiene la persona a guardar con `normalizePerson`.
+ * Selector de «Para quién»: un chip «Sin asignar» y otro por cada persona conocida, Familia incluida
+ * (con su color), más un campo para escribir un nombre nuevo. Lo escrito vive en [personText] (en
+ * blanco es «sin asignar»); quien lo use obtiene la persona a guardar con `normalizePerson`.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -48,8 +48,7 @@ fun PersonPicker(
             FilterChip(
                 selected = person == null,
                 onClick = { onPersonText("") },
-                label = { Text(stringResource(R.string.menu_import_family)) },
-                leadingIcon = chosenTint(null, people)?.let { tint -> { ColorDot(tint) } }
+                label = { Text(stringResource(R.string.menu_person_unassigned)) }
             )
             names.forEach { name ->
                 FilterChip(

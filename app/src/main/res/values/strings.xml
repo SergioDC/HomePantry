@@ -255,8 +255,8 @@
     <string name="menu_import_title">Revisa el menú</string>
     <string name="menu_import_subtitle">Comprueba el mes y corrige lo que Gemini haya leído mal. Todo va a la comida de cada día.</string>
     <string name="menu_import_for_whom">Para quién</string>
-    <string name="menu_import_family">Familia</string>
-    <string name="menu_import_person_hint">Otra persona (vacío = Familia)</string>
+    <string name="menu_person_unassigned">Sin asignar</string>
+    <string name="menu_import_person_hint">Otra persona (vacío = sin asignar)</string>
     <string name="menu_import_month_cd">Mes del menú</string>
     <string name="menu_assign_month">Asignar el mes a…</string>
     <string name="menu_assign_day">Asignar el día a…</string>

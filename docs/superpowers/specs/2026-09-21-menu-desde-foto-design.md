@@ -197,9 +197,9 @@ Decidido en un segundo brainstorming, sobre lo anterior:
 
 | Tema | Decisión |
 |---|---|
-| Quién | Nombres libres. `Familia` es el valor por defecto y equivale a no tener persona. No hay lista que mantener ni pantalla nueva. |
+| Quién | Nombres libres, sin lista que mantener. (`Familia` dejó de ser «sin persona»: ver la corrección del final.) |
 | Alcance | Una persona para toda la importación (un selector en la hoja de revisión), no por día ni por plato. |
-| Modelo | `MealEntry.person: String? = null` (`null` = Familia). Las entradas anteriores siguen valiendo sin migrar; `Dish` no cambia. |
+| Modelo | `MealEntry.person: String? = null` (`null` = sin asignar). Las entradas anteriores siguen valiendo sin migrar; `Dish` no cambia. |
 | Duplicados | La clave para omitir lo ya presente pasa a ser día + comida + plato normalizado + persona normalizada: el mismo plato para otra persona el mismo día no es un duplicado. Los platos siguen compartidos entre personas. |
 | Nombres | En blanco o «familia» = Familia. Un nombre que coincide con uno ya usado (sin mayúsculas ni acentos) reutiliza su grafía. Máximo 30 caracteres. La clave de comparación no quita la «s» final (Marco y Marcos son distintos). |
 | Atajos | Los chips de la hoja de revisión salen de las entradas que el calendario tiene cargadas; si la persona no está ahí se escribe una vez. |
@@ -239,3 +239,20 @@ Decidido en un tercer brainstorming, sobre la ampliación anterior (que dejaba f
 (`PeopleLogicTest`) y la paleta (`PersonColorTest`).
 **Archivos nuevos:** `Person.kt`, `PersonColor.kt`, `PeopleRepository.kt`, `PersonPicker.kt`,
 `AssignPersonDialog.kt`, `PeopleColorsSheet.kt`. `PersonLabel` recibe ahora las personas para colorear.
+
+## Corrección: Familia es una persona, no «sin asignar»
+
+En las ampliaciones anteriores `null` significaba «toda la familia». Eso confundía dos cosas: una
+entrada sin asignar y una asignada a Familia se guardaban igual, así que asignar a Familia no
+cambiaba nada y Familia nunca salía en el calendario.
+
+- **`null` = sin asignar** (sin etiqueta ni tinte, como cualquier plato sin persona).
+- **Familia es una persona más**: se guarda como `"Familia"` en la entrada, tiene su documento y su
+  color, y sale con etiqueta y chips teñidos en el calendario, la hoja del día y la imagen.
+- `normalizePerson("familia")` devuelve siempre `"Familia"`; en blanco devuelve `null`.
+- `knownPeople` ofrece Familia siempre, la primera, aunque nadie se haya asignado aún.
+- `colorFor(null)` es `null`: lo sin asignar no tiene color.
+- El selector «Para quién» tiene un chip **«Sin asignar»** (el de por defecto) y Familia sale entre
+  las personas.
+- Las entradas que ya existían siguen «sin asignar»: para que salgan como Familia hay que
+  asignarlas («Asignar el mes a…» → Familia).

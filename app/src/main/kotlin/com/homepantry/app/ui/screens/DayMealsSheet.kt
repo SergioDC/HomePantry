@@ -72,7 +72,7 @@ fun DayMealsSheet(
     var text by rememberSaveable { mutableStateOf("") }
     var editing by remember { mutableStateOf<MealEntry?>(null) }
     var lastDeleted by remember { mutableStateOf<MealEntry?>(null) }
-    // A quién va lo que se añade o se edita; en blanco (o «familia») es toda la familia.
+    // A quién va lo que se añade o se edita; en blanco es «sin asignar».
     var personText by remember { mutableStateOf("") }
     val names = remember(state.entries, state.people) { knownPeople(state.entries, state.people) }
     val person = normalizePerson(personText, names)
@@ -82,7 +82,7 @@ fun DayMealsSheet(
     val suggestions = if (text.isBlank()) emptyList() else suggestDishes(text, state.dishes)
 
     fun resetInput() {
-        // Tras editar se vuelve a Familia; al añadir varios platos seguidos se conserva la persona elegida.
+        // Tras editar se vuelve a «sin asignar»; al añadir varios platos seguidos se conserva la persona elegida.
         if (editing != null) personText = ""
         text = ""
         editing = null

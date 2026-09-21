@@ -16,7 +16,8 @@ enum class MealSlot(val label: String) {
  * renombra, la entrada sigue mostrándose. `dishId == null` (o un id que ya no existe)
  * significa texto libre. `date` es "yyyy-MM-dd" para poder consultar una semana por rango.
  * `person` es a quién va la entrada (un nombre libre, p. ej. el niño del menú del comedor); `null`
- * significa toda la familia, así que las entradas anteriores a este campo siguen valiendo.
+ * significa que aún no está asignada a nadie (la familia es una persona más, `"Familia"`), así que
+ * las entradas anteriores a este campo siguen valiendo.
  */
 data class MealEntry(
     @DocumentId
