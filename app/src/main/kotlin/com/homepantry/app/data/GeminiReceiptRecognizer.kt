@@ -208,13 +208,13 @@ private suspend fun <T> callGeminiChecked(call: suspend () -> Response<T>): Resp
         callGeminiApi(call).also { ensureSuccessful(it) }
     }
 
-private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
+internal suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
     val response = callGeminiChecked { GeminiReceiptClient.api().createInteraction(apiKey, request) }
     return response.body() ?: throw GeminiResponseException("cuerpo de respuesta vacío")
 }
 
 /**
- * Prepara la foto del ticket para Gemini con la misma calidad que el OCR
+ * Prepara una foto (de un ticket o de un menú) para Gemini con la misma calidad que el OCR
  * clásico ([MAX_OCR_SIDE] + orientación EXIF), no con la compresión pensada
  * para subir fotos a almacenamiento ([ImageCompressor], 1024px y sin EXIF):
  * esta función existe justamente para evitar los emparejamientos
@@ -223,7 +223,7 @@ private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest
  * la API no admite un "hint" de rotación aparte, así que los píxeles se rotan
  * físicamente antes de codificar.
  */
-private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
+internal fun loadPhotoBytesForGemini(context: Context, imageUri: Uri): ByteArray {
     val rotationDegrees = readExifRotationDegrees(context, imageUri)
 
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -239,7 +239,7 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
     val bitmap = context.contentResolver.openInputStream(imageUri).use { stream ->
         BitmapFactory.decodeStream(stream, null, decodeOptions)
-    } ?: throw GeminiResponseException("no se pudo decodificar la foto del ticket")
+    } ?: throw GeminiResponseException("no se pudo decodificar la foto")
 
     val rotated = if (rotationDegrees != 0) {
         val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
@@ -262,7 +262,7 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
 /** Manda una foto de ticket a Gemini y devuelve el ticket ya estructurado (supermercado y líneas; sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
 suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedReceipt {
     val imageBytes = try {
-        loadReceiptImageBytes(context, imageUri)
+        loadPhotoBytesForGemini(context, imageUri)
     } catch (e: GeminiReceiptException) {
         throw e
     } catch (e: Exception) {
