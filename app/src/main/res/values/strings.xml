@@ -246,5 +246,25 @@
     <string name="menu_duplicate_merge">Combinar</string>
     <string name="menu_duplicate_done">Semana duplicada</string>
     <string name="menu_share_chooser">Compartir menú</string>
+    <string name="menu_import_action">Importar menú desde foto</string>
+    <string name="menu_import_dialog_camera">Sacar foto</string>
+    <string name="menu_import_dialog_gallery">Elegir de galería</string>
+    <string name="menu_import_no_key">Para importar el menú desde una foto hace falta tu clave de Gemini. Añádela en Ajustes, en «Interpretación de tickets con IA».</string>
+    <string name="menu_import_empty">No he encontrado platos en la foto. Prueba con mejor luz o con la foto entera del menú.</string>
+    <string name="menu_import_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
+    <string name="menu_import_title">Revisa el menú</string>
+    <string name="menu_import_subtitle">Comprueba el mes y corrige lo que Gemini haya leído mal. Todo va a la comida de cada día.</string>
+    <string name="menu_import_month_cd">Mes del menú</string>
+    <string name="menu_import_use_detected">Usar %1$s (leído en la foto)</string>
+    <string name="menu_import_weekend_warning">%2$d días del menú caen en fin de semana en %1$s. ¿Es el mes correcto?</string>
+    <string name="menu_import_day_missing">%1$d (no existe en este mes)</string>
+    <string name="menu_import_new_dish">Plato nuevo</string>
+    <string name="menu_import_remove_dish_cd">Quitar plato</string>
+    <string name="menu_import_confirm">Importar (%1$d)</string>
+    <string name="menu_import_failed">No se pudo guardar el menú. Inténtalo de nuevo.</string>
+    <string name="menu_import_summary_added">Añadidos: %1$d</string>
+    <string name="menu_import_summary_new">platos nuevos: %1$d</string>
+    <string name="menu_import_summary_present">ya estaban: %1$d</string>
+    <string name="menu_import_summary_dropped">días descartados: %1$d</string>
     <!-- /Menú semanal -->
 </resources>

@@ -10,11 +10,14 @@ import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MealEntry
 import com.homepantry.app.data.MealSlot
+import com.homepantry.app.data.MenuImportPlan
 import com.homepantry.app.data.MissingChoice
+import com.homepantry.app.data.ParsedMenu
 import com.homepantry.app.data.itemsForMissing
 import com.homepantry.app.data.matchDish
 import com.homepantry.app.data.nextEntryOrder
 import com.homepantry.app.data.planDuplicateWeek
+import com.homepantry.app.data.planMenuImport
 import com.homepantry.app.data.visibleRange
 import java.time.LocalDate
 import java.time.YearMonth
@@ -177,6 +180,31 @@ class MenuViewModel(
     fun deleteEntry(entry: MealEntry) = launchCatching { entriesRepository.deleteEntry(entry.id) }
 
     fun restoreEntry(entry: MealEntry) = launchCatching { entriesRepository.restoreEntry(entry) }
+
+    // ---- Importar menú desde una foto ----
+
+    /**
+     * Vuelca [menu] (ya revisado) en la comida de [month] y espera a que termine. Lee las entradas
+     * del mes en el momento, no de la caché de la pantalla: el mes elegido puede no estar cargado.
+     * Escribe primero los platos nuevos y después las entradas, para que ninguna apunte a un plato
+     * que no llegó a crearse. Devuelve el plan aplicado (para el resumen) o null si falla, con el
+     * error publicado. Corre en el scope del ViewModel: cerrar la hoja no lo deja a medias.
+     */
+    suspend fun importMenu(menu: ParsedMenu, month: YearMonth): MenuImportPlan? =
+        viewModelScope.async {
+            try {
+                val existing = entriesRepository.getRange(month.atDay(1).toString(), month.atEndOfMonth().toString())
+                val plan = planMenuImport(menu, month, dishes.value, existing, dishesRepository::newId, userName)
+                dishesRepository.addDishes(plan.newDishes)
+                entriesRepository.applyBatch(plan.entries, emptyList())
+                plan
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error.value = e.message ?: e.toString()
+                null
+            }
+        }.await()
 
     // ---- Duplicar semana ----
 

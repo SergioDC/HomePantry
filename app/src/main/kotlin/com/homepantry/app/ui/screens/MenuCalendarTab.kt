@@ -89,7 +89,8 @@ fun MenuCalendarTab(
     viewModel: MenuViewModel,
     onOpenDay: (LocalDate) -> Unit,
     onShare: (LocalDate) -> Unit,
-    onDuplicate: (LocalDate) -> Unit
+    onDuplicate: (LocalDate) -> Unit,
+    onImport: () -> Unit
 ) {
     val today = remember { LocalDate.now() }
     val mode = state.position.mode
@@ -147,12 +148,12 @@ fun MenuCalendarTab(
                 IconButton(onClick = { scope.launch { goTo(pagerState.currentPage + 1) } }) {
                     Icon(Icons.Filled.ChevronRight, contentDescription = stringResource(R.string.menu_next_cd))
                 }
-                if (mode == CalendarMode.WEEK) {
-                    Box {
-                        IconButton(onClick = { menuOpen = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_more_cd))
-                        }
-                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.menu_more_cd))
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        if (mode == CalendarMode.WEEK) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.menu_share_week)) },
                                 onClick = {
@@ -168,6 +169,13 @@ fun MenuCalendarTab(
                                 }
                             )
                         }
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_import_action)) },
+                            onClick = {
+                                menuOpen = false
+                                onImport()
+                            }
+                        )
                     }
                 }
             }
