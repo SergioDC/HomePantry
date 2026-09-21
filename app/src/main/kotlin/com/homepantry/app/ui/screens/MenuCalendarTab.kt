@@ -60,6 +60,7 @@ import com.homepantry.app.data.MealEntry
 import com.homepantry.app.data.MealSlot
 import com.homepantry.app.data.PAGER_ANCHOR_PAGE
 import com.homepantry.app.data.PAGER_PAGE_COUNT
+import com.homepantry.app.data.Person
 import com.homepantry.app.data.entriesFor
 import com.homepantry.app.data.groupByPerson
 import com.homepantry.app.data.monthGrid
@@ -75,6 +76,7 @@ import com.homepantry.app.ui.MenuUiState
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.components.PersonLabel
 import com.homepantry.app.ui.components.SegmentedToggle
+import com.homepantry.app.ui.components.chosenTint
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlin.math.abs
@@ -92,7 +94,9 @@ fun MenuCalendarTab(
     onOpenDay: (LocalDate) -> Unit,
     onShare: (LocalDate) -> Unit,
     onDuplicate: (LocalDate) -> Unit,
-    onImport: () -> Unit
+    onImport: () -> Unit,
+    onAssignMonth: () -> Unit,
+    onPeopleColors: () -> Unit
 ) {
     val today = remember { LocalDate.now() }
     val mode = state.position.mode
@@ -178,6 +182,20 @@ fun MenuCalendarTab(
                                 onImport()
                             }
                         )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_assign_month)) },
+                            onClick = {
+                                menuOpen = false
+                                onAssignMonth()
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.menu_colors_action)) },
+                            onClick = {
+                                menuOpen = false
+                                onPeopleColors()
+                            }
+                        )
                     }
                 }
             }
@@ -203,6 +221,7 @@ fun MenuCalendarTab(
                     CalendarMode.WEEK -> WeekPage(
                         weekStart = pageWeekStart(today, page, PAGER_ANCHOR_PAGE),
                         entries = state.entries,
+                        people = state.people,
                         today = today,
                         onOpenDay = onOpenDay
                     )
@@ -222,6 +241,7 @@ fun MenuCalendarTab(
 private fun WeekPage(
     weekStart: LocalDate,
     entries: List<MealEntry>,
+    people: List<Person>,
     today: LocalDate,
     onOpenDay: (LocalDate) -> Unit
 ) {
@@ -259,6 +279,7 @@ private fun WeekPage(
             DayRow(
                 day = day,
                 entries = byDate[day.toString()].orEmpty(),
+                people = people,
                 isToday = day == today,
                 onClick = { onOpenDay(day) }
             )
@@ -268,7 +289,13 @@ private fun WeekPage(
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-private fun DayRow(day: LocalDate, entries: List<MealEntry>, isToday: Boolean, onClick: () -> Unit) {
+private fun DayRow(
+    day: LocalDate,
+    entries: List<MealEntry>,
+    people: List<Person>,
+    isToday: Boolean,
+    onClick: () -> Unit
+) {
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
@@ -312,8 +339,10 @@ private fun DayRow(day: LocalDate, entries: List<MealEntry>, isToday: Boolean, o
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 groupByPerson(slotEntries).forEach { group ->
-                                    group.person?.let { PersonLabel(it) }
-                                    group.entries.forEach { MealChip(it.name) }
+                                    group.person?.let { PersonLabel(it, people) }
+                                    // El color elegido tiñe también los chips; sin elegir, se ven como siempre.
+                                    val tint = chosenTint(group.person, people)
+                                    group.entries.forEach { MealChip(it.name, tint) }
                                 }
                             }
                         }
@@ -325,9 +354,13 @@ private fun DayRow(day: LocalDate, entries: List<MealEntry>, isToday: Boolean, o
 }
 
 @Composable
-private fun MealChip(name: String) {
+private fun MealChip(name: String, tint: Color?) {
     // secondaryContainer is nearly the same as the card / today background, so tint the primary instead.
-    Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)) {
+    // With a person color chosen, tint with that color so whose dish it is shows at a glance.
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = (tint ?: MaterialTheme.colorScheme.primary).copy(alpha = if (tint != null) 0.35f else 0.4f)
+    ) {
         Text(
             text = name,
             style = MaterialTheme.typography.labelMedium,

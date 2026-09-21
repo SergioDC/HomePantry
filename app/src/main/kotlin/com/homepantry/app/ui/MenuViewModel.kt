@@ -13,6 +13,10 @@ import com.homepantry.app.data.MealSlot
 import com.homepantry.app.data.MenuImportPlan
 import com.homepantry.app.data.MissingChoice
 import com.homepantry.app.data.ParsedMenu
+import com.homepantry.app.data.PeopleRepository
+import com.homepantry.app.data.Person
+import com.homepantry.app.data.PersonColor
+import com.homepantry.app.data.assignableEntries
 import com.homepantry.app.data.itemsForMissing
 import com.homepantry.app.data.matchDish
 import com.homepantry.app.data.nextEntryOrder
@@ -43,6 +47,8 @@ data class MenuUiState(
     /** Entradas del rango visible (página actual, anterior y siguiente). */
     val entries: List<MealEntry> = emptyList(),
     val position: CalendarPosition = CalendarPosition(CalendarMode.WEEK, LocalDate.now()),
+    /** Personas a las que se asignan platos, con su color (SPEC 2026-09-21). */
+    val people: List<Person> = emptyList(),
     val error: String? = null
 )
 
@@ -55,16 +61,18 @@ class MenuViewModel(
     private val dishesRepository: DishesRepository,
     private val entriesRepository: MealEntriesRepository,
     private val itemsRepository: ItemsRepository,
+    private val peopleRepository: PeopleRepository,
     private val userName: String
 ) : ViewModel() {
 
     private val dishes = MutableStateFlow<List<Dish>>(emptyList())
     private val entries = MutableStateFlow<List<MealEntry>>(emptyList())
     private val position = MutableStateFlow(CalendarPosition(CalendarMode.WEEK, LocalDate.now()))
+    private val people = MutableStateFlow<List<Person>>(emptyList())
     private val error = MutableStateFlow<String?>(null)
 
-    val state: StateFlow<MenuUiState> = combine(dishes, entries, position, error) { d, e, p, err ->
-        MenuUiState(dishes = d, entries = e, position = p, error = err)
+    val state: StateFlow<MenuUiState> = combine(dishes, entries, position, people, error) { d, e, p, pe, err ->
+        MenuUiState(dishes = d, entries = e, position = p, people = pe, error = err)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, MenuUiState())
 
     init {
@@ -81,6 +89,11 @@ class MenuViewModel(
                     entriesRepository.observeRange(from, to).catch { e -> error.value = e.message }
                 }
                 .collect { entries.value = it }
+        }
+        viewModelScope.launch {
+            peopleRepository.observePeople()
+                .catch { e -> error.value = e.message }
+                .collect { people.value = it }
         }
     }
 
@@ -152,8 +165,11 @@ class MenuViewModel(
 
     // ---- Entradas del menú ----
 
-    /** Añade texto al menú; si coincide con un plato creado se enlaza a él, si no queda como texto libre. */
-    fun addEntry(date: LocalDate, slot: MealSlot, text: String) = launchCatching {
+    /**
+     * Añade texto al menú; si coincide con un plato creado se enlaza a él, si no queda como texto
+     * libre. [person] es a quién va (null = la familia), ya normalizado con `normalizePerson`.
+     */
+    fun addEntry(date: LocalDate, slot: MealSlot, text: String, person: String?) = launchCatching {
         val name = text.trim()
         if (name.isEmpty()) return@launchCatching
         val dish = matchDish(name, dishes.value)
@@ -165,17 +181,63 @@ class MenuViewModel(
                 dishId = dish?.id,
                 name = dish?.name ?: name,
                 order = nextEntryOrder(entries.value, key, slot),
-                addedBy = userName
+                addedBy = userName,
+                person = person
             )
         )
+        person?.let { peopleRepository.ensure(it) }
     }
 
-    fun editEntry(entry: MealEntry, text: String) = launchCatching {
+    fun editEntry(entry: MealEntry, text: String, person: String?) = launchCatching {
         val name = text.trim()
         if (name.isEmpty()) return@launchCatching
         val dish = matchDish(name, dishes.value)
-        entriesRepository.updateEntry(entry.copy(dishId = dish?.id, name = dish?.name ?: name))
+        entriesRepository.updateEntry(entry.copy(dishId = dish?.id, name = dish?.name ?: name, person = person))
+        person?.let { peopleRepository.ensure(it) }
     }
+
+    // ---- Personas ----
+
+    /** Guarda el color de [person] (null = la familia), visible para toda la casa. */
+    fun setPersonColor(person: String?, color: PersonColor) = launchCatching {
+        peopleRepository.setColor(person, color)
+    }
+
+    /**
+     * Cuántas entradas de [from] a [to] (ambos incluidos) cambiaría [assignPerson], para avisar
+     * antes de aplicarlo, o null si no se ha podido consultar.
+     */
+    suspend fun countAssignable(from: LocalDate, to: LocalDate, person: String?, onlyUnassigned: Boolean): Int? =
+        try {
+            assignableEntries(entriesRepository.getRange(from.toString(), to.toString()), person, onlyUnassigned).size
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
+
+    /**
+     * Asigna [person] (null = la familia) a las entradas de [from] a [to] (ambos incluidos) y espera
+     * a que termine. Lee el rango en el momento, no de la caché de la pantalla. Devuelve cuántas
+     * cambió, o null si falla, con el error publicado. Corre en el scope del ViewModel: cerrar el
+     * diálogo no lo deja a medias.
+     */
+    suspend fun assignPerson(from: LocalDate, to: LocalDate, person: String?, onlyUnassigned: Boolean): Int? =
+        viewModelScope.async {
+            try {
+                val toChange = assignableEntries(
+                    entriesRepository.getRange(from.toString(), to.toString()), person, onlyUnassigned
+                )
+                entriesRepository.updatePerson(toChange.map { it.id }, person)
+                person?.let { peopleRepository.ensure(it) }
+                toChange.size
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error.value = e.message ?: e.toString()
+                null
+            }
+        }.await()
 
     fun deleteEntry(entry: MealEntry) = launchCatching { entriesRepository.deleteEntry(entry.id) }
 
@@ -198,6 +260,7 @@ class MenuViewModel(
                 val plan = planMenuImport(menu, month, dishes.value, existing, dishesRepository::newId, userName, person)
                 dishesRepository.addDishes(plan.newDishes)
                 entriesRepository.applyBatch(plan.entries, emptyList())
+                person?.let { peopleRepository.ensure(it) }
                 plan
             } catch (e: CancellationException) {
                 throw e

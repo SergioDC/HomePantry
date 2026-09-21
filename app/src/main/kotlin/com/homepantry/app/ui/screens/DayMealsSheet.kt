@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -42,10 +44,13 @@ import com.homepantry.app.data.MealSlot
 import com.homepantry.app.data.dayLabel
 import com.homepantry.app.data.entriesFor
 import com.homepantry.app.data.groupByPerson
+import com.homepantry.app.data.knownPeople
+import com.homepantry.app.data.normalizePerson
 import com.homepantry.app.data.suggestDishes
 import com.homepantry.app.ui.MenuUiState
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.components.PersonLabel
+import com.homepantry.app.ui.components.PersonPicker
 import java.time.LocalDate
 
 /**
@@ -59,6 +64,7 @@ fun DayMealsSheet(
     date: LocalDate,
     state: MenuUiState,
     viewModel: MenuViewModel,
+    onAssignDay: () -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -66,12 +72,18 @@ fun DayMealsSheet(
     var text by rememberSaveable { mutableStateOf("") }
     var editing by remember { mutableStateOf<MealEntry?>(null) }
     var lastDeleted by remember { mutableStateOf<MealEntry?>(null) }
+    // A quién va lo que se añade o se edita; en blanco (o «familia») es toda la familia.
+    var personText by remember { mutableStateOf("") }
+    val names = remember(state.entries, state.people) { knownPeople(state.entries, state.people) }
+    val person = normalizePerson(personText, names)
 
     val slot = MealSlot.values()[slotIndex]
     val dayEntries = entriesFor(state.entries, date.toString(), slot)
     val suggestions = if (text.isBlank()) emptyList() else suggestDishes(text, state.dishes)
 
     fun resetInput() {
+        // Tras editar se vuelve a Familia; al añadir varios platos seguidos se conserva la persona elegida.
+        if (editing != null) personText = ""
         text = ""
         editing = null
     }
@@ -82,10 +94,19 @@ fun DayMealsSheet(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
-                .imePadding(),
+                .imePadding()
+                // Con el selector de persona la hoja puede no caber en pantallas pequeñas.
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = dayLabel(date), style = MaterialTheme.typography.titleLarge)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = dayLabel(date), style = MaterialTheme.typography.titleLarge)
+                TextButton(onClick = onAssignDay) { Text(stringResource(R.string.menu_assign_day)) }
+            }
             TabRow(selectedTabIndex = slotIndex) {
                 MealSlot.values().forEachIndexed { index, mealSlot ->
                     Tab(
@@ -112,8 +133,10 @@ fun DayMealsSheet(
                 }
                 groupByPerson(dayEntries).forEach { group ->
                     // El nombre de la persona va una sola vez sobre sus platos, no en cada fila.
-                    group.person?.let { person ->
-                        item(key = "person/$person") { PersonLabel(person, Modifier.padding(top = 8.dp)) }
+                    group.person?.let { groupPerson ->
+                        item(key = "person/$groupPerson") {
+                            PersonLabel(groupPerson, state.people, Modifier.padding(top = 8.dp))
+                        }
                     }
                     items(group.entries, key = { it.id }) { entry ->
                         Row(
@@ -128,6 +151,7 @@ fun DayMealsSheet(
                             IconButton(onClick = {
                                 editing = entry
                                 text = entry.name
+                                personText = entry.person.orEmpty()
                             }) {
                                 Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.menu_entry_edit_cd))
                             }
@@ -175,6 +199,16 @@ fun DayMealsSheet(
             suggestions.forEach { dish ->
                 TextButton(onClick = { text = dish.name }) { Text(dish.name) }
             }
+            // El selector solo aparece cuando hay algo que añadir o editar, para no recargar la hoja.
+            if (text.isNotBlank() || editing != null) {
+                Text(text = stringResource(R.string.menu_import_for_whom), style = MaterialTheme.typography.titleSmall)
+                PersonPicker(
+                    personText = personText,
+                    onPersonText = { personText = it },
+                    names = names,
+                    people = state.people
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
                 horizontalArrangement = Arrangement.End
@@ -188,8 +222,8 @@ fun DayMealsSheet(
                     enabled = text.isNotBlank(),
                     onClick = {
                         val target = editing
-                        if (target != null) viewModel.editEntry(target, text)
-                        else viewModel.addEntry(date, slot, text)
+                        if (target != null) viewModel.editEntry(target, text, person)
+                        else viewModel.addEntry(date, slot, text, person)
                         resetInput()
                     }
                 ) {

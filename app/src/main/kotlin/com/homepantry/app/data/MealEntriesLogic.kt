@@ -63,7 +63,7 @@ fun resolvedDishId(entry: MealEntry, dishes: List<Dish>): String? =
 
 // ---- Personas (SPEC 2026-09-21: menú asignado a una persona) ----
 
-private const val FAMILY_KEY = "familia"
+internal const val FAMILY_KEY = "familia"
 const val MAX_PERSON_LENGTH = 30
 
 /**
@@ -105,8 +105,26 @@ fun normalizePerson(input: String, known: List<String>): String? {
     return known.firstOrNull { personKey(it) == key } ?: cleaned.replaceFirstChar { it.uppercase() }
 }
 
-/** Personas ya usadas en [entries], sin repetir (primera grafía) y ordenadas, para ofrecerlas como atajo. */
-fun knownPeople(entries: List<MealEntry>): List<String> =
-    entries.mapNotNull { it.person?.trim()?.takeIf { name -> name.isNotEmpty() } }
+/**
+ * Personas para ofrecer como atajo: las guardadas en [people] más las que aparezcan en [entries]
+ * (por si alguna entrada es anterior a su documento), sin repetir (primera grafía, con la de
+ * [people] por delante), sin la familia y ordenadas.
+ */
+fun knownPeople(entries: List<MealEntry>, people: List<Person> = emptyList()): List<String> =
+    (people.map { it.name } + entries.mapNotNull { it.person })
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && personKey(it) != FAMILY_KEY }
         .distinctBy { personKey(it) }
         .sortedBy { personKey(it) }
+
+/**
+ * Entradas de [entries] que hay que cambiar para asignarlas a [person] (null = la familia): las que
+ * ya son de esa persona no se tocan, y con [onlyUnassigned] tampoco las que ya son de otra.
+ */
+fun assignableEntries(entries: List<MealEntry>, person: String?, onlyUnassigned: Boolean): List<MealEntry> {
+    val target = personKey(person.orEmpty())
+    return entries.filter { entry ->
+        val current = personKey(entry.person.orEmpty())
+        (!onlyUnassigned || current.isEmpty()) && current != target
+    }
+}

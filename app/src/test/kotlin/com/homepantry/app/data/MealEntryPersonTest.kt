@@ -90,3 +90,77 @@ class MealEntryPersonTest {
         assertEquals(listOf("ana", "Pepe"), knownPeople(entries))
     }
 }
+
+class PeopleLogicTest {
+    private fun entry(person: String?, id: String = "e", order: Int = 0) =
+        MealEntry(id = id, date = "2026-09-07", slot = MealSlot.LUNCH.name, name = "Plato $id", order = order, person = person)
+
+    // ---- personDocId ----
+
+    @Test fun `the document id of a person ignores case and accents, and blank or family is the family id`() {
+        assertEquals("jose", personDocId("José"))
+        assertEquals("jose", personDocId("  JOSE "))
+        assertEquals("familia", personDocId(null))
+        assertEquals("familia", personDocId(""))
+        assertEquals("familia", personDocId("Familia"))
+    }
+
+    @Test fun `the document id never contains a slash, which Firestore would read as a path`() {
+        assertEquals("a-b", personDocId("A/B"))
+    }
+
+    // ---- colorFor ----
+
+    @Test fun `a person gets the color stored for them, whatever the case`() {
+        val people = listOf(Person(id = "pepe", name = "Pepe", color = "CORAL"))
+        assertEquals(PersonColor.CORAL, colorFor("Pepe", people))
+        assertEquals(PersonColor.CORAL, colorFor("PEPE", people))
+    }
+
+    @Test fun `no person means the family and uses the family color`() {
+        val people = listOf(Person(id = "familia", name = "Familia", color = "SKY"))
+        assertEquals(PersonColor.SKY, colorFor(null, people))
+    }
+
+    @Test fun `there is no color for someone without a document, without a color or with an unknown one`() {
+        val people = listOf(Person(id = "ana", name = "Ana"), Person(id = "juan", name = "Juan", color = "FUCSIA"))
+        assertNull(colorFor("Pepe", people))
+        assertNull(colorFor("Ana", people))
+        assertNull(colorFor("Juan", people))
+        assertNull(colorFor(null, people))
+    }
+
+    // ---- knownPeople con los documentos de personas ----
+
+    @Test fun `known people join the stored ones with those found in entries, without repeating and without the family`() {
+        val people = listOf(
+            Person(id = "familia", name = "Familia", color = "SKY"),
+            Person(id = "juan", name = "Juan"),
+            Person(id = "pepe", name = "Pepe")
+        )
+        val entries = listOf(entry("pepe"), entry("Ana"), entry(null))
+        assertEquals(listOf("Ana", "Juan", "Pepe"), knownPeople(entries, people))
+    }
+
+    // ---- assignableEntries ----
+
+    @Test fun `assigning only the unassigned leaves alone what already belongs to someone`() {
+        val entries = listOf(entry(null, "a"), entry("Juan", "b"), entry("  ", "c"), entry("Pepe", "d"))
+        assertEquals(listOf("a", "c"), assignableEntries(entries, "Pepe", onlyUnassigned = true).map { it.id })
+    }
+
+    @Test fun `assigning everything skips the entries that already have that person`() {
+        val entries = listOf(entry(null, "a"), entry("Juan", "b"), entry("pepe", "c"))
+        assertEquals(listOf("a", "b"), assignableEntries(entries, "Pepe", onlyUnassigned = false).map { it.id })
+    }
+
+    @Test fun `assigning to the family clears the person of the entries that had one`() {
+        val entries = listOf(entry(null, "a"), entry("Juan", "b"))
+        assertEquals(listOf("b"), assignableEntries(entries, null, onlyUnassigned = false).map { it.id })
+    }
+
+    @Test fun `assigning only the unassigned to the family changes nothing`() {
+        val entries = listOf(entry(null, "a"), entry("Juan", "b"))
+        assertTrue(assignableEntries(entries, null, onlyUnassigned = true).isEmpty())
+    }
+}

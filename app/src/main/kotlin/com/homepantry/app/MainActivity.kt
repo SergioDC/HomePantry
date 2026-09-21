@@ -47,6 +47,7 @@ import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
+import com.homepantry.app.data.PeopleRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
@@ -164,6 +165,7 @@ fun ListaDeLaCasaApp() {
                         dishesRepository = DishesRepository(firestore, code),
                         entriesRepository = MealEntriesRepository(firestore, code),
                         itemsRepository = ItemsRepository(firestore, code),
+                        peopleRepository = PeopleRepository(firestore, code),
                         userName = name
                     ) as T
                 }

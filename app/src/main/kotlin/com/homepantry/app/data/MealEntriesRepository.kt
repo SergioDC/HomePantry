@@ -52,6 +52,15 @@ class MealEntriesRepository(
         collection().document(entry.id).set(entry).await()
     }
 
+    /** Asigna [person] (null = la familia) a las entradas [ids], en lotes de como mucho 500 operaciones. */
+    suspend fun updatePerson(ids: List<String>, person: String?) {
+        ids.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { id -> batch.update(collection().document(id), "person", person) }
+            batch.commit().await()
+        }
+    }
+
     /** Cuántas entradas del menú usan un plato (para avisar antes de borrarlo). */
     suspend fun countByDish(dishId: String): Int =
         collection().whereEqualTo("dishId", dishId).get().await().size()

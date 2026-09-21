@@ -220,3 +220,22 @@ compartir, de fondo blanco, donde la clara casi no se leería.
 `MenuImport.kt` (parámetro `person`), `MenuViewModel.kt`, `MenuImportSheet.kt`, `MenuScreen.kt`,
 `MenuCalendarTab.kt`, `DayMealsSheet.kt`, `WeekShare.kt`, `ui/components/PersonLabel.kt`, `strings.xml`.
 Tests en `MealEntryPersonTest` y `MenuImportTest`.
+
+## Ampliación: reasignar lo ya metido y colores por persona
+
+Decidido en un tercer brainstorming, sobre la ampliación anterior (que dejaba fuera las dos cosas):
+
+| Tema | Decisión |
+|---|---|
+| Reasignar | Por plato (selector «Para quién» al añadir o editar en la hoja del día), por día («Asignar el día a…» en esa hoja) y por mes («Asignar el mes a…» en el ⋮). |
+| Diálogo de día y mes | Selector de persona, casilla «Solo los que aún no tienen persona» (marcada por defecto, para no pisar lo que ya es de otra) y el número de platos que cambiarán, leído en el momento. Se guarda en lotes de 500. |
+| Personas | Colección `households/{code}/people/{personDocId}` con `name` y `color`. Las reglas ya la cubren. El documento se crea la primera vez que se asigna a alguien; los atajos salen de ahí (unión con lo que traigan las entradas cargadas), así que ya no dependen del rango visible del calendario. |
+| Colores | Paleta fija de 8 (`PersonColor`: menta por defecto, cielo, lila, rosa, coral, ámbar, lima, gris), compartida por toda la casa. Se eligen en «Colores de las personas» (⋮), Familia incluida. |
+| Tonos | Cada color tiene un tono claro para la app oscura y otro oscuro para la imagen blanca de compartir. `PersonColorTest` exige contraste WCAG ≥ 4,5:1 de cada tono contra sus fondos. |
+| Dónde se ve | El color tiñe el nombre de la persona y también sus chips, así Familia se distingue por el tono de sus chips aunque no lleve etiqueta. Sin color elegido todo se ve como antes (nombre en menta, chips normales). |
+| Fuera de alcance | Renombrar o borrar personas, y quitar un color ya elegido (se cambia por otro). |
+
+**Lógica pura con tests:** `personDocId`, `colorFor`, `knownPeople(entries, people)`, `assignableEntries`
+(`PeopleLogicTest`) y la paleta (`PersonColorTest`).
+**Archivos nuevos:** `Person.kt`, `PersonColor.kt`, `PeopleRepository.kt`, `PersonPicker.kt`,
+`AssignPersonDialog.kt`, `PeopleColorsSheet.kt`. `PersonLabel` recibe ahora las personas para colorear.

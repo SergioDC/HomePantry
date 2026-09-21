@@ -31,10 +31,10 @@ object WeekShare {
     private val MINT = 0xFF0F6E56.toInt()
 
     /**
-     * Platos de una franja separados por comas; cada persona con su nombre en menta una sola vez
+     * Platos de una franja separados por comas; cada persona con su nombre en su color una sola vez
      * («Pepe: Lentejas, Fruta») y en su propia línea si hay más de un grupo.
      */
-    private fun slotText(entries: List<MealEntry>): CharSequence {
+    private fun slotText(entries: List<MealEntry>, people: List<Person>): CharSequence {
         if (entries.isEmpty()) return "—"
         val text = SpannableStringBuilder()
         groupByPerson(entries).forEachIndexed { index, group ->
@@ -42,7 +42,8 @@ object WeekShare {
             group.person?.let { person ->
                 val start = text.length
                 text.append("$person:")
-                text.setSpan(ForegroundColorSpan(MINT), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+                val tint = colorFor(person, people)?.onLight?.toInt() ?: MINT
+                text.setSpan(ForegroundColorSpan(tint), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 text.setSpan(StyleSpan(Typeface.BOLD), start, text.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
                 text.append(' ')
             }
@@ -57,8 +58,11 @@ object WeekShare {
         typeface = if (bold) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
     }
 
-    /** Dibuja la semana que empieza en [weekStart]; [entries] puede traer entradas de otras semanas. */
-    fun render(weekStart: LocalDate, entries: List<MealEntry>): Bitmap {
+    /**
+     * Dibuja la semana que empieza en [weekStart]; [entries] puede traer entradas de otras semanas.
+     * Cada persona sale con su color de [people] (el tono oscuro, por el fondo blanco) o en menta.
+     */
+    fun render(weekStart: LocalDate, entries: List<MealEntry>, people: List<Person>): Bitmap {
         val byDate = entries.groupBy { it.date }
         val brandPaint = textPaint(40f, BRAND, bold = true)
         val titlePaint = textPaint(68f, INK, bold = true)
@@ -92,7 +96,7 @@ object WeekShare {
                 y += block(dayLabel(day), dayPaint, MARGIN, contentWidth) + 10
                 val dayEntries = byDate[day.toString()].orEmpty()
                 MealSlot.values().forEach { slot ->
-                    val names = slotText(entriesFor(dayEntries, day.toString(), slot))
+                    val names = slotText(entriesFor(dayEntries, day.toString(), slot), people)
                     val labelHeight = block(slot.label, labelPaint, MARGIN, LABEL_WIDTH)
                     val valueHeight = block(
                         names,

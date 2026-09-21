@@ -45,7 +45,9 @@ import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.ParsedMenu
 import com.homepantry.app.data.WeekShare
 import com.homepantry.app.data.createReceiptCaptureUri
+import com.homepantry.app.data.dayLabel
 import com.homepantry.app.data.knownPeople
+import com.homepantry.app.data.monthLabel
 import com.homepantry.app.data.recognizeMenuWithGemini
 import com.homepantry.app.data.weekDays
 import com.homepantry.app.ui.AppViewModel
@@ -54,6 +56,9 @@ import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+
+/** Qué se asigna a una persona: un día o un mes (de [from] a [to], ambos incluidos) y si se avisa al terminar. */
+private data class AssignScope(val label: String, val from: LocalDate, val to: LocalDate, val announce: Boolean)
 
 /**
  * Pestaña «Menú»: calendario (semana/mes) y lista de platos. Aquí viven el día abierto, el
@@ -71,6 +76,8 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     var openDay by remember { mutableStateOf<LocalDate?>(null) }
     var duplicateFrom by remember { mutableStateOf<LocalDate?>(null) }
+    var assignScope by remember { mutableStateOf<AssignScope?>(null) }
+    var showColors by remember { mutableStateOf(false) }
     val duplicatedMessage = stringResource(R.string.menu_duplicate_done)
     val chooserTitle = stringResource(R.string.menu_share_chooser)
 
@@ -156,11 +163,16 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
                         onOpenDay = { openDay = it },
                         onShare = { weekStart ->
                             val keys = weekDays(weekStart).map { it.toString() }.toSet()
-                            val image = WeekShare.render(weekStart, state.entries.filter { it.date in keys })
+                            val image = WeekShare.render(weekStart, state.entries.filter { it.date in keys }, state.people)
                             WeekShare.share(context, image, chooserTitle)
                         },
                         onDuplicate = { duplicateFrom = it },
-                        onImport = { showImportSource = true }
+                        onImport = { showImportSource = true },
+                        onAssignMonth = {
+                            val month = YearMonth.from(state.position.date)
+                            assignScope = AssignScope(monthLabel(month), month.atDay(1), month.atEndOfMonth(), announce = true)
+                        },
+                        onPeopleColors = { showColors = true }
                     )
                     else -> DishesTab(state = state, appState = appState, viewModel = menuViewModel)
                 }
@@ -209,7 +221,8 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
             menu = parsed,
             defaultMonth = YearMonth.from(state.position.date),
             dishes = state.dishes,
-            people = knownPeople(state.entries),
+            names = knownPeople(state.entries, state.people),
+            people = state.people,
             viewModel = menuViewModel,
             onDismiss = { importedMenu = null },
             onDone = { plan ->
@@ -232,7 +245,36 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     }
 
     openDay?.let { day ->
-        DayMealsSheet(date = day, state = state, viewModel = menuViewModel, onDismiss = { openDay = null })
+        DayMealsSheet(
+            date = day,
+            state = state,
+            viewModel = menuViewModel,
+            onAssignDay = { assignScope = AssignScope(dayLabel(day), day, day, announce = false) },
+            onDismiss = { openDay = null }
+        )
+    }
+
+    assignScope?.let { assign ->
+        AssignPersonDialog(
+            scopeLabel = assign.label,
+            from = assign.from,
+            to = assign.to,
+            state = state,
+            viewModel = menuViewModel,
+            onDismiss = { assignScope = null },
+            onDone = { changed ->
+                assignScope = null
+                // Con el día abierto la hoja ya se reordena sola: el aviso solo hace falta para el mes,
+                // que se ve en el calendario de fondo, y la hoja modal taparía un Snackbar.
+                if (assign.announce) {
+                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.menu_assign_done, changed)) }
+                }
+            }
+        )
+    }
+
+    if (showColors) {
+        PeopleColorsSheet(state = state, viewModel = menuViewModel, onDismiss = { showColors = false })
     }
 
     duplicateFrom?.let { source ->

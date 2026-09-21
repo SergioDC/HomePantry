@@ -258,6 +258,17 @@
     <string name="menu_import_family">Familia</string>
     <string name="menu_import_person_hint">Otra persona (vacío = Familia)</string>
     <string name="menu_import_month_cd">Mes del menú</string>
+    <string name="menu_assign_month">Asignar el mes a…</string>
+    <string name="menu_assign_day">Asignar el día a…</string>
+    <string name="menu_assign_title">Asignar a una persona</string>
+    <string name="menu_assign_scope">Se asignarán los platos de: %1$s</string>
+    <string name="menu_assign_only_unassigned">Solo los que aún no tienen persona</string>
+    <string name="menu_assign_count">Platos que cambiarán: %1$d</string>
+    <string name="menu_assign_confirm">Asignar</string>
+    <string name="menu_assign_done">Asignados: %1$d</string>
+    <string name="menu_colors_action">Colores de las personas</string>
+    <string name="menu_colors_title">Colores de las personas</string>
+    <string name="menu_colors_hint">Se guardan para toda la casa. Sin elegir, el nombre sale en menta y los platos sin tinte.</string>
     <string name="menu_import_use_detected">Usar %1$s (leído en la foto)</string>
     <string name="menu_import_weekend_warning">%2$d días del menú caen en fin de semana en %1$s. ¿Es el mes correcto?</string>
     <string name="menu_import_day_missing">%1$d (no existe en este mes)</string>
