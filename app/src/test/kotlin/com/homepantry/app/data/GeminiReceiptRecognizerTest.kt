@@ -134,6 +134,18 @@ class GeminiReceiptRecognizerTest {
         assertTrue(classifyHttpErrorCode(429) is GeminiQuotaException)
     }
 
+    @Test fun `a quota error carries Google's own explanation of which limit was hit`() {
+        val body = """{"error":{"code":429,"message":"Quota exceeded for metric generate_content_free_tier_requests, limit: 0","status":"RESOURCE_EXHAUSTED"}}"""
+        val failure = classifyHttpErrorCode(429, body)
+        assertTrue(failure is GeminiQuotaException)
+        assertTrue(failure!!.message!!.contains("limit: 0"))
+    }
+
+    @Test fun `a quota error does not claim it is a daily limit, which only Google can say`() {
+        assertFalse(classifyHttpErrorCode(429, null)!!.message!!.contains("por hoy"))
+        assertFalse(classifyHttpErrorCode(429, """{"error":{"message":"Resource has been exhausted"}}""")!!.message!!.contains("por hoy"))
+    }
+
     @Test fun `returns null for an unrelated status code`() {
         assertNull(classifyHttpErrorCode(418))
     }

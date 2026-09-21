@@ -17,7 +17,13 @@ import retrofit2.Response
 
 sealed class GeminiReceiptException(message: String, cause: Throwable? = null) : Exception(message, cause)
 class GeminiAuthException : GeminiReceiptException("La clave de Gemini no es válida o no tiene permisos.")
-class GeminiQuotaException : GeminiReceiptException("Se ha agotado la cuota gratuita de Gemini por hoy.")
+/**
+ * Un 429 puede ser el límite por minuto, el diario o un modelo sin cuota en el plan gratuito, y solo
+ * Google lo distingue: [detail] es su mensaje, para no afirmar por nuestra cuenta que es "por hoy".
+ */
+class GeminiQuotaException(detail: String? = null) : GeminiReceiptException(
+    "Se ha superado la cuota de Gemini${detail?.let { ": $it" }.orEmpty()}"
+)
 class GeminiModelUnavailableException : GeminiReceiptException(
     "El modelo de Gemini configurado en la app ya no está disponible. Hace falta actualizar la app."
 )
@@ -39,10 +45,10 @@ private data class GeminiProductsPayload(val store: String?, val products: List<
  * cuando la key está mal formada, así que 400 también se trata como error de
  * autenticación para que el usuario vea un mensaje útil.
  */
-internal fun classifyHttpErrorCode(code: Int): GeminiReceiptException? = when (code) {
+internal fun classifyHttpErrorCode(code: Int, errorBody: String? = null): GeminiReceiptException? = when (code) {
     400, 401, 403 -> GeminiAuthException()
     404 -> GeminiModelUnavailableException()
-    429 -> GeminiQuotaException()
+    429 -> GeminiQuotaException(extractGoogleErrorMessage(errorBody))
     else -> null
 }
 
@@ -191,15 +197,13 @@ private suspend fun <T> callGeminiApi(call: suspend () -> Response<T>): Response
 }
 
 private fun ensureSuccessful(response: Response<*>) {
-    classifyHttpErrorCode(response.code())?.let { throw it }
-    if (!response.isSuccessful) {
-        val errorBody = try {
-            response.errorBody()?.string()
-        } catch (e: IOException) {
-            null
-        }
-        throw httpFailure(response.code(), errorBody)
+    if (response.isSuccessful) return
+    val errorBody = try {
+        response.errorBody()?.string()
+    } catch (e: IOException) {
+        null
     }
+    throw classifyHttpErrorCode(response.code(), errorBody) ?: httpFailure(response.code(), errorBody)
 }
 
 /** [callGeminiApi] + comprobación del código HTTP, reintentando los fallos temporales de Google. */
