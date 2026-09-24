@@ -2,6 +2,7 @@ package com.homepantry.app.ui.screens
 
 import android.net.Uri
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -23,8 +24,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -88,9 +91,19 @@ fun ReceiptReviewSheet(
                 .take(5)
         }
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    // El resultado de Gemini solo debe descartarse pulsando "Volver" o "Guardar":
+    // un swipe, un toque fuera o el botón atrás no deben tirar la interpretación
+    // y obligar a reenviar la foto.
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { it != SheetValue.Hidden }
+    )
 
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    ModalBottomSheet(
+        onDismissRequest = {},
+        sheetState = sheetState,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
+    ) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
@@ -193,27 +206,36 @@ fun ReceiptReviewSheet(
                 }
             }
             item {
-                Button(
-                    onClick = {
-                        val parsed = lines.mapNotNull { line ->
-                            val price = line.priceText.replace(",", ".").toDoubleOrNull()
-                            if (line.name.isBlank() || price == null) {
-                                null
-                            } else {
-                                // Una cantidad ilegible o no positiva no bloquea el guardado: cuenta como 1.
-                                val quantity = line.qtyText.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: 1.0
-                                ParsedReceiptLine(name = line.name.trim(), price = price, quantity = quantity, unit = line.unit)
-                            }
-                        }
-                        viewModel.savePurchaseBatch(
-                            ParsedReceipt(store = store.trim().ifBlank { null }, lines = parsed),
-                            ticketPhotoUri
-                        )
-                        onDismiss()
-                    },
-                    enabled = lines.isNotEmpty(),
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 24.dp)
-                ) { Text(stringResource(R.string.receipt_review_save)) }
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) { Text(stringResource(R.string.receipt_review_back)) }
+                    Button(
+                        onClick = {
+                            val parsed = lines.mapNotNull { line ->
+                                val price = line.priceText.replace(",", ".").toDoubleOrNull()
+                                if (line.name.isBlank() || price == null) {
+                                    null
+                                } else {
+                                    // Una cantidad ilegible o no positiva no bloquea el guardado: cuenta como 1.
+                                    val quantity = line.qtyText.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: 1.0
+                                    ParsedReceiptLine(name = line.name.trim(), price = price, quantity = quantity, unit = line.unit)
+                                }
+                            }
+                            viewModel.savePurchaseBatch(
+                                ParsedReceipt(store = store.trim().ifBlank { null }, lines = parsed),
+                                ticketPhotoUri
+                            )
+                            onDismiss()
+                        },
+                        enabled = lines.isNotEmpty(),
+                        modifier = Modifier.weight(1f)
+                    ) { Text(stringResource(R.string.receipt_review_save)) }
+                }
             }
         }
     }

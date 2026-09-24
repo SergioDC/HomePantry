@@ -17,7 +17,13 @@ import retrofit2.Response
 
 sealed class GeminiReceiptException(message: String, cause: Throwable? = null) : Exception(message, cause)
 class GeminiAuthException : GeminiReceiptException("La clave de Gemini no es válida o no tiene permisos.")
-class GeminiQuotaException : GeminiReceiptException("Se ha agotado la cuota gratuita de Gemini por hoy.")
+/**
+ * Un 429 puede ser el límite por minuto, el diario o un modelo sin cuota en el plan gratuito, y solo
+ * Google lo distingue: [detail] es su mensaje, para no afirmar por nuestra cuenta que es "por hoy".
+ */
+class GeminiQuotaException(detail: String? = null) : GeminiReceiptException(
+    "Se ha superado la cuota de Gemini${detail?.let { ": $it" }.orEmpty()}"
+)
 class GeminiModelUnavailableException : GeminiReceiptException(
     "El modelo de Gemini configurado en la app ya no está disponible. Hace falta actualizar la app."
 )
@@ -39,10 +45,10 @@ private data class GeminiProductsPayload(val store: String?, val products: List<
  * cuando la key está mal formada, así que 400 también se trata como error de
  * autenticación para que el usuario vea un mensaje útil.
  */
-internal fun classifyHttpErrorCode(code: Int): GeminiReceiptException? = when (code) {
+internal fun classifyHttpErrorCode(code: Int, errorBody: String? = null): GeminiReceiptException? = when (code) {
     400, 401, 403 -> GeminiAuthException()
     404 -> GeminiModelUnavailableException()
-    429 -> GeminiQuotaException()
+    429 -> GeminiQuotaException(extractGoogleErrorMessage(errorBody))
     else -> null
 }
 
@@ -191,15 +197,13 @@ private suspend fun <T> callGeminiApi(call: suspend () -> Response<T>): Response
 }
 
 private fun ensureSuccessful(response: Response<*>) {
-    classifyHttpErrorCode(response.code())?.let { throw it }
-    if (!response.isSuccessful) {
-        val errorBody = try {
-            response.errorBody()?.string()
-        } catch (e: IOException) {
-            null
-        }
-        throw httpFailure(response.code(), errorBody)
+    if (response.isSuccessful) return
+    val errorBody = try {
+        response.errorBody()?.string()
+    } catch (e: IOException) {
+        null
     }
+    throw classifyHttpErrorCode(response.code(), errorBody) ?: httpFailure(response.code(), errorBody)
 }
 
 /** [callGeminiApi] + comprobación del código HTTP, reintentando los fallos temporales de Google. */
@@ -208,13 +212,13 @@ private suspend fun <T> callGeminiChecked(call: suspend () -> Response<T>): Resp
         callGeminiApi(call).also { ensureSuccessful(it) }
     }
 
-private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
+internal suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest): GeminiInteractionResponse {
     val response = callGeminiChecked { GeminiReceiptClient.api().createInteraction(apiKey, request) }
     return response.body() ?: throw GeminiResponseException("cuerpo de respuesta vacío")
 }
 
 /**
- * Prepara la foto del ticket para Gemini con la misma calidad que el OCR
+ * Prepara una foto (de un ticket o de un menú) para Gemini con la misma calidad que el OCR
  * clásico ([MAX_OCR_SIDE] + orientación EXIF), no con la compresión pensada
  * para subir fotos a almacenamiento ([ImageCompressor], 1024px y sin EXIF):
  * esta función existe justamente para evitar los emparejamientos
@@ -223,7 +227,7 @@ private suspend fun callGemini(apiKey: String, request: GeminiInteractionRequest
  * la API no admite un "hint" de rotación aparte, así que los píxeles se rotan
  * físicamente antes de codificar.
  */
-private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
+internal fun loadPhotoBytesForGemini(context: Context, imageUri: Uri): ByteArray {
     val rotationDegrees = readExifRotationDegrees(context, imageUri)
 
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -239,7 +243,7 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
     val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
     val bitmap = context.contentResolver.openInputStream(imageUri).use { stream ->
         BitmapFactory.decodeStream(stream, null, decodeOptions)
-    } ?: throw GeminiResponseException("no se pudo decodificar la foto del ticket")
+    } ?: throw GeminiResponseException("no se pudo decodificar la foto")
 
     val rotated = if (rotationDegrees != 0) {
         val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
@@ -262,7 +266,7 @@ private fun loadReceiptImageBytes(context: Context, imageUri: Uri): ByteArray {
 /** Manda una foto de ticket a Gemini y devuelve el ticket ya estructurado (supermercado y líneas; sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
 suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedReceipt {
     val imageBytes = try {
-        loadReceiptImageBytes(context, imageUri)
+        loadPhotoBytesForGemini(context, imageUri)
     } catch (e: GeminiReceiptException) {
         throw e
     } catch (e: Exception) {

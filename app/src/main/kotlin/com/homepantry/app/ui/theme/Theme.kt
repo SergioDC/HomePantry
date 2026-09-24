@@ -23,6 +23,10 @@ private val ListaDeLaCasaColorScheme = darkColorScheme(
     surface = NocturneSurface,
     onSurface = NocturneOnSurface,
     surfaceVariant = NocturneSurfaceVariant,
+    // ModalBottomSheet usa surfaceContainerLow, AlertDialog surfaceContainerHigh y DropdownMenu surfaceContainer.
+    surfaceContainerLow = NocturnePopupSurface,
+    surfaceContainer = NocturnePopupSurface,
+    surfaceContainerHigh = NocturnePopupSurface,
     onSurfaceVariant = NocturneOnSurfaceVariant,
     outline = NocturneOutline
 )

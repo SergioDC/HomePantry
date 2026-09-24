@@ -3,7 +3,9 @@ package com.homepantry.app
 import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CircularProgressIndicator
@@ -38,15 +41,19 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import com.homepantry.app.data.ConnectivityObserver
+import com.homepantry.app.data.DishesRepository
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
+import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
+import com.homepantry.app.data.PeopleRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.components.BottomNavBar
 import com.homepantry.app.ui.components.BottomNavItem
 import com.homepantry.app.ui.screens.AddItemSheet
@@ -55,6 +62,7 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
+import com.homepantry.app.ui.screens.MenuScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
@@ -72,6 +80,11 @@ import kotlinx.coroutines.tasks.await
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Fondo siempre oscuro: iconos claros en las barras del sistema, sea cual sea el modo del móvil.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+        )
         setContent {
             ListaDeLaCasaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -82,7 +95,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "search")
+private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "menu", "search")
 
 @Composable
 fun ListaDeLaCasaApp() {
@@ -142,6 +155,24 @@ fun ListaDeLaCasaApp() {
         }
     )
 
+    val menuViewModel: MenuViewModel = viewModel(
+        key = "menu-$code",
+        factory = remember(code, name) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return MenuViewModel(
+                        dishesRepository = DishesRepository(firestore, code),
+                        entriesRepository = MealEntriesRepository(firestore, code),
+                        itemsRepository = ItemsRepository(firestore, code),
+                        peopleRepository = PeopleRepository(firestore, code),
+                        userName = name
+                    ) as T
+                }
+            }
+        }
+    )
+
     val state by viewModel.state.collectAsState()
     val pendingCount = state.items.count { !it.done }
 
@@ -168,6 +199,7 @@ fun ListaDeLaCasaApp() {
                     items = listOf(
                         BottomNavItem("zonesDashboard", stringResource(R.string.nav_almacen), Icons.Filled.Inventory2),
                         BottomNavItem("mainList", stringResource(R.string.nav_lista), Icons.Filled.ShoppingCart, badgeCount = pendingCount),
+                        BottomNavItem("menu", stringResource(R.string.nav_menu), Icons.Filled.RestaurantMenu),
                         BottomNavItem("search", stringResource(R.string.nav_buscar), Icons.Filled.Search)
                     ),
                     selectedRoute = selectedRoute ?: "zonesDashboard",
@@ -201,6 +233,9 @@ fun ListaDeLaCasaApp() {
                     onEditItem = { item -> itemBeingEdited = item },
                     onQuickAddDefaults = { showDefaultProducts = true }
                 )
+            }
+            composable("menu") {
+                MenuScreen(menuViewModel = menuViewModel, appViewModel = viewModel)
             }
             composable("zonesDashboard") {
                 ZonesDashboardScreen(

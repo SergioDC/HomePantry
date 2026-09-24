@@ -84,6 +84,7 @@ fun ZoneDetailScreen(
     val sections = zoneDetailSections(zoneId, state.items, state.zones)
     val subzones = subzonesOf(zoneId, state.zones)
     var itemPendingDelete by remember { mutableStateOf<Item?>(null) }
+    var itemPendingToggle by remember { mutableStateOf<Item?>(null) }
     var showRenameDialog by remember { mutableStateOf(false) }
     var renameText by remember { mutableStateOf("") }
     var showDeleteZoneConfirm by remember { mutableStateOf(false) }
@@ -186,7 +187,9 @@ fun ZoneDetailScreen(
                     ItemPillRow(
                         item = product,
                         dimWhenDone = false,
-                        onToggleDone = { viewModel.toggleDone(product) },
+                        // Aquí "done" significa "en stock": destocarlo lo manda a la
+                        // lista de la compra, así que hay que confirmar antes de hacerlo.
+                        onToggleDone = { itemPendingToggle = product },
                         onDelete = { itemPendingDelete = product },
                         onEdit = { onEditItem(product) }
                     )
@@ -222,6 +225,24 @@ fun ZoneDetailScreen(
                     viewModel.deleteItem(pendingItem.id)
                     itemPendingDelete = null
                 }) { Text(stringResource(R.string.zone_detail_remove_delete), color = MaterialTheme.colorScheme.error) }
+            }
+        )
+    }
+
+    val pendingToggle = itemPendingToggle
+    if (pendingToggle != null) {
+        AlertDialog(
+            onDismissRequest = { itemPendingToggle = null },
+            title = { Text(stringResource(R.string.zone_detail_toggle_title, pendingToggle.name)) },
+            text = { Text(stringResource(R.string.zone_detail_toggle_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.toggleDone(pendingToggle)
+                    itemPendingToggle = null
+                }) { Text(stringResource(R.string.zone_detail_toggle_confirm)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemPendingToggle = null }) { Text("Cancelar") }
             }
         )
     }
