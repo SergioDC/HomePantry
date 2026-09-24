@@ -334,15 +334,25 @@ private fun DayRow(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         } else {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
                                 groupByPerson(slotEntries).forEach { group ->
-                                    group.person?.let { PersonLabel(it, people) }
-                                    // El color elegido tiñe también los chips; sin elegir, se ven como siempre.
-                                    val tint = chosenTint(group.person, people)
-                                    group.entries.forEach { MealChip(it.name, tint) }
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        group.person?.let { PersonLabel(it, people, textAlign = TextAlign.Center) }
+                                        // El color elegido tiñe también los chips; sin elegir, se ven como siempre.
+                                        val tint = chosenTint(group.person, people)
+                                        FlowRow(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            group.entries.forEach { MealChip(it.name, tint) }
+                                        }
+                                    }
                                 }
                             }
                         }

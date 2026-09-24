@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.data.Person
 import com.homepantry.app.data.colorFor
@@ -25,12 +26,18 @@ fun chosenTint(person: String?, people: List<Person>): Color? =
  * defecto; la imagen de compartir, de fondo blanco, usa el tono oscuro de cada color.
  */
 @Composable
-fun PersonLabel(person: String, people: List<Person>, modifier: Modifier = Modifier) {
+fun PersonLabel(
+    person: String,
+    people: List<Person>,
+    modifier: Modifier = Modifier,
+    textAlign: TextAlign? = null
+) {
     Text(
         text = person,
         style = MaterialTheme.typography.labelMedium,
         fontWeight = FontWeight.SemiBold,
         color = chosenTint(person, people) ?: Mint400,
+        textAlign = textAlign,
         modifier = modifier.padding(vertical = 2.dp)
     )
 }
