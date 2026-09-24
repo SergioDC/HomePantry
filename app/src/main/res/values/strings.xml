@@ -105,6 +105,9 @@
     <string name="zone_detail_remove_message">¿Lo añadimos a la lista de la compra o lo eliminamos del todo?</string>
     <string name="zone_detail_remove_to_list">Añadir a la lista</string>
     <string name="zone_detail_remove_delete">Eliminar</string>
+    <string name="zone_detail_toggle_title">Quitar \"%1$s\" de esta zona</string>
+    <string name="zone_detail_toggle_message">Pasará a la lista de la compra.</string>
+    <string name="zone_detail_toggle_confirm">Añadir a la lista</string>
 
     <!-- SearchScreen -->
     <string name="search_hint">Buscar producto…</string>
@@ -140,6 +143,7 @@
     <string name="receipt_review_add_line">+ Añadir línea</string>
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
     <string name="receipt_review_save">Guardar compras</string>
+    <string name="receipt_review_back">Volver</string>
 
     <!-- PurchaseHistoryScreen -->
     <string name="purchase_history_title">Historial de compras</string>
