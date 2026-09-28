@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 fun NocturneFab(onClick: () -> Unit, contentDescription: String?, modifier: Modifier = Modifier) {
     FloatingActionButton(
         onClick = onClick,
+        shape = CircleShape,
         containerColor = MaterialTheme.colorScheme.surface,
         contentColor = MaterialTheme.colorScheme.primary,
         elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 0.dp, pressedElevation = 0.dp),

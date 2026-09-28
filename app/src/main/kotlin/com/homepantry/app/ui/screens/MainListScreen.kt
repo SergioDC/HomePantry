@@ -229,6 +229,7 @@ fun MainListScreen(
                             item = row.item,
                             zoneName = row.zoneName,
                             zoneColor = row.zoneColor,
+                            rowBackgroundColor = row.zoneColor,
                             onToggleDone = { viewModel.toggleDone(row.item) },
                             onDelete = { viewModel.deleteItem(row.item.id) },
                             onEdit = { onEditItem(row.item) }
@@ -239,7 +240,12 @@ fun MainListScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 96.dp)
                 ) {
+                    val orderedZones = state.zones.sortedBy { it.order }
                     state.sections.forEach { section ->
+                        val sectionColor = resolvedZoneColor(
+                            section.zone,
+                            orderedZones.indexOfFirst { it.id == section.zone.id }.coerceAtLeast(0)
+                        )
                         item {
                             Text(
                                 text = section.zone.name,
@@ -250,6 +256,7 @@ fun MainListScreen(
                         items(section.items, key = { it.id }) { product ->
                             ItemPillRow(
                                 item = product,
+                                rowBackgroundColor = sectionColor,
                                 onToggleDone = { viewModel.toggleDone(product) },
                                 onDelete = { viewModel.deleteItem(product.id) },
                                 onEdit = { onEditItem(product) }

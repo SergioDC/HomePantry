@@ -1,6 +1,8 @@
 package com.homepantry.app.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Text
@@ -41,6 +44,9 @@ private val PillTextColor = Color(0xFF1C1B1F)
  * `rowBackgroundColor` (opcional, hex) tiñe el fondo de toda la fila con la
  * versión clara de ese color (mismo tono que las tarjetas de zona) -- para
  * distinguir productos de zonas/subzonas distintas sin que la lista sea plana.
+ * Con ella la fila se convierte en un recuadro: borde del color sin aclarar
+ * (más oscuro que el fondo) y un margen vertical que la separa de los
+ * elementos vecinos, en vez de tocarlos.
  * `showDeleteAction` controla el elemento final de la fila: "×" para
  * borrar (Lista/Zone Detail, por defecto) o una flecha ">" (Buscar, donde
  * tocar la fila ya abre la edición y no se ofrece borrar directamente).
@@ -64,18 +70,43 @@ fun ItemPillRow(
     val backgroundColor = rowBackgroundColor
         ?.let { lightenedZoneColor(it) }
         ?.let { hex -> runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull() }
+    // Borde sin aclarar: siempre más oscuro que `backgroundColor` (su versión clara).
+    val borderColor = rowBackgroundColor
+        ?.let { hex -> runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull() }
     // Sobre el fondo claro de la zona el texto pasa a oscuro, igual que en `ZoneCard`.
     val mutedTextColor = if (backgroundColor != null) PillTextColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .then(if (backgroundColor != null) Modifier.padding(vertical = 4.dp) else Modifier)
             .then(if (backgroundColor != null) Modifier.background(backgroundColor, MaterialTheme.shapes.small) else Modifier)
+            .then(
+                if (backgroundColor != null && borderColor != null) {
+                    Modifier.border(1.5.dp, borderColor, MaterialTheme.shapes.small)
+                } else {
+                    Modifier
+                }
+            )
             .padding(horizontal = 8.dp, vertical = 8.dp)
             .alpha(rowAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        OutlinedIconButton(onClick = onToggleDone, modifier = Modifier.size(28.dp)) {
+        OutlinedIconButton(
+            onClick = onToggleDone,
+            modifier = Modifier.size(28.dp),
+            // Por defecto el aro y el check heredan el color de texto claro (tema oscuro):
+            // sobre el fondo aclarado de una zona (Lista y Zone Detail) quedaban invisibles.
+            colors = if (backgroundColor != null) {
+                IconButtonDefaults.outlinedIconButtonColors(contentColor = PillTextColor)
+            } else {
+                IconButtonDefaults.outlinedIconButtonColors()
+            },
+            border = BorderStroke(
+                width = 1.dp,
+                color = if (backgroundColor != null) PillTextColor.copy(alpha = 0.6f) else MaterialTheme.colorScheme.outline
+            )
+        ) {
             if (item.done) {
                 Icon(Icons.Filled.Check, contentDescription = null, modifier = Modifier.size(16.dp))
             }
