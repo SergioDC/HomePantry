@@ -1,5 +1,12 @@
 # SNHome — App Android nativa
 
+> **Nota (2026-09-26):** este documento es el spec original con el que arrancó el
+> proyecto (checklist de la sección 5 ya completado). Describe solo la app inicial
+> de lista de compra/despensa; no incluye las features añadidas después (tickets e
+> historial de compra, zonas con subzonas y colores, menú semanal, etc.). Para esas
+> features, ver los specs de diseño en `docs/superpowers/specs/`. Se mantiene aquí
+> como referencia histórica de la arquitectura base.
+
 ## Contexto para Claude Code
 Este proyecto es la versión nativa Android de una app web ya validada con el usuario
 (un prototipo HTML funcionando). El objetivo de esta versión es una app instalable
