@@ -181,6 +181,7 @@
     <string name="purchase_ticket_delete_cancel">Cancelar</string>
     <string name="purchase_ticket_line_deleted">Línea eliminada</string>
     <string name="purchase_ticket_undo">Deshacer</string>
+    <string name="purchase_ticket_edit_line_title">Editar línea</string>
 
     <!-- PurchaseMonthsTab -->
     <string name="purchase_tickets_all">Todos</string>

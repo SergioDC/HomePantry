@@ -257,6 +257,12 @@ class AppViewModel(
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
+    /** Edita una línea de un ticket ya guardado (nombre, cantidad, unidad o precio). */
+    fun updatePurchase(purchase: Purchase) = viewModelScope.launch {
+        runCatching { purchasesRepository.updatePurchase(purchase) }
+            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
     fun incrementQty(item: Item, addQty: Double) = viewModelScope.launch {
         runCatching { itemsRepository.updateItem(item.copy(qty = item.qty + addQty)) }

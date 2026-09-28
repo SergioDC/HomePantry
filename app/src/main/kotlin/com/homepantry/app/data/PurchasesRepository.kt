@@ -68,4 +68,9 @@ class PurchasesRepository(
     suspend fun restorePurchase(purchase: Purchase) {
         collection().document(purchase.id).set(purchase).await()
     }
+
+    /** Actualiza una línea de compra ya guardada (edición desde el detalle del ticket). */
+    suspend fun updatePurchase(purchase: Purchase) {
+        collection().document(purchase.id).set(purchase).await()
+    }
 }

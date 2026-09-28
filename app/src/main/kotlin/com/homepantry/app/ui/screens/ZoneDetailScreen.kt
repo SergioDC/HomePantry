@@ -148,16 +148,17 @@ fun ZoneDetailScreen(
         ) {
             sections.forEach { section ->
                 val collapsed = section.isSubzone && section.zone.id in collapsedIds
+                val sectionColor = if (section.isSubzone) {
+                    resolvedZoneColor(section.zone, subzones.indexOfFirst { it.id == section.zone.id }.coerceAtLeast(0))
+                } else {
+                    currentColor
+                }
                 if (showHeaders) {
                     item(key = "header/${section.zone.id}") {
                         ZoneSectionHeader(
                             title = section.zone.name,
                             count = section.items.size,
-                            colorHex = if (section.isSubzone) {
-                                resolvedZoneColor(section.zone, subzones.indexOfFirst { it.id == section.zone.id }.coerceAtLeast(0))
-                            } else {
-                                currentColor
-                            },
+                            colorHex = sectionColor,
                             collapsible = section.isSubzone,
                             collapsed = collapsed,
                             onToggleCollapse = {
@@ -186,6 +187,7 @@ fun ZoneDetailScreen(
                 items(section.items, key = { it.id }) { product ->
                     ItemPillRow(
                         item = product,
+                        rowBackgroundColor = sectionColor,
                         dimWhenDone = false,
                         // Aquí "done" significa "en stock": destocarlo lo manda a la
                         // lista de la compra, así que hay que confirmar antes de hacerlo.

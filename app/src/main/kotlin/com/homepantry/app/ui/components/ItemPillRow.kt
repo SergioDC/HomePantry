@@ -1,5 +1,6 @@
 package com.homepantry.app.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,13 +27,20 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
+import com.homepantry.app.data.lightenedZoneColor
 import com.homepantry.app.data.Unit as ItemUnit
+
+/** Mismo tono oscuro que `ZoneCard` usa sobre su fondo claro de zona, para mantener el contraste. */
+private val PillTextColor = Color(0xFF1C1B1F)
 
 /**
  * Fila de producto estilo "pill" (Nocturne), reemplaza ProductCard en Lista,
  * Zone Detail y Buscar. `zoneName` (opcional) muestra el chip de etiqueta de
  * zona, coloreado con `zoneColor` (hex) si se indica -- así el nombre de la
  * zona se reconoce de un vistazo por su color, igual que en el chip/tarjeta.
+ * `rowBackgroundColor` (opcional, hex) tiñe el fondo de toda la fila con la
+ * versión clara de ese color (mismo tono que las tarjetas de zona) -- para
+ * distinguir productos de zonas/subzonas distintas sin que la lista sea plana.
  * `showDeleteAction` controla el elemento final de la fila: "×" para
  * borrar (Lista/Zone Detail, por defecto) o una flecha ">" (Buscar, donde
  * tocar la fila ya abre la edición y no se ofrece borrar directamente).
@@ -42,6 +50,7 @@ fun ItemPillRow(
     item: Item,
     zoneName: String? = null,
     zoneColor: String? = null,
+    rowBackgroundColor: String? = null,
     showDeleteAction: Boolean = true,
     dimWhenDone: Boolean = true,
     onToggleDone: () -> Unit,
@@ -52,9 +61,18 @@ fun ItemPillRow(
     // En Zone Detail "done" significa "en stock", no "terminado" -- ahí no se atenúa/tacha
     // (dimWhenDone = false), solo en Lista/Buscar donde sí significa "ya comprado".
     val rowAlpha = if (item.done && dimWhenDone) 0.5f else 1f
+    val backgroundColor = rowBackgroundColor
+        ?.let { lightenedZoneColor(it) }
+        ?.let { hex -> runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull() }
+    // Sobre el fondo claro de la zona el texto pasa a oscuro, igual que en `ZoneCard`.
+    val mutedTextColor = if (backgroundColor != null) PillTextColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).alpha(rowAlpha),
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (backgroundColor != null) Modifier.background(backgroundColor, MaterialTheme.shapes.small) else Modifier)
+            .padding(horizontal = 8.dp, vertical = 8.dp)
+            .alpha(rowAlpha),
         verticalAlignment = Alignment.CenterVertically
     ) {
         OutlinedIconButton(onClick = onToggleDone, modifier = Modifier.size(28.dp)) {
@@ -72,13 +90,14 @@ fun ItemPillRow(
             Text(
                 text = item.name,
                 style = MaterialTheme.typography.bodyLarge,
+                color = if (backgroundColor != null) PillTextColor else Color.Unspecified,
                 textDecoration = if (item.done && dimWhenDone) TextDecoration.LineThrough else null
             )
             val addedBySuffix = item.addedBy?.takeIf { it.isNotBlank() }?.let { " · pedido por $it" } ?: ""
             Text(
                 text = "${item.qty} $unitLabel$addedBySuffix",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = mutedTextColor
             )
             if (!item.store.isNullOrBlank()) {
                 Text(
@@ -91,7 +110,7 @@ fun ItemPillRow(
                 Text(
                     text = item.note,
                     style = MaterialTheme.typography.bodySmall.copy(fontStyle = FontStyle.Italic),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = mutedTextColor
                 )
             }
         }
@@ -113,14 +132,14 @@ fun ItemPillRow(
                 Icon(
                     imageVector = Icons.Filled.Close,
                     contentDescription = stringResource(R.string.main_delete_item_cd),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = mutedTextColor
                 )
             }
         } else {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = mutedTextColor,
                 modifier = Modifier.padding(horizontal = 12.dp)
             )
         }
