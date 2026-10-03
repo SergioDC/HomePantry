@@ -2,6 +2,8 @@ package com.homepantry.app
 
 import android.net.Uri
 import android.os.Bundle
+import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -59,6 +61,7 @@ import com.homepantry.app.ui.components.BottomNavItem
 import com.homepantry.app.ui.screens.AddItemSheet
 import com.homepantry.app.ui.screens.DefaultProductsSheet
 import com.homepantry.app.ui.screens.EditNameDialog
+import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
@@ -79,7 +82,22 @@ import kotlinx.coroutines.tasks.await
  */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Salida del splash: el logo crece un poco y se desvanece junto al fondo,
+        // revelando la app por debajo.
+        splash.setOnExitAnimationListener { provider ->
+            val duration = 450L
+            val interpolator = AccelerateDecelerateInterpolator()
+            provider.iconView.animate()
+                .scaleX(1.35f).scaleY(1.35f).alpha(0f)
+                .setDuration(duration).setInterpolator(interpolator).start()
+            provider.view.animate()
+                .alpha(0f)
+                .setDuration(duration).setInterpolator(interpolator)
+                .withEndAction { provider.remove() }
+                .start()
+        }
         // Fondo siempre oscuro: iconos claros en las barras del sistema, sea cual sea el modo del móvil.
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.dark(android.graphics.Color.TRANSPARENT),
@@ -284,6 +302,16 @@ fun ListaDeLaCasaApp() {
                     },
                     onOpenTicket = { ticketKey ->
                         navController.navigate("purchaseTicket/${Uri.encode(ticketKey)}")
+                    },
+                    onOpenStats = { navController.navigate("purchaseStats") }
+                )
+            }
+            composable("purchaseStats") {
+                PurchaseStatsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { normalizedName ->
+                        navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
                     }
                 )
             }

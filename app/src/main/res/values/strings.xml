@@ -286,4 +286,23 @@
     <string name="menu_import_summary_present">ya estaban: %1$d</string>
     <string name="menu_import_summary_dropped">días descartados: %1$d</string>
     <!-- /Menú semanal -->
+
+    <!-- Estadísticas de gasto -->
+    <string name="stats_title">Estadísticas</string>
+    <string name="stats_open_cd">Ver estadísticas de gasto</string>
+    <string name="stats_empty">Aún no hay compras. Escanea un ticket para ver estadísticas.</string>
+    <string name="stats_this_month">Este mes</string>
+    <string name="stats_vs_previous">%1$s frente al mes anterior</string>
+    <string name="stats_tickets_avg">%1$d tickets · media %2$s</string>
+    <string name="stats_last_months">Últimos 6 meses</string>
+    <string name="stats_by_store">Por supermercado (este mes)</string>
+    <string name="stats_no_store">Sin supermercado</string>
+    <string name="stats_top_products">Productos que más compras</string>
+    <string name="stats_by_spend">Por gasto</string>
+    <string name="stats_by_count">Por veces</string>
+    <string name="stats_times">%1$d veces</string>
+    <string name="stats_price_rises">Han subido de precio</string>
+    <string name="stats_cheapest">Dónde es más barato</string>
+    <string name="stats_cheapest_line">%1$s · ahorras un %2$d %%</string>
+    <string name="stats_none_yet">Sin datos suficientes todavía</string>
 </resources>
