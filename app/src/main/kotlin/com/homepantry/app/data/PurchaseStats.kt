@@ -92,6 +92,24 @@ fun spendByStore(purchases: List<Purchase>, referenceDate: Date = Date()): List<
         .sortedByDescending { it.total }
 }
 
+private fun Date.calendarField(field: Int): Int = Calendar.getInstance().apply { time = this@calendarField }.get(field)
+
+/** Años con compras, del más reciente al más antiguo. */
+fun purchaseYears(purchases: List<Purchase>): List<Int> =
+    purchases.map { it.date.calendarField(Calendar.YEAR) }.distinct().sortedDescending()
+
+/** Meses (1..12) con compras en `year`, en orden cronológico. */
+fun purchaseMonths(purchases: List<Purchase>, year: Int): List<Int> =
+    purchases.filter { it.date.calendarField(Calendar.YEAR) == year }
+        .map { it.date.calendarField(Calendar.MONTH) + 1 }.distinct().sorted()
+
+/** Compras de `year`; si `month` (1..12) no es null, solo las de ese mes. */
+fun purchasesInPeriod(purchases: List<Purchase>, year: Int, month: Int?): List<Purchase> =
+    purchases.filter {
+        it.date.calendarField(Calendar.YEAR) == year &&
+            (month == null || it.date.calendarField(Calendar.MONTH) + 1 == month)
+    }
+
 fun topProducts(purchases: List<Purchase>, by: TopBy, limit: Int = 5): List<TopProduct> =
     purchases.groupBy { it.normalizedName }
         .map { (name, group) ->

@@ -23,6 +23,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -45,6 +47,9 @@ import com.homepantry.app.data.cheapestStores
 import com.homepantry.app.data.lastMonthsSpend
 import com.homepantry.app.data.monthSummary
 import com.homepantry.app.data.priceRises
+import com.homepantry.app.data.purchaseMonths
+import com.homepantry.app.data.purchaseYears
+import com.homepantry.app.data.purchasesInPeriod
 import com.homepantry.app.data.spendByStore
 import com.homepantry.app.data.topProducts
 import com.homepantry.app.ui.AppViewModel
@@ -73,7 +78,15 @@ fun PurchaseStatsScreen(
     val summary = remember(purchases) { monthSummary(purchases, now) }
     val months = remember(purchases) { lastMonthsSpend(purchases, 6, now) }
     val stores = remember(purchases) { spendByStore(purchases, now) }
-    val top = remember(purchases, topBy) { topProducts(purchases, topBy) }
+    val years = remember(purchases) { purchaseYears(purchases) }
+    var yearKey by rememberSaveable { mutableStateOf<Int?>(null) }
+    var monthKey by rememberSaveable { mutableStateOf<Int?>(null) }
+    val year = yearKey?.takeIf { it in years } ?: years.firstOrNull() ?: 0
+    val monthsOfYear = remember(purchases, year) { purchaseMonths(purchases, year) }
+    val month = monthKey?.takeIf { it in monthsOfYear }
+    val top = remember(purchases, topBy, year, month) {
+        topProducts(purchasesInPeriod(purchases, year, month), topBy, limit = 10)
+    }
     val rises = remember(purchases) { priceRises(purchases) }
     val cheapest = remember(purchases) { cheapestStores(purchases) }
 
@@ -143,6 +156,26 @@ fun PurchaseStatsScreen(
                             selected = topBy == TopBy.COUNT, onClick = { topBy = TopBy.COUNT },
                             label = { Text(stringResource(R.string.stats_by_count)) }
                         )
+                    }
+                    if (years.size > 1) {
+                        ScrollableTabRow(selectedTabIndex = years.indexOf(year).coerceAtLeast(0), edgePadding = 0.dp) {
+                            years.forEach { y ->
+                                Tab(selected = y == year, onClick = { yearKey = y }, text = { Text(y.toString()) })
+                            }
+                        }
+                    }
+                    val monthNames = remember { java.text.DateFormatSymbols(esLocale).months }
+                    ScrollableTabRow(selectedTabIndex = monthsOfYear.indexOf(month) + 1, edgePadding = 0.dp) {
+                        Tab(
+                            selected = month == null, onClick = { monthKey = null },
+                            text = { Text(if (years.size > 1) stringResource(R.string.stats_whole_year) else year.toString()) }
+                        )
+                        monthsOfYear.forEach { m ->
+                            Tab(
+                                selected = m == month, onClick = { monthKey = m },
+                                text = { Text(monthNames[m - 1].replaceFirstChar { it.uppercase() }) }
+                            )
+                        }
                     }
                     val max = top.maxOfOrNull { if (topBy == TopBy.SPEND) it.total else it.count.toDouble() }
                         ?.takeIf { it > 0 } ?: 1.0

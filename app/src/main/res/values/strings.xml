@@ -300,6 +300,7 @@
     <string name="stats_top_products">Productos que más compras</string>
     <string name="stats_by_spend">Por gasto</string>
     <string name="stats_by_count">Por veces</string>
+    <string name="stats_whole_year">Todo el año</string>
     <string name="stats_times">%1$d veces</string>
     <string name="stats_price_rises">Han subido de precio</string>
     <string name="stats_cheapest">Dónde es más barato</string>
