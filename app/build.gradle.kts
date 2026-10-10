@@ -84,10 +84,10 @@ dependencies {
     implementation("androidx.navigation:navigation-compose:2.9.8")
 
     // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:33.1.0"))
-    implementation("com.google.firebase:firebase-firestore-ktx")
-    implementation("com.google.firebase:firebase-auth-ktx")
-    implementation("com.google.firebase:firebase-storage-ktx")
+    implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
+    implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-storage")
 
     // Cámara + escaneo de código de barras y OCR (ML Kit sin empaquetar: el modelo
     // lo descarga Google Play Services, el APK no lleva ~17 MB de librerías nativas)
@@ -120,7 +120,7 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     // Bridge Firebase Tasks -> coroutines (.await())
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
 
     testImplementation("junit:junit:4.13.2")
 }
