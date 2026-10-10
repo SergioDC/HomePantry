@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -82,6 +83,7 @@ fun PurchaseHistoryScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -127,9 +129,9 @@ fun PurchaseHistoryScreen(
             // Snackbar: la hoja es modal y taparía (y haría caducar) el snackbar.
             reviewNotice = when {
                 usedClassicAfterGeminiFailure ->
-                    context.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
-                classicFailed -> context.getString(R.string.purchase_history_ocr_error)
-                parsed.lines.isEmpty() -> context.getString(R.string.purchase_history_ocr_empty)
+                    resources.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
+                classicFailed -> resources.getString(R.string.purchase_history_ocr_error)
+                parsed.lines.isEmpty() -> resources.getString(R.string.purchase_history_ocr_empty)
                 else -> null
             }
 
@@ -147,7 +149,7 @@ fun PurchaseHistoryScreen(
             // en memoria con su Uri se perdió (recreación de actividad o proceso
             // matado en segundo plano). Avisamos al usuario en vez de fallar en
             // silencio: ver hallazgo de revisión "Lost capture URI".
-            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.purchase_history_capture_lost)) }
+            scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.purchase_history_capture_lost)) }
         }
     }
 
@@ -163,7 +165,7 @@ fun PurchaseHistoryScreen(
         if (granted) {
             launchCamera()
         } else {
-            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.camera_permission_denied)) }
+            scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.camera_permission_denied)) }
         }
     }
 
