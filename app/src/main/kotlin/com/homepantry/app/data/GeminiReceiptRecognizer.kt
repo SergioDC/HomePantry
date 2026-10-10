@@ -1,5 +1,6 @@
 package com.homepantry.app.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -229,6 +230,8 @@ internal suspend fun callGemini(apiKey: String, request: GeminiInteractionReques
  * la API no admite un "hint" de rotación aparte, así que los píxeles se rotan
  * físicamente antes de codificar.
  */
+// El lint de Kotlin 2 no ve el `.use {}` que cierra el flujo de inJustDecodeBounds (falso positivo).
+@SuppressLint("Recycle")
 internal fun loadPhotoBytesForGemini(context: Context, imageUri: Uri): ByteArray {
     val rotationDegrees = readExifRotationDegrees(context, imageUri)
 

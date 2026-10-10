@@ -1,5 +1,6 @@
 package com.homepantry.app.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -46,6 +47,8 @@ suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<Str
     }
 }
 
+// El lint de Kotlin 2 no ve el `.use {}` que cierra el flujo de inJustDecodeBounds (falso positivo).
+@SuppressLint("Recycle")
 private fun decodeForOcr(context: Context, imageUri: Uri): Pair<Bitmap, Int> {
     val rotationDegrees = readExifRotationDegrees(context, imageUri)
 
