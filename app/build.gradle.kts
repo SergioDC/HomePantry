@@ -91,19 +91,19 @@ dependencies {
 
     // Cámara + escaneo de código de barras y OCR (ML Kit sin empaquetar: el modelo
     // lo descarga Google Play Services, el APK no lleva ~17 MB de librerías nativas)
-    implementation("androidx.camera:camera-core:1.5.1")
-    implementation("androidx.camera:camera-camera2:1.5.1")
-    implementation("androidx.camera:camera-lifecycle:1.5.1")
-    implementation("androidx.camera:camera-view:1.5.1")
+    implementation("androidx.camera:camera-core:1.6.2")
+    implementation("androidx.camera:camera-camera2:1.6.2")
+    implementation("androidx.camera:camera-lifecycle:1.6.2")
+    implementation("androidx.camera:camera-view:1.6.2")
     implementation("com.google.android.gms:play-services-mlkit-barcode-scanning:18.3.1")
     implementation("com.google.android.gms:play-services-mlkit-text-recognition:19.0.1")
-    implementation("com.google.guava:guava:33.2.1-android")
+    implementation("com.google.guava:guava:33.7.2-android")
 
     // Carga de imágenes
-    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     // Persistencia local ligera (nombre de usuario, código de casa)
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.2.1")
 
     // Almacenamiento cifrado (API key de Gemini que aporta cada usuario)
     implementation("androidx.security:security-crypto:1.1.0")
@@ -115,9 +115,9 @@ dependencies {
     // Permisos runtime (cámara)
     implementation("com.google.accompanist:accompanist-permissions:0.37.3")
 
-    implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.exifinterface:exifinterface:1.3.7")
+    implementation("androidx.core:core-ktx:1.18.0")
+    implementation("androidx.core:core-splashscreen:1.2.0")
+    implementation("androidx.exifinterface:exifinterface:1.4.2")
 
     // Bridge Firebase Tasks -> coroutines (.await())
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.11.0")
