@@ -33,12 +33,18 @@ class GeminiApiKeyStore(private val context: Context) {
     @Volatile
     private var migrated = false
 
-    /** Copia la clave y el modelo del almacén antiguo (si existe) y borra su fichero. Idempotente. */
+    /**
+     * Copia la clave y el modelo del almacén antiguo (si existe) y borra su fichero. Idempotente. Si el
+     * almacén antiguo no se puede abrir ahora, no se borra nada y se reintenta en la siguiente llamada.
+     */
     private fun migrateLegacyOnce() {
         if (migrated) return
         if (File(context.applicationInfo.dataDir, "shared_prefs/$LEGACY_PREFS_FILE_NAME.xml").exists()) {
-            migrateSecret(LegacyEncryptedStore(context, KEY_API_KEY), apiKey)
-            migrateSecret(LegacyEncryptedStore(context, KEY_MODEL), model)
+            val pairs = listOf(
+                LegacyEncryptedStore(context, KEY_API_KEY) to apiKey,
+                LegacyEncryptedStore(context, KEY_MODEL) to model
+            )
+            if (!migrateAllSecrets(pairs)) return
             context.deleteSharedPreferences(LEGACY_PREFS_FILE_NAME)
         }
         migrated = true
@@ -77,7 +83,11 @@ class GeminiApiKeyStore(private val context: Context) {
     }
 }
 
-/** Lectura del almacén antiguo, solo para [migrateSecret]. Si no se puede abrir, cuenta como vacío. */
+/**
+ * Lectura del almacén antiguo, solo para la migración. Si no se puede abrir o leer, [read] lanza (en
+ * vez de devolver null como si estuviera vacío) para que [migrateAllSecrets] no dé por migrado algo
+ * que no ha copiado.
+ */
 @Suppress("DEPRECATION")
 private class LegacyEncryptedStore(private val context: Context, private val key: String) : SecretStorage {
     private val prefs: SharedPreferences? by lazy {
@@ -94,10 +104,9 @@ private class LegacyEncryptedStore(private val context: Context, private val key
         }
     }
 
-    override fun read(): String? = try {
-        prefs?.getString(key, null)?.takeIf { it.isNotBlank() }
-    } catch (e: Exception) {
-        null
+    override fun read(): String? {
+        val opened = prefs ?: throw IllegalStateException("No se pudo abrir el almacén antiguo")
+        return opened.getString(key, null)?.takeIf { it.isNotBlank() }
     }
 
     override fun write(value: String) = throw UnsupportedOperationException("El almacén antiguo es de solo lectura")

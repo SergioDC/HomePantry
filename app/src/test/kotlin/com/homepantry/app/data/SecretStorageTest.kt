@@ -38,4 +38,22 @@ class SecretStorageTest {
     @Test fun `with both stores empty returns null`() {
         assertNull(migrateSecret(FakeStorage(), FakeStorage()))
     }
+
+    private class UnreadableStorage : SecretStorage {
+        override fun read(): String? = throw IllegalStateException("no se pudo abrir")
+        override fun write(value: String) = throw UnsupportedOperationException()
+        override fun clear() = throw UnsupportedOperationException()
+    }
+
+    @Test fun `migrating all pairs reports success when every legacy store could be read`() {
+        val target = FakeStorage()
+        assertEquals(true, migrateAllSecrets(listOf(FakeStorage("clave") to target)))
+        assertEquals("clave", target.value)
+    }
+
+    @Test fun `an unreadable legacy store reports failure and leaves the target untouched`() {
+        val target = FakeStorage()
+        assertEquals(false, migrateAllSecrets(listOf(UnreadableStorage() to target)))
+        assertNull(target.value)
+    }
 }

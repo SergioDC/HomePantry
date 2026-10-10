@@ -23,6 +23,19 @@ fun migrateSecret(legacy: SecretStorage, target: SecretStorage): String? {
     return current ?: old
 }
 
+/**
+ * Migra cada pareja (antiguo → nuevo) con [migrateSecret]. Si algún almacén antiguo no se puede leer
+ * (lanza), para y devuelve false: quien llama no debe borrar el almacén antiguo, y reintentará más
+ * tarde (si no, un fallo pasajero al abrirlo se llevaba por delante la clave sin haberla copiado).
+ */
+fun migrateAllSecrets(pairs: List<Pair<SecretStorage, SecretStorage>>): Boolean =
+    try {
+        pairs.forEach { (legacy, target) -> migrateSecret(legacy, target) }
+        true
+    } catch (e: Exception) {
+        false
+    }
+
 /** Valor sin cifrar en SharedPreferences: para el modelo de Gemini, que no es secreto. */
 class PlainPrefStorage(private val prefs: SharedPreferences, private val key: String) : SecretStorage {
     override fun read(): String? = prefs.getString(key, null)
