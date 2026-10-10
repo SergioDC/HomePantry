@@ -1,6 +1,7 @@
 package com.homepantry.app.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 class ReceiptParsingTest {
@@ -220,5 +221,17 @@ class ReceiptParsingTest {
             ),
             parseReceiptLines(lines)
         )
+    }
+
+    @Test fun `user price accepts comma or dot decimals`() {
+        assertEquals(1.5, parseUserPrice("1,50")!!, 0.0001)
+        assertEquals(2.25, parseUserPrice(" 2.25 ")!!, 0.0001)
+        assertEquals(0.0, parseUserPrice("0")!!, 0.0001)
+    }
+
+    @Test fun `user price rejects blank, non-numeric and negative input`() {
+        assertNull(parseUserPrice(""))
+        assertNull(parseUserPrice("abc"))
+        assertNull(parseUserPrice("-1,00"))
     }
 }

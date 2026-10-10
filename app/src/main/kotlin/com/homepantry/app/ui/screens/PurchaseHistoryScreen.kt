@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.AlertDialog
@@ -46,6 +46,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
@@ -83,7 +84,6 @@ fun PurchaseHistoryScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
 
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var reviewReceipt by remember { mutableStateOf<ParsedReceipt?>(null) }
@@ -151,6 +151,22 @@ fun PurchaseHistoryScreen(
         }
     }
 
+    fun launchCamera() {
+        val uri = createReceiptCaptureUri(context)
+        pendingCaptureUri = uri
+        takePicture.launch(uri)
+    }
+
+    // Al conceder el permiso se abre la cámara sin tener que volver a pulsar; si se deniega se avisa
+    // (con el permiso denegado para siempre, pedirlo no muestra nada y el botón parecía no hacer nada).
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.camera_permission_denied)) }
+        }
+    }
+
     val pickFromGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) {
             processReceiptUri(uri)
@@ -165,7 +181,7 @@ fun PurchaseHistoryScreen(
         }
     }
 
-    val dateFormat = remember { SimpleDateFormat("d MMM", Locale("es", "ES")) }
+    val dateFormat = remember { SimpleDateFormat("d MMM", Locale.forLanguageTag("es-ES")) }
 
     Scaffold(
         topBar = {
@@ -173,7 +189,7 @@ fun PurchaseHistoryScreen(
                 title = { Text(stringResource(R.string.purchase_history_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
                     }
                 },
                 actions = {
@@ -230,8 +246,9 @@ fun PurchaseHistoryScreen(
                                     headlineContent = { Text(summary.displayName) },
                                     supportingContent = {
                                         Text(
-                                            stringResource(
-                                                R.string.purchase_history_last_purchase,
+                                            pluralStringResource(
+                                                R.plurals.purchase_history_last_purchase,
+                                                summary.purchases.size,
                                                 dateFormat.format(summary.purchases.first().date),
                                                 summary.purchases.size
                                             )
@@ -264,12 +281,10 @@ fun PurchaseHistoryScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showScanDialog = false
-                    if (!cameraPermissionState.status.isGranted) {
-                        cameraPermissionState.launchPermissionRequest()
+                    if (cameraPermissionState.status.isGranted) {
+                        launchCamera()
                     } else {
-                        val uri = createReceiptCaptureUri(context)
-                        pendingCaptureUri = uri
-                        takePicture.launch(uri)
+                        cameraPermissionState.launchPermissionRequest()
                     }
                 }) {
                     Text(stringResource(R.string.purchase_history_scan_dialog_camera))

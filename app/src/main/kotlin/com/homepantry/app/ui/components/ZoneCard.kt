@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import com.homepantry.app.data.ZONE_TINT_LIGHTEN_FACTOR
 import com.homepantry.app.data.lightenedZoneColor
 
@@ -34,12 +35,12 @@ fun ZoneCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dotColor = runCatching { Color(android.graphics.Color.parseColor(colorHex)) }
+    val dotColor = runCatching { Color(colorHex.toColorInt()) }
         .getOrDefault(MaterialTheme.colorScheme.primary)
 
     // Interior: el mismo color configurado de la zona, más claro (lightenedZoneColor). El texto pasa a oscuro para mantener el contraste.
     val cardColor = lightenedZoneColor(colorHex)
-        ?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+        ?.let { runCatching { Color(it.toColorInt()) }.getOrNull() }
         ?: lerp(dotColor, Color.White, ZONE_TINT_LIGHTEN_FACTOR)
 
     Card(

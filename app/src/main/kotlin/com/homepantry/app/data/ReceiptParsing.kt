@@ -188,3 +188,10 @@ private fun parseSpanishDecimal(text: String): Double? {
     val cleaned = text.replace(Regex("[^0-9,]"), "").replace(",", ".")
     return cleaned.toDoubleOrNull()
 }
+
+/**
+ * Precio escrito a mano en la revisión o edición de un ticket: admite coma o punto decimal.
+ * Null si está vacío, no es un número o es negativo.
+ */
+fun parseUserPrice(text: String): Double? =
+    text.trim().replace(",", ".").toDoubleOrNull()?.takeIf { it >= 0 }

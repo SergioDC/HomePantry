@@ -6,6 +6,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.homepantry.app.R
 import com.homepantry.app.data.Ticket
@@ -19,15 +20,16 @@ fun DeleteTicketDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale("es", "ES")) }
+    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
     val store = ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.purchase_ticket_delete_title)) },
         text = {
             Text(
-                stringResource(
-                    R.string.purchase_ticket_delete_message,
+                pluralStringResource(
+                    R.plurals.purchase_ticket_delete_message,
+                    ticket.purchases.size,
                     store,
                     dateFormat.format(ticket.date),
                     ticket.total,

@@ -15,10 +15,13 @@ enum class ListViewMode { GROUPED, FLAT }
 
 data class FlatRow(val item: Item, val zoneName: String, val zoneColor: String? = null)
 
-/** "X de Y listos" — comprados vs total (SPEC.md sec 1.4). */
+/**
+ * "X de Y en casa": productos que tienes (done) frente al total. La lista de la compra solo
+ * muestra lo pendiente, así que "listos" (de SPEC.md sec 1.4) no describía lo que se contaba.
+ */
 fun progressText(items: List<Item>): String {
     val done = items.count { it.done }
-    return "$done de ${items.size} listos"
+    return "$done de ${items.size} en casa"
 }
 
 private fun withinGroupComparator(sortMode: SortMode): Comparator<Item> = when (sortMode) {

@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 
 /**
  * Selección con solo `secondaryContainer` es casi invisible en Nocturne (muy
@@ -25,7 +26,7 @@ fun ZoneChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val dotColor = colorHex?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+    val dotColor = colorHex?.let { runCatching { Color(it.toColorInt()) }.getOrNull() }
     FilterChip(
         selected = selected,
         onClick = onClick,

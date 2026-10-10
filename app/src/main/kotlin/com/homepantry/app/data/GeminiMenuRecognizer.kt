@@ -2,7 +2,6 @@ package com.homepantry.app.data
 
 import android.content.Context
 import android.net.Uri
-import android.util.Base64
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
 import java.time.YearMonth
@@ -78,22 +77,12 @@ internal fun mapGeminiMenuText(outputText: String): ParsedMenu {
 
 /** Manda la foto de un menú mensual a Gemini y devuelve el menú ya estructurado y limpio. */
 suspend fun recognizeMenuWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedMenu {
-    val imageBytes = try {
-        loadPhotoBytesForGemini(context, imageUri)
-    } catch (e: GeminiReceiptException) {
-        throw e
-    } catch (e: Exception) {
-        throw GeminiResponseException("no se pudo preparar la foto del menú: ${e.message}")
-    }
+    val base64Image = encodePhotoForGemini(context, imageUri, "del menú")
     val request = GeminiInteractionRequest(
         model = model,
         input = listOf(
             GeminiInputPart(type = "text", text = MENU_PROMPT),
-            GeminiInputPart(
-                type = "image",
-                data = Base64.encodeToString(imageBytes, Base64.NO_WRAP),
-                mimeType = "image/jpeg"
-            )
+            GeminiInputPart(type = "image", data = base64Image, mimeType = "image/jpeg")
         ),
         responseFormat = GeminiResponseFormat(schema = MENU_JSON_SCHEMA)
     )

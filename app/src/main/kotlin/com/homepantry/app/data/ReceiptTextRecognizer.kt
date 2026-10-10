@@ -1,13 +1,16 @@
 package com.homepantry.app.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 
 /**
  * Lado máximo (px) al que se reduce la imagen antes de pasarla a ML Kit.
@@ -30,6 +33,20 @@ internal const val MAX_OCR_SIDE = 2000
  * y se lo pasamos a ML Kit como `rotationDegrees`.
  */
 suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<String> {
+    // Leer y decodificar la foto es bloqueante; quien llama está en el hilo principal (la pantalla).
+    val (bitmap, rotationDegrees) = withContext(Dispatchers.IO) { decodeForOcr(context, imageUri) }
+
+    return try {
+        val image = InputImage.fromBitmap(bitmap, rotationDegrees)
+        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+        val result = recognizer.process(image).await()
+        result.textBlocks.flatMap { block -> block.lines.map { line -> line.text } }
+    } finally {
+        bitmap.recycle()
+    }
+}
+
+private fun decodeForOcr(context: Context, imageUri: Uri): Pair<Bitmap, Int> {
     val rotationDegrees = readExifRotationDegrees(context, imageUri)
 
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -49,14 +66,7 @@ suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<Str
         BitmapFactory.decodeStream(stream, null, decodeOptions)
     } ?: error("No se pudo decodificar la imagen del ticket: $imageUri")
 
-    return try {
-        val image = InputImage.fromBitmap(bitmap, rotationDegrees)
-        val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val result = recognizer.process(image).await()
-        result.textBlocks.flatMap { block -> block.lines.map { line -> line.text } }
-    } finally {
-        bitmap.recycle()
-    }
+    return bitmap to rotationDegrees
 }
 
 /**

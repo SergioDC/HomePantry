@@ -12,7 +12,9 @@ import com.google.gson.JsonSyntaxException
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import retrofit2.Response
 
 sealed class GeminiReceiptException(message: String, cause: Throwable? = null) : Exception(message, cause)
@@ -220,7 +222,7 @@ internal suspend fun callGemini(apiKey: String, request: GeminiInteractionReques
 /**
  * Prepara una foto (de un ticket o de un menú) para Gemini con la misma calidad que el OCR
  * clásico ([MAX_OCR_SIDE] + orientación EXIF), no con la compresión pensada
- * para subir fotos a almacenamiento ([ImageCompressor], 1024px y sin EXIF):
+ * para subir fotos a almacenamiento ([ImageCompressor], 1024px):
  * esta función existe justamente para evitar los emparejamientos
  * nombre↔precio erróneos que motivaron la spec, y una imagen pequeña o girada
  * los reproduciría. A diferencia de `InputImage.fromBitmap`, un JPEG enviado a
@@ -263,16 +265,26 @@ internal fun loadPhotoBytesForGemini(context: Context, imageUri: Uri): ByteArray
     return output.toByteArray()
 }
 
+/**
+ * [loadPhotoBytesForGemini] + Base64, fuera del hilo principal: decodificar, rotar y recomprimir
+ * una foto de cámara es bloqueante y congelaba la pantalla (y su indicador de carga).
+ * [what] completa el mensaje de error ("del ticket", "del menú").
+ */
+internal suspend fun encodePhotoForGemini(context: Context, imageUri: Uri, what: String): String =
+    withContext(Dispatchers.Default) {
+        val imageBytes = try {
+            loadPhotoBytesForGemini(context, imageUri)
+        } catch (e: GeminiReceiptException) {
+            throw e
+        } catch (e: Exception) {
+            throw GeminiResponseException("no se pudo preparar la foto $what: ${e.message}")
+        }
+        Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+    }
+
 /** Manda una foto de ticket a Gemini y devuelve el ticket ya estructurado (supermercado y líneas; sustituye a ReceiptTextRecognizer + parseReceiptLines para este escaneo). */
 suspend fun recognizeReceiptWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedReceipt {
-    val imageBytes = try {
-        loadPhotoBytesForGemini(context, imageUri)
-    } catch (e: GeminiReceiptException) {
-        throw e
-    } catch (e: Exception) {
-        throw GeminiResponseException("no se pudo preparar la foto del ticket: ${e.message}")
-    }
-    val base64Image = Base64.encodeToString(imageBytes, Base64.NO_WRAP)
+    val base64Image = encodePhotoForGemini(context, imageUri, "del ticket")
 
     val request = GeminiInteractionRequest(
         model = model,

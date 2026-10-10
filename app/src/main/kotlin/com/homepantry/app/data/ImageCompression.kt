@@ -3,7 +3,9 @@ package com.homepantry.app.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.net.Uri
+import androidx.core.graphics.scale
 import java.io.File
 import java.io.FileOutputStream
 
@@ -38,20 +40,41 @@ object ImageCompressor {
      */
     fun compress(context: Context, sourceUri: Uri): Uri {
         return try {
+            // Se decodifica ya reducida (potencia de 2 por encima de MAX_PHOTO_SIDE): cargar la foto
+            // a resolución completa de cámara solo para reducirla después gastaba decenas de MB.
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            context.contentResolver.openInputStream(sourceUri).use { stream ->
+                BitmapFactory.decodeStream(stream, null, bounds)
+            }
+            val sampleSize = if (bounds.outWidth > 0 && bounds.outHeight > 0) {
+                computeInSampleSize(bounds.outWidth, bounds.outHeight, MAX_PHOTO_SIDE)
+            } else {
+                1
+            }
+            val decodeOptions = BitmapFactory.Options().apply { inSampleSize = sampleSize }
             val original = context.contentResolver.openInputStream(sourceUri).use { stream ->
-                BitmapFactory.decodeStream(stream)
+                BitmapFactory.decodeStream(stream, null, decodeOptions)
             } ?: return sourceUri
 
             val (targetWidth, targetHeight) = computeResizedDimensions(original.width, original.height)
             val resized = if (targetWidth == original.width && targetHeight == original.height) {
                 original
             } else {
-                Bitmap.createScaledBitmap(original, targetWidth, targetHeight, true)
+                original.scale(targetWidth, targetHeight)
+            }
+
+            // El JPEG nuevo no lleva EXIF: sin rotar los píxeles, una foto en vertical se subía tumbada.
+            val rotationDegrees = readExifRotationDegrees(context, sourceUri)
+            val upright = if (rotationDegrees == 0) {
+                resized
+            } else {
+                val matrix = Matrix().apply { postRotate(rotationDegrees.toFloat()) }
+                Bitmap.createBitmap(resized, 0, 0, resized.width, resized.height, matrix, true)
             }
 
             val outFile = File.createTempFile("compressed_", ".jpg", context.cacheDir)
             FileOutputStream(outFile).use { out ->
-                resized.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
+                upright.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, out)
             }
             Uri.fromFile(outFile)
         } catch (e: Exception) {

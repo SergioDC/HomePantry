@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -38,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -59,7 +60,7 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private val esLocale = Locale("es", "ES")
+private val esLocale = Locale.forLanguageTag("es-ES")
 
 private fun money(value: Double): String = String.format(esLocale, "%,.2f €", value)
 
@@ -96,7 +97,7 @@ fun PurchaseStatsScreen(
                 title = { Text(stringResource(R.string.stats_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
                     }
                 }
             )
@@ -127,7 +128,7 @@ fun PurchaseStatsScreen(
                         )
                     }
                     Text(
-                        stringResource(R.string.stats_tickets_avg, summary.ticketCount, money(summary.averagePerTicket)),
+                        pluralStringResource(R.plurals.stats_tickets_avg, summary.ticketCount, summary.ticketCount, money(summary.averagePerTicket)),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -185,7 +186,7 @@ fun PurchaseStatsScreen(
                             LabeledBar(
                                 label = product.displayName,
                                 value = if (topBy == TopBy.SPEND) money(product.total)
-                                else stringResource(R.string.stats_times, product.count),
+                                else pluralStringResource(R.plurals.stats_times, product.count, product.count),
                                 fraction = (value / max).toFloat()
                             )
                         }

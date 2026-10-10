@@ -21,11 +21,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
+import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.Unit as ItemUnit
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.filterItemsByQuery
@@ -58,7 +60,7 @@ fun SearchScreen(viewModel: AppViewModel) {
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             )
             Text(
-                text = stringResource(R.string.search_results_count, results.size),
+                text = pluralStringResource(R.plurals.search_results_count, results.size, results.size),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
@@ -97,7 +99,7 @@ private fun SearchResultRow(item: Item, zoneName: String) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = item.name, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = "${item.qty} $unitLabel",
+                text = "${formatQuantity(item.qty)} $unitLabel",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

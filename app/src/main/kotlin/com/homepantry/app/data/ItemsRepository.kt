@@ -41,6 +41,14 @@ class ItemsRepository(
         collection().document(item.id).set(item).await()
     }
 
+    /**
+     * Cambia solo `done`. Con `set` del producto entero, la copia que tenía la pantalla pisaba los
+     * cambios que otro miembro acabara de hacer (y resucitaba el producto si lo había borrado).
+     */
+    suspend fun setDone(itemId: String, done: Boolean) {
+        collection().document(itemId).update("done", done).await()
+    }
+
     suspend fun updatePhotoUrl(itemId: String, photoUrl: String) {
         collection().document(itemId).update("photoUrl", photoUrl).await()
     }

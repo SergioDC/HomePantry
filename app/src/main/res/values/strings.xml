@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">SNHome</string>
 
     <!-- JoinHouseholdScreen -->
@@ -13,12 +13,9 @@
     <!-- MainListScreen -->
     <string name="main_empty_list">No hay productos todavía. Toca + para añadir el primero.</string>
     <string name="main_all_zones_tab">Todos</string>
-    <string name="main_error_generic">No se pudo sincronizar. Comprueba tu conexión.</string>
     <string name="main_settings_cd">Ajustes</string>
     <string name="main_add_item_cd">Añadir producto</string>
     <string name="main_delete_item_cd">Eliminar producto</string>
-    <string name="main_search_cd">Buscar</string>
-    <string name="main_search_hint">Buscar producto…</string>
     <string name="main_sort_cd">Ordenar</string>
     <string name="main_sort_newest">Más reciente primero</string>
     <string name="main_sort_oldest">Más antiguo primero</string>
@@ -36,8 +33,9 @@
     <string name="add_item_unit">Unidad</string>
     <string name="add_item_note">Nota (opcional)</string>
     <string name="add_item_store">Tienda (opcional)</string>
-    <string name="add_item_photo">📷 Foto</string>
-    <string name="add_item_scan">📊 Escanear</string>
+    <!-- Botones de foto y escáner retirados de la pantalla; su código se conserva a propósito. -->
+    <string name="add_item_photo" tools:ignore="UnusedResources">📷 Foto</string>
+    <string name="add_item_scan" tools:ignore="UnusedResources">📊 Escanear</string>
     <string name="add_item_new_zone">+ nueva zona</string>
     <string name="add_item_subzone">Subzona (opcional)</string>
     <string name="add_item_save">Guardar</string>
@@ -55,7 +53,10 @@
     <string name="zones_title">Ajustes</string>
     <string name="zones_your_name_label">Tu nombre</string>
     <string name="zones_delete_confirm_title">Eliminar zona</string>
-    <string name="zones_delete_confirm_message">%1$d producto(s) se moverán a \"Otros\". ¿Continuar?</string>
+    <plurals name="zones_delete_confirm_message">
+        <item quantity="one">%1$d producto se moverá a \"Otros\". ¿Continuar?</item>
+        <item quantity="other">%1$d productos se moverán a \"Otros\". ¿Continuar?</item>
+    </plurals>
     <string name="zones_new_zone_hint">Nombre de la nueva zona</string>
     <string name="zones_delete_cd">Eliminar zona</string>
     <string name="zones_back_cd">Volver</string>
@@ -84,8 +85,15 @@
     <!-- ZonesDashboardScreen -->
     <string name="dashboard_title">SNHome</string>
     <string name="dashboard_greeting">Hola, %1$s</string>
-    <string name="dashboard_summary_up_to_date">%1$d productos · al día</string>
-    <string name="dashboard_summary_pending">%1$d productos · %2$d pendientes</string>
+    <plurals name="dashboard_products">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <plurals name="dashboard_pending">
+        <item quantity="one">%1$d pendiente</item>
+        <item quantity="other">%1$d pendientes</item>
+    </plurals>
+    <string name="dashboard_up_to_date">al día</string>
     <string name="dashboard_new_zone">+ Nueva zona</string>
     <string name="dashboard_purchase_history_cd">Historial de compras</string>
 
@@ -111,7 +119,10 @@
 
     <!-- SearchScreen -->
     <string name="search_hint">Buscar producto…</string>
-    <string name="search_results_count">%1$d resultados</string>
+    <plurals name="search_results_count">
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
     <string name="search_empty">Escribe para buscar productos</string>
     <string name="search_no_results">No se encontraron productos</string>
     <string name="search_status_pending">Pendiente</string>
@@ -155,7 +166,10 @@
     <string name="purchase_history_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="purchase_history_no_store">Sin supermercado</string>
     <string name="purchase_history_unit_price">%1$.2f €/%2$s</string>
-    <string name="purchase_history_last_purchase">Última compra %1$s · %2$d compra(s)</string>
+    <plurals name="purchase_history_last_purchase">
+        <item quantity="one">Última compra %1$s · %2$d compra</item>
+        <item quantity="other">Última compra %1$s · %2$d compras</item>
+    </plurals>
     <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
     <string name="purchase_history_scan_dialog_camera">Sacar foto</string>
     <string name="purchase_history_scan_dialog_gallery">Elegir de galería</string>
@@ -171,12 +185,18 @@
 
     <!-- PurchaseTicketDetailScreen / DeleteTicketDialog -->
     <string name="purchase_ticket_title">%1$s · %2$s</string>
-    <string name="purchase_ticket_summary">%1$d línea(s) · %2$.2f €</string>
+    <plurals name="purchase_ticket_summary">
+        <item quantity="one">%1$d línea · %2$.2f €</item>
+        <item quantity="other">%1$d líneas · %2$.2f €</item>
+    </plurals>
     <string name="purchase_ticket_line_info">%1$s %2$s · %3$s</string>
     <string name="purchase_ticket_delete_cd">Eliminar ticket</string>
     <string name="purchase_ticket_delete_line_cd">Eliminar línea</string>
     <string name="purchase_ticket_delete_title">¿Eliminar este ticket?</string>
-    <string name="purchase_ticket_delete_message">%1$s · %2$s · %3$.2f €\nSe borrarán sus %4$d línea(s).</string>
+    <plurals name="purchase_ticket_delete_message">
+        <item quantity="one">%1$s · %2$s · %3$.2f €\nSe borrará su %4$d línea.</item>
+        <item quantity="other">%1$s · %2$s · %3$.2f €\nSe borrarán sus %4$d líneas.</item>
+    </plurals>
     <string name="purchase_ticket_delete_confirm">Eliminar</string>
     <string name="purchase_ticket_delete_cancel">Cancelar</string>
     <string name="purchase_ticket_line_deleted">Línea eliminada</string>
@@ -221,7 +241,7 @@
     <string name="menu_dish_note">Nota (opcional)</string>
     <string name="menu_dish_ingredients">Ingredientes</string>
     <string name="menu_dish_ingredient_hint">Ingrediente</string>
-    <string name="menu_dish_qty_hint">Cant.</string>
+    <string name="menu_dish_qty_hint" tools:ignore="Typos">Cant.</string>
     <string name="menu_dish_add_ingredient">+ Ingrediente</string>
     <string name="menu_dish_remove_ingredient_cd">Quitar ingrediente</string>
     <string name="menu_dish_save">Guardar</string>
@@ -246,7 +266,10 @@
     <string name="menu_duplicate_message">Copiar la semana %1$s a:</string>
     <string name="menu_duplicate_confirm">Duplicar</string>
     <string name="menu_duplicate_conflict_title">La semana ya tiene platos</string>
-    <string name="menu_duplicate_conflict_message">La semana de destino ya tiene %1$d entradas del menú. Puedes reemplazarlas o combinarlas con las copiadas.</string>
+    <plurals name="menu_duplicate_conflict_message">
+        <item quantity="one">La semana de destino ya tiene %1$d entrada del menú. Puedes reemplazarla o combinarla con las copiadas.</item>
+        <item quantity="other">La semana de destino ya tiene %1$d entradas del menú. Puedes reemplazarlas o combinarlas con las copiadas.</item>
+    </plurals>
     <string name="menu_duplicate_replace">Reemplazar</string>
     <string name="menu_duplicate_merge">Combinar</string>
     <string name="menu_duplicate_done">Semana duplicada</string>
@@ -262,7 +285,6 @@
     <string name="menu_import_for_whom">Para quién</string>
     <string name="menu_person_unassigned">Sin asignar</string>
     <string name="menu_import_person_hint">Otra persona (vacío = sin asignar)</string>
-    <string name="menu_import_month_cd">Mes del menú</string>
     <string name="menu_assign_month">Asignar el mes a…</string>
     <string name="menu_assign_day">Asignar el día a…</string>
     <string name="menu_assign_title">Asignar a una persona</string>
@@ -275,7 +297,10 @@
     <string name="menu_colors_title">Colores de las personas</string>
     <string name="menu_colors_hint">Se guardan para toda la casa. Sin elegir, el nombre sale en menta y los platos sin tinte.</string>
     <string name="menu_import_use_detected">Usar %1$s (leído en la foto)</string>
-    <string name="menu_import_weekend_warning">%2$d días del menú caen en fin de semana en %1$s. ¿Es el mes correcto?</string>
+    <plurals name="menu_import_weekend_warning">
+        <item quantity="one">%2$d día del menú cae en fin de semana en %1$s. ¿Es el mes correcto?</item>
+        <item quantity="other">%2$d días del menú caen en fin de semana en %1$s. ¿Es el mes correcto?</item>
+    </plurals>
     <string name="menu_import_day_missing">%1$d (no existe en este mes)</string>
     <string name="menu_import_new_dish">Plato nuevo</string>
     <string name="menu_import_remove_dish_cd">Quitar plato</string>
@@ -293,7 +318,10 @@
     <string name="stats_empty">Aún no hay compras. Escanea un ticket para ver estadísticas.</string>
     <string name="stats_this_month">Este mes</string>
     <string name="stats_vs_previous">%1$s frente al mes anterior</string>
-    <string name="stats_tickets_avg">%1$d tickets · media %2$s</string>
+    <plurals name="stats_tickets_avg">
+        <item quantity="one">%1$d ticket · media %2$s</item>
+        <item quantity="other">%1$d tickets · media %2$s</item>
+    </plurals>
     <string name="stats_last_months">Últimos 6 meses</string>
     <string name="stats_by_store">Por supermercado (este mes)</string>
     <string name="stats_no_store">Sin supermercado</string>
@@ -301,9 +329,15 @@
     <string name="stats_by_spend">Por gasto</string>
     <string name="stats_by_count">Por veces</string>
     <string name="stats_whole_year">Todo el año</string>
-    <string name="stats_times">%1$d veces</string>
+    <plurals name="stats_times">
+        <item quantity="one">%1$d vez</item>
+        <item quantity="other">%1$d veces</item>
+    </plurals>
     <string name="stats_price_rises">Han subido de precio</string>
     <string name="stats_cheapest">Dónde es más barato</string>
     <string name="stats_cheapest_line">%1$s · ahorras un %2$d %%</string>
     <string name="stats_none_yet">Sin datos suficientes todavía</string>
+    <string name="auth_error">No se pudo conectar para iniciar la app. Comprueba tu conexión.</string>
+    <string name="auth_retry">Reintentar</string>
+    <string name="camera_permission_denied">Hace falta el permiso de cámara. Puedes darlo en los ajustes del móvil o elegir una foto de la galería.</string>
 </resources>

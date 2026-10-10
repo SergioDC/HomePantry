@@ -23,6 +23,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -98,7 +99,7 @@ fun DuplicateWeekDialog(
         AlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(stringResource(R.string.menu_duplicate_conflict_title)) },
-            text = { Text(stringResource(R.string.menu_duplicate_conflict_message, conflictCount)) },
+            text = { Text(pluralStringResource(R.plurals.menu_duplicate_conflict_message, conflictCount, conflictCount)) },
             confirmButton = {
                 fun apply(mode: DuplicateMode) {
                     busy = true

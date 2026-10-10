@@ -48,6 +48,11 @@ android {
         }
     }
 
+    lint {
+        // Solo arm64 a propósito (ver abiFilters): la app no se instala en ChromeOS ni en emuladores x86.
+        disable += "ChromeOsAbiSupport"
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true

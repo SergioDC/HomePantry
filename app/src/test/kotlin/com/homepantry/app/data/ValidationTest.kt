@@ -15,6 +15,11 @@ class ValidationTest {
         assertEquals(3.0, parseQtyOrDefault("3")!!, 0.0001)
     }
 
+    @Test fun `decimal comma is accepted`() {
+        assertEquals(0.5, parseQtyOrDefault("0,5")!!, 0.0001)
+        assertEquals(1.25, parseQtyOrDefault(" 1,25 ")!!, 0.0001)
+    }
+
     @Test fun `zero, negative or non-numeric input is invalid`() {
         assertNull(parseQtyOrDefault("0"))
         assertNull(parseQtyOrDefault("-1"))

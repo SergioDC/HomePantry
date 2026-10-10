@@ -62,7 +62,7 @@ class MenuViewModel(
     private val entriesRepository: MealEntriesRepository,
     private val itemsRepository: ItemsRepository,
     private val peopleRepository: PeopleRepository,
-    private val userName: String
+    private var userName: String
 ) : ViewModel() {
 
     private val dishes = MutableStateFlow<List<Dish>>(emptyList())
@@ -105,6 +105,11 @@ class MenuViewModel(
         } catch (e: Exception) {
             error.value = e.message ?: e.toString()
         }
+    }
+
+    /** Nombre nuevo tras cambiarlo en Ajustes (mismo motivo que `AppViewModel.updateUserName`). */
+    fun updateUserName(name: String) {
+        userName = name
     }
 
     fun setVisibleDate(date: LocalDate) {

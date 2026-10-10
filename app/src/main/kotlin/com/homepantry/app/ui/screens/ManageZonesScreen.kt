@@ -90,7 +90,7 @@ fun ManageZonesScreen(
     val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
     val copiedMessage = stringResource(R.string.zones_household_code_copied)
-    val lastSeenFormat = remember { SimpleDateFormat("dd/MM HH:mm", Locale("es", "ES")) }
+    val lastSeenFormat = remember { SimpleDateFormat("dd/MM HH:mm", Locale.forLanguageTag("es-ES")) }
 
     LaunchedEffect(state.error) {
         val message = state.error

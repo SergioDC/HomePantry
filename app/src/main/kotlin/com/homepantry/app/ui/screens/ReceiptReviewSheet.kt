@@ -48,14 +48,18 @@ import com.homepantry.app.data.ParsedReceiptLine
 import com.homepantry.app.data.RECEIPT_UNITS
 import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.knownStores
+import com.homepantry.app.data.parseUserPrice
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import java.util.Locale
 
-private data class EditableLine(val name: String, val qtyText: String, val unit: String, val priceText: String)
+private data class EditableLine(val name: String, val qtyText: String, val unit: String, val priceText: String) {
+    /** Las líneas sin nombre se descartan al guardar; las que tienen nombre necesitan un precio válido. */
+    fun hasInvalidPrice(): Boolean = name.isNotBlank() && parseUserPrice(priceText) == null
+}
 
 private fun formatPrice(price: Double): String =
-    String.format(Locale("es", "ES"), "%.2f", price)
+    String.format(Locale.forLanguageTag("es-ES"), "%.2f", price)
 
 /**
  * Lista editable de las líneas detectadas en el ticket antes de guardarlas,
@@ -184,6 +188,7 @@ fun ReceiptReviewSheet(
                             value = line.priceText,
                             onValueChange = { newValue -> lines[index] = line.copy(priceText = newValue) },
                             label = { Text(stringResource(R.string.receipt_review_price)) },
+                            isError = line.hasInvalidPrice(),
                             modifier = Modifier.weight(1f).padding(start = 8.dp)
                         )
                     }
@@ -217,7 +222,7 @@ fun ReceiptReviewSheet(
                     Button(
                         onClick = {
                             val parsed = lines.mapNotNull { line ->
-                                val price = line.priceText.replace(",", ".").toDoubleOrNull()
+                                val price = parseUserPrice(line.priceText)
                                 if (line.name.isBlank() || price == null) {
                                     null
                                 } else {
@@ -232,7 +237,8 @@ fun ReceiptReviewSheet(
                             )
                             onDismiss()
                         },
-                        enabled = lines.isNotEmpty(),
+                        // Una línea con nombre y precio ilegible no se descarta en silencio: se marca y bloquea el guardado.
+                        enabled = lines.isNotEmpty() && lines.none { it.hasInvalidPrice() },
                         modifier = Modifier.weight(1f)
                     ) { Text(stringResource(R.string.receipt_review_save)) }
                 }

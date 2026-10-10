@@ -25,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -51,9 +52,9 @@ fun PurchaseMonthsTab(
     var selectedStoreKey by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedMonthKey by rememberSaveable { mutableStateOf<String?>(null) }
     var ticketPendingDelete by remember { mutableStateOf<Ticket?>(null) }
-    val dayFormat = remember { SimpleDateFormat("d MMM", Locale("es", "ES")) }
-    val monthFormat = remember { SimpleDateFormat("LLLL yyyy", Locale("es", "ES")) }
-    val monthChipFormat = remember { SimpleDateFormat("LLL yyyy", Locale("es", "ES")) }
+    val dayFormat = remember { SimpleDateFormat("d MMM", Locale.forLanguageTag("es-ES")) }
+    val monthFormat = remember { SimpleDateFormat("LLLL yyyy", Locale.forLanguageTag("es-ES")) }
+    val monthChipFormat = remember { SimpleDateFormat("LLL yyyy", Locale.forLanguageTag("es-ES")) }
 
     val allTickets = remember(state.purchases) { state.purchaseTickets }
     // Supermercados presentes, del que tiene el ticket más reciente al más antiguo (`storeKey` vacío = sin súper).
@@ -174,7 +175,7 @@ private fun TicketCard(
                 )
             }
             Text(
-                text = stringResource(R.string.purchase_ticket_summary, ticket.purchases.size, ticket.total),
+                text = pluralStringResource(R.plurals.purchase_ticket_summary, ticket.purchases.size, ticket.purchases.size, ticket.total),
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp)
             )

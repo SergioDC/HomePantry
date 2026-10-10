@@ -13,6 +13,8 @@ import android.text.TextPaint
 import android.text.style.ForegroundColorSpan
 import android.text.style.StyleSpan
 import androidx.core.content.FileProvider
+import androidx.core.graphics.createBitmap
+import androidx.core.graphics.withTranslation
 import java.io.File
 import java.time.LocalDate
 
@@ -81,12 +83,7 @@ object WeekShare {
 
             fun block(text: CharSequence, paint: TextPaint, x: Int, width: Int): Int {
                 val layout = StaticLayout.Builder.obtain(text, 0, text.length, paint, width).build()
-                if (canvas != null) {
-                    canvas.save()
-                    canvas.translate(x.toFloat(), y.toFloat())
-                    layout.draw(canvas)
-                    canvas.restore()
-                }
+                canvas?.withTranslation(x.toFloat(), y.toFloat()) { layout.draw(this) }
                 return layout.height
             }
 
@@ -113,7 +110,7 @@ object WeekShare {
             return y - 34 + MARGIN
         }
 
-        val bitmap = Bitmap.createBitmap(WIDTH, draw(null), Bitmap.Config.ARGB_8888)
+        val bitmap = createBitmap(WIDTH, draw(null))
         val canvas = Canvas(bitmap)
         canvas.drawColor(BACKGROUND)
         draw(canvas)

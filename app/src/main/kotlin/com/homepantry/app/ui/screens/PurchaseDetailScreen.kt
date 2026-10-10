@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -26,11 +26,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.formatQuantity
+import com.homepantry.app.data.monthLabel
 import com.homepantry.app.data.monthlySpend
 import com.homepantry.app.data.unitPrice
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import java.text.SimpleDateFormat
+import java.time.YearMonth
 import java.util.Locale
 
 /** Detalle de un producto del histórico: gasto por mes + lista de compras. */
@@ -52,7 +54,7 @@ fun PurchaseDetailScreen(
                 title = { Text(summary?.displayName ?: normalizedName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
                     }
                 }
             )
@@ -64,7 +66,7 @@ fun PurchaseDetailScreen(
             }
         } else {
             val monthly = remember(summary) { monthlySpend(summary.purchases) }
-            val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale("es", "ES")) }
+            val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
 
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item {
@@ -76,7 +78,7 @@ fun PurchaseDetailScreen(
                 }
                 items(monthly, key = { it.yearMonth }) { month ->
                     ListItem(
-                        headlineContent = { Text(month.yearMonth) },
+                        headlineContent = { Text(monthLabel(YearMonth.parse(month.yearMonth)).replaceFirstChar { it.uppercase() }) },
                         trailingContent = { Text(stringResource(R.string.purchase_detail_amount, month.total)) }
                     )
                 }

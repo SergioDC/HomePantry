@@ -1,6 +1,7 @@
 package com.homepantry.app.data
 
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -56,15 +57,29 @@ class ZonesRepository(
         collection().document(zoneId).delete().await()
     }
 
+    /**
+     * Ids fijos ("default-0"...) en vez de generados: si dos móviles siembran la misma casa nueva a
+     * la vez, escriben los mismos documentos en lugar de duplicar las zonas.
+     */
     suspend fun seedDefaultZones() {
+        val batch = firestore.batch()
         DEFAULT_ZONE_NAMES.forEachIndexed { index, name ->
-            addZone(name, index, color = zoneColorFor(index))
+            batch.set(
+                collection().document("default-$index"),
+                Zone(name = name, order = index, color = zoneColorFor(index))
+            )
         }
+        batch.commit().await()
     }
 
-    /** Sembrar zonas por defecto solo si la casa todavía no tiene ninguna. */
+    /**
+     * Sembrar zonas por defecto solo si la casa todavía no tiene ninguna. Se pregunta al servidor:
+     * sin conexión, un `get()` normal responde con la caché local, que en un móvil recién unido a
+     * una casa existente está vacía, y se sembraban zonas duplicadas. Sin conexión lanza (quien
+     * llama reintenta).
+     */
     suspend fun seedIfEmpty() {
-        val existing = collection().limit(1).get().await()
+        val existing = collection().limit(1).get(Source.SERVER).await()
         if (existing.isEmpty) seedDefaultZones()
     }
 }

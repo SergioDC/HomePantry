@@ -2,6 +2,7 @@ package com.homepantry.app.data
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import kotlinx.coroutines.Dispatchers
@@ -59,13 +60,16 @@ class GeminiApiKeyStore(private val context: Context) {
     }
 
     suspend fun save(key: String, model: String) = withContext(Dispatchers.IO) {
-        prefs.edit()
-            .putString(KEY_API_KEY, key.trim())
-            .putString(KEY_MODEL, model.trim().ifBlank { DEFAULT_GEMINI_MODEL })
-            .apply()
+        prefs.edit {
+            putString(KEY_API_KEY, key.trim())
+            putString(KEY_MODEL, model.trim().ifBlank { DEFAULT_GEMINI_MODEL })
+        }
     }
 
     suspend fun clear() = withContext(Dispatchers.IO) {
-        prefs.edit().remove(KEY_API_KEY).remove(KEY_MODEL).apply()
+        prefs.edit {
+            remove(KEY_API_KEY)
+            remove(KEY_MODEL)
+        }
     }
 }

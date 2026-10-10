@@ -23,6 +23,7 @@ import com.homepantry.app.data.productSummaries
 import com.homepantry.app.data.storeSections
 import com.homepantry.app.data.tickets
 import com.homepantry.app.data.zoneColorBackfill
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -81,7 +82,7 @@ class AppViewModel(
     private val membersRepository: MembersRepository,
     private val purchasesRepository: PurchasesRepository,
     val storageRepository: StorageRepository,
-    private val userName: String,
+    private var userName: String,
     private val uid: String
 ) : ViewModel() {
 
@@ -90,7 +91,13 @@ class AppViewModel(
 
     init {
         viewModelScope.launch {
-            runCatching { zonesRepository.seedIfEmpty() }
+            // seedIfEmpty consulta al servidor y falla sin conexión: se reintenta hasta que hay red,
+            // para que una casa creada sin conexión también reciba sus zonas por defecto.
+            var retryDelayMs = 5_000L
+            while (runCatching { zonesRepository.seedIfEmpty() }.isFailure) {
+                delay(retryDelayMs)
+                retryDelayMs = (retryDelayMs * 2).coerceAtMost(60_000L)
+            }
         }
         viewModelScope.launch {
             runCatching {
@@ -139,6 +146,19 @@ class AppViewModel(
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message)
             }
+        }
+    }
+
+    /**
+     * El ViewModel va ligado al código de casa, no al nombre: al cambiar el nombre en Ajustes se
+     * reutiliza, así que el nombre nuevo llega por aquí (si no, "pedido por" y el registro de
+     * miembros seguirían con el antiguo hasta reiniciar la app).
+     */
+    fun updateUserName(name: String) {
+        if (name == userName) return
+        userName = name
+        viewModelScope.launch {
+            runCatching { membersRepository.upsertSelf(uid, name) }
         }
     }
 
@@ -257,9 +277,14 @@ class AppViewModel(
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
-    /** Edita una línea de un ticket ya guardado (nombre, cantidad, unidad o precio). */
+    /**
+     * Edita una línea de un ticket ya guardado (nombre, cantidad, unidad o precio). La clave de
+     * agrupación se recalcula del nombre, como al guardar el ticket: si no, corregir el nombre no
+     * movía la compra a su producto en el historial ni en las estadísticas.
+     */
     fun updatePurchase(purchase: Purchase) = viewModelScope.launch {
-        runCatching { purchasesRepository.updatePurchase(purchase) }
+        val normalized = purchase.copy(normalizedName = normalizeProductName(purchase.rawName))
+        runCatching { purchasesRepository.updatePurchase(normalized) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
@@ -269,8 +294,10 @@ class AppViewModel(
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
-    fun toggleDone(item: Item) = viewModelScope.launch {
-        runCatching { itemsRepository.updateItem(item.copy(done = !item.done)) }
+    fun toggleDone(item: Item) = setDone(item, !item.done)
+
+    fun setDone(item: Item, done: Boolean) = viewModelScope.launch {
+        runCatching { itemsRepository.setDone(item.id, done) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 

@@ -44,9 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ZONE_COLORS
@@ -218,7 +220,7 @@ fun ZoneDetailScreen(
                 TextButton(onClick = {
                     // Forzar a pendiente (no toggleDone): si ya estaba pendiente, no queremos
                     // que "añadir a la lista" lo marque como tenido por error.
-                    viewModel.editItem(pendingItem.copy(done = false))
+                    viewModel.setDone(pendingItem, false)
                     itemPendingDelete = null
                 }) { Text(stringResource(R.string.zone_detail_remove_to_list)) }
             },
@@ -319,7 +321,7 @@ fun ZoneDetailScreen(
                     horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
                 ) {
                     ZONE_COLORS.forEach { hex ->
-                        val swatchColor = Color(android.graphics.Color.parseColor(hex))
+                        val swatchColor = Color(hex.toColorInt())
                         val isSelected = hex.equals(currentColor, ignoreCase = true)
                         Box(
                             modifier = Modifier
@@ -361,7 +363,7 @@ fun ZoneDetailScreen(
         AlertDialog(
             onDismissRequest = { showDeleteZoneConfirm = false },
             title = { Text(stringResource(R.string.zones_delete_confirm_title)) },
-            text = { Text(stringResource(R.string.zones_delete_confirm_message, affectedCount)) },
+            text = { Text(pluralStringResource(R.plurals.zones_delete_confirm_message, affectedCount, affectedCount)) },
             confirmButton = {
                 TextButton(onClick = {
                     if (otros != null) {
@@ -395,7 +397,7 @@ private fun ZoneSectionHeader(
     onOpen: (() -> Unit)?,
     onAdd: () -> Unit
 ) {
-    val dotColor = colorHex?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+    val dotColor = colorHex?.let { runCatching { Color(it.toColorInt()) }.getOrNull() }
     Row(
         modifier = Modifier
             .fillMaxWidth()

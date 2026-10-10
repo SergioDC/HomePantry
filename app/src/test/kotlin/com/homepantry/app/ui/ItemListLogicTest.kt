@@ -16,11 +16,11 @@ class ItemListLogicTest {
             Item(id = "2", name = "Pan", done = false),
             Item(id = "3", name = "Huevos", done = true)
         )
-        assertEquals("2 de 3 listos", progressText(items))
+        assertEquals("2 de 3 en casa", progressText(items))
     }
 
     @Test fun `progress text with empty list`() {
-        assertEquals("0 de 0 listos", progressText(emptyList()))
+        assertEquals("0 de 0 en casa", progressText(emptyList()))
     }
 
     @Test fun `groups by zone order, pending before done within a zone`() {

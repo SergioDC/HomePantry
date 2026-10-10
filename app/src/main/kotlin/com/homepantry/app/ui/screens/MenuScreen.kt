@@ -85,7 +85,6 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     // memoria (lee el mismo fichero cifrado), así que basta una instancia propia en vez de pasarla
     // desde MainActivity.
     val apiKeyStore = remember { GeminiApiKeyStore(context) }
-    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA)
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var showImportSource by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
@@ -129,6 +128,21 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
             scope.launch { snackbarHostState.showSnackbar(captureLostMessage) }
         }
     }
+    fun launchCamera() {
+        val uri = createReceiptCaptureUri(context)
+        pendingCaptureUri = uri
+        takePicture.launch(uri)
+    }
+
+    // Mismo criterio que el escaneo de tickets: concedido abre la cámara, denegado avisa.
+    val cameraPermissionState = rememberPermissionState(Manifest.permission.CAMERA) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.camera_permission_denied)) }
+        }
+    }
+
     val pickFromGallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri != null) processImportPhoto(uri)
     }
@@ -198,12 +212,10 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
             confirmButton = {
                 TextButton(onClick = {
                     showImportSource = false
-                    if (!cameraPermissionState.status.isGranted) {
-                        cameraPermissionState.launchPermissionRequest()
+                    if (cameraPermissionState.status.isGranted) {
+                        launchCamera()
                     } else {
-                        val uri = createReceiptCaptureUri(context)
-                        pendingCaptureUri = uri
-                        takePicture.launch(uri)
+                        cameraPermissionState.launchPermissionRequest()
                     }
                 }) { Text(stringResource(R.string.menu_import_dialog_camera)) }
             },

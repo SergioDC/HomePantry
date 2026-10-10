@@ -1,9 +1,9 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <!-- La app es siempre oscura (Nocturne), sin seguir el modo del móvil: tema base oscuro,
          fondo de ventana igual al de Compose (sin destello blanco al abrir) y sin "force dark". -->
     <style name="Theme.ListaDeLaCasa" parent="android:Theme.Material.NoActionBar">
         <item name="android:windowBackground">#FF161826</item>
-        <item name="android:forceDarkAllowed">false</item>
+        <item name="android:forceDarkAllowed" tools:targetApi="29">false</item>
     </style>
 
     <!-- Splash: fondo Nocturne + logo de la app; al terminar pasa al tema normal. -->

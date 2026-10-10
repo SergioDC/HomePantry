@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -62,7 +63,7 @@ fun ZonesDashboardScreen(
     val state by viewModel.state.collectAsState()
     var showCreateZone by remember { mutableStateOf(false) }
     var newZoneName by remember { mutableStateOf("") }
-    val today = remember { SimpleDateFormat("EEEE d MMMM", Locale("es", "ES")).format(Date()) }
+    val today = remember { SimpleDateFormat("EEEE d MMMM", Locale.forLanguageTag("es-ES")).format(Date()) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(state.error) {
@@ -110,11 +111,13 @@ fun ZonesDashboardScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 itemsIndexed(state.zoneCards, key = { _, summary -> summary.zone.id }) { index, summary ->
-                    val summaryText = if (summary.pendingCount == 0) {
-                        stringResource(R.string.dashboard_summary_up_to_date, summary.itemCount)
+                    val productsText = pluralStringResource(R.plurals.dashboard_products, summary.itemCount, summary.itemCount)
+                    val statusText = if (summary.pendingCount == 0) {
+                        stringResource(R.string.dashboard_up_to_date)
                     } else {
-                        stringResource(R.string.dashboard_summary_pending, summary.itemCount, summary.pendingCount)
+                        pluralStringResource(R.plurals.dashboard_pending, summary.pendingCount, summary.pendingCount)
                     }
+                    val summaryText = "$productsText · $statusText"
                     ZoneCard(
                         letter = zoneIconLetter(summary.zone),
                         colorHex = resolvedZoneColor(summary.zone, index),

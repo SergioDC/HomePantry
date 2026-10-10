@@ -22,6 +22,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.AlertDialog
@@ -32,7 +33,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.ModalBottomSheetDefaults
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -51,6 +52,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.view.ViewCompat
@@ -60,6 +62,7 @@ import com.homepantry.app.R
 import com.homepantry.app.data.DEFAULT_PRODUCTS
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.OpenFoodFactsClient
+import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.parseQtyOrDefault
 import com.homepantry.app.data.resolvedZoneColor
 import com.homepantry.app.data.subzonesOf
@@ -92,7 +95,7 @@ fun AddItemSheet(
     val isEditing = itemToEdit != null
 
     var name by remember(itemToEdit) { mutableStateOf(itemToEdit?.name ?: "") }
-    var qtyText by remember(itemToEdit) { mutableStateOf(itemToEdit?.qty?.toString() ?: "1") }
+    var qtyText by remember(itemToEdit) { mutableStateOf(itemToEdit?.qty?.let { formatQuantity(it) } ?: "1") }
     var unit by remember(itemToEdit) {
         mutableStateOf(
             itemToEdit?.let { runCatching { ItemUnit.valueOf(it.unit) }.getOrDefault(ItemUnit.UD) } ?: ItemUnit.UD
@@ -187,7 +190,7 @@ fun AddItemSheet(
         // que también manda un evento atrás) -- lo desactivamos y llevamos el
         // control nosotros abajo: si hay teclado, solo se oculta; si no, se
         // cierra la hoja.
-        properties = ModalBottomSheetDefaults.properties(shouldDismissOnBackPress = false)
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
         // El WindowInsets.ime "reactivo" leído en composición no reflejaba bien
         // el estado real del teclado dentro de la ventana propia del sheet (por
@@ -259,6 +262,8 @@ fun AddItemSheet(
                         onValueChange = { qtyText = it },
                         label = { Text(stringResource(R.string.add_item_qty)) },
                         isError = qty == null,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         modifier = Modifier.weight(1f)
                     )
                     Box(modifier = Modifier.weight(1f).padding(start = 8.dp)) {

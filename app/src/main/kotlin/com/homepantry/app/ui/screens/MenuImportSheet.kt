@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -147,7 +148,7 @@ fun MenuImportSheet(
             }
             if (weekendDays > 0) {
                 Text(
-                    text = stringResource(R.string.menu_import_weekend_warning, monthLabel(month), weekendDays),
+                    text = pluralStringResource(R.plurals.menu_import_weekend_warning, weekendDays, monthLabel(month), weekendDays),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error
                 )

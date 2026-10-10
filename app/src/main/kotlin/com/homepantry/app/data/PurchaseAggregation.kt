@@ -66,7 +66,7 @@ fun formatQuantity(quantity: Double): String =
     if (quantity == quantity.toLong().toDouble()) {
         quantity.toLong().toString()
     } else {
-        String.format(Locale("es", "ES"), "%.3f", quantity).trimEnd('0').trimEnd(',')
+        String.format(Locale.forLanguageTag("es-ES"), "%.3f", quantity).trimEnd('0').trimEnd(',')
     }
 
 /** Supermercados ya usados, sin repetir (por clave), con la grafía más reciente y el más reciente primero. */

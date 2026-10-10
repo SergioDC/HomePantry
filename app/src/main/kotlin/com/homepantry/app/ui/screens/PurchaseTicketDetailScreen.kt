@@ -41,12 +41,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.RECEIPT_UNITS
 import com.homepantry.app.data.formatQuantity
+import com.homepantry.app.data.parseUserPrice
 import com.homepantry.app.data.unitPrice
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
@@ -72,7 +74,7 @@ fun PurchaseTicketDetailScreen(
     }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale("es", "ES")) }
+    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
     var showDeleteTicket by remember { mutableStateOf(false) }
     var purchasePendingEdit by remember { mutableStateOf<Purchase?>(null) }
     val lineDeletedText = stringResource(R.string.purchase_ticket_line_deleted)
@@ -141,7 +143,7 @@ fun PurchaseTicketDetailScreen(
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
                 item(key = "summary") {
                     Text(
-                        text = stringResource(R.string.purchase_ticket_summary, ticket.purchases.size, ticket.total),
+                        text = pluralStringResource(R.plurals.purchase_ticket_summary, ticket.purchases.size, ticket.purchases.size, ticket.total),
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.padding(16.dp)
                     )
@@ -222,7 +224,7 @@ private fun EditPurchaseDialog(
     var qtyText by remember(purchase) { mutableStateOf(formatQuantity(purchase.quantity)) }
     var unit by remember(purchase) { mutableStateOf(purchase.unit) }
     var priceText by remember(purchase) {
-        mutableStateOf(String.format(Locale("es", "ES"), "%.2f", purchase.price))
+        mutableStateOf(String.format(Locale.forLanguageTag("es-ES"), "%.2f", purchase.price))
     }
 
     AlertDialog(
@@ -260,7 +262,7 @@ private fun EditPurchaseDialog(
             }
         },
         confirmButton = {
-            val price = priceText.replace(",", ".").toDoubleOrNull()
+            val price = parseUserPrice(priceText)
             TextButton(
                 onClick = {
                     val quantity = qtyText.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: purchase.quantity

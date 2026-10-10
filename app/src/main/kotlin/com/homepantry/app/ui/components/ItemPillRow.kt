@@ -28,8 +28,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.toColorInt
 import com.homepantry.app.R
 import com.homepantry.app.data.Item
+import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.lightenedZoneColor
 import com.homepantry.app.data.Unit as ItemUnit
 
@@ -69,10 +71,10 @@ fun ItemPillRow(
     val rowAlpha = if (item.done && dimWhenDone) 0.5f else 1f
     val backgroundColor = rowBackgroundColor
         ?.let { lightenedZoneColor(it) }
-        ?.let { hex -> runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull() }
+        ?.let { hex -> runCatching { Color(hex.toColorInt()) }.getOrNull() }
     // Borde sin aclarar: siempre más oscuro que `backgroundColor` (su versión clara).
     val borderColor = rowBackgroundColor
-        ?.let { hex -> runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull() }
+        ?.let { hex -> runCatching { Color(hex.toColorInt()) }.getOrNull() }
     // Sobre el fondo claro de la zona el texto pasa a oscuro, igual que en `ZoneCard`.
     val mutedTextColor = if (backgroundColor != null) PillTextColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
 
@@ -126,7 +128,7 @@ fun ItemPillRow(
             )
             val addedBySuffix = item.addedBy?.takeIf { it.isNotBlank() }?.let { " · pedido por $it" } ?: ""
             Text(
-                text = "${item.qty} $unitLabel$addedBySuffix",
+                text = "${formatQuantity(item.qty)} $unitLabel$addedBySuffix",
                 style = MaterialTheme.typography.bodySmall,
                 color = mutedTextColor
             )
@@ -148,7 +150,7 @@ fun ItemPillRow(
 
         if (!zoneName.isNullOrBlank()) {
             val labelColor = zoneColor
-                ?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() }
+                ?.let { runCatching { Color(it.toColorInt()) }.getOrNull() }
                 ?: MaterialTheme.colorScheme.primary
             Text(
                 text = zoneName,

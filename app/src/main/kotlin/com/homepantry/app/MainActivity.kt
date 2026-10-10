@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -18,13 +19,16 @@ import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -32,6 +36,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -73,6 +79,7 @@ import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
 import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -122,16 +129,41 @@ fun ListaDeLaCasaApp() {
     val geminiApiKeyStore = remember { GeminiApiKeyStore(context) }
     val auth = remember { FirebaseAuth.getInstance() }
     var authReady by remember { mutableStateOf(false) }
+    var authFailed by remember { mutableStateOf(false) }
+    var authAttempt by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(Unit) {
-        if (auth.currentUser == null) {
-            auth.signInAnonymously().await()
+    // Sin red en el primer arranque (aún no hay usuario anónimo) signInAnonymously falla: sin
+    // capturarlo, la excepción tumbaba la app. Se muestra el error con un botón para reintentar.
+    LaunchedEffect(authAttempt) {
+        authFailed = false
+        try {
+            if (auth.currentUser == null) {
+                auth.signInAnonymously().await()
+            }
+            authReady = true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            authFailed = true
         }
-        authReady = true
     }
 
     if (!authReady) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (authFailed) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.padding(32.dp)
+                ) {
+                    Text(stringResource(R.string.auth_error), textAlign = TextAlign.Center)
+                    Button(onClick = { authAttempt++ }, modifier = Modifier.padding(top = 16.dp)) {
+                        Text(stringResource(R.string.auth_retry))
+                    }
+                }
+            } else {
+                CircularProgressIndicator()
+            }
+        }
         return
     }
 
@@ -148,14 +180,18 @@ fun ListaDeLaCasaApp() {
 
     val firestore = remember { FirebaseFirestore.getInstance() }
     val storage = remember { FirebaseStorage.getInstance() }
-    val connectivityObserver = remember { ConnectivityObserver(context) }
-    val isOnline by connectivityObserver.observe().collectAsState(initial = true)
+    // El Flow se crea una sola vez: `observe()` devuelve uno nuevo en cada llamada, y collectAsState
+    // con un Flow distinto en cada recomposición volvía a registrar el callback de red cada vez.
+    val connectivity = remember { ConnectivityObserver(context).observe() }
+    val isOnline by connectivity.collectAsState(initial = true)
 
     val uid = auth.currentUser?.uid.orEmpty()
 
+    // Los ViewModels van por código de casa y se reutilizan aunque cambie el nombre; el nombre
+    // nuevo se les pasa abajo con updateUserName.
     val viewModel: AppViewModel = viewModel(
         key = code,
-        factory = remember(code, name) {
+        factory = remember(code) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -175,7 +211,7 @@ fun ListaDeLaCasaApp() {
 
     val menuViewModel: MenuViewModel = viewModel(
         key = "menu-$code",
-        factory = remember(code, name) {
+        factory = remember(code) {
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
@@ -190,6 +226,11 @@ fun ListaDeLaCasaApp() {
             }
         }
     )
+
+    LaunchedEffect(viewModel, menuViewModel, name) {
+        viewModel.updateUserName(name)
+        menuViewModel.updateUserName(name)
+    }
 
     val state by viewModel.state.collectAsState()
     val pendingCount = state.items.count { !it.done }
