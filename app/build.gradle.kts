@@ -109,8 +109,8 @@ dependencies {
     implementation("androidx.security:security-crypto:1.1.0")
 
     // Networking para Open Food Facts (autocompletar nombre por código de barras)
-    implementation("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    implementation("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation("com.squareup.retrofit2:converter-gson:3.0.0")
 
     // Permisos runtime (cámara)
     implementation("com.google.accompanist:accompanist-permissions:0.37.3")
