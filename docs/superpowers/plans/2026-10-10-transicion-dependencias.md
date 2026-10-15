@@ -804,7 +804,7 @@ git tag deps-paso-7
 - Consume: `deps-paso-7` y el requisito previo.
 - Produce: la misma API pública de `GeminiApiKeyStore`, sin dependencia de `androidx.security`.
 
-- [ ] **Paso 8.1:** En `app/src/main/kotlin/com/homepantry/app/data/SecretStorage.kt`, borrar la función `migrateSecret` y su comentario. El archivo queda así:
+- [ ] **Paso 8.1:** En `app/src/main/kotlin/com/homepantry/app/data/SecretStorage.kt`, borrar las funciones `migrateSecret` y `migrateAllSecrets` con sus comentarios. El archivo queda así:
 
 ```kotlin
 package com.homepantry.app.data
@@ -827,7 +827,7 @@ class PlainPrefStorage(private val prefs: SharedPreferences, private val key: St
 }
 ```
 
-- [ ] **Paso 8.2:** Borrar el test, que solo cubría `migrateSecret`:
+- [ ] **Paso 8.2:** Borrar el test, que solo cubría `migrateSecret` y `migrateAllSecrets` (`KeystoreSecretStorageTest.kt` se queda):
 
 ```bash
 git rm app/src/test/kotlin/com/homepantry/app/data/SecretStorageTest.kt
@@ -928,7 +928,7 @@ grep -rn "androidx.security\|EncryptedSharedPreferences\|MasterKey\|gemini_api_k
 
   Esperado: ninguna línea.
 
-- [ ] **Paso 8.7:** Ejecutar V1. Esperado: 273 tests y ningún aviso de compilación sobre `EncryptedSharedPreferences`.
+- [ ] **Paso 8.7:** Ejecutar V1. Esperado: 275 tests (281 menos los 6 de `SecretStorageTest`) y ningún aviso de compilación sobre `EncryptedSharedPreferences`.
 - [ ] **Paso 8.8:** Ejecutar V2 instalando con `-r` encima de la Tarea 7: la clave de Gemini sigue ahí y el escaneo va por Gemini.
 - [ ] **Paso 8.9:** Commit y etiqueta.
 

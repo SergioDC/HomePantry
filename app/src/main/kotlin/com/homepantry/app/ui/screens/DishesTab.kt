@@ -32,7 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
@@ -52,7 +52,7 @@ import com.homepantry.app.ui.UiState
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DishesTab(state: MenuUiState, appState: UiState, viewModel: MenuViewModel) {
-    val resources = LocalContext.current.resources
+    val resources = LocalResources.current
     var query by rememberSaveable { mutableStateOf("") }
     var showForm by remember { mutableStateOf(false) }
     var editingDish by remember { mutableStateOf<Dish?>(null) }

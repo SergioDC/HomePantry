@@ -1,5 +1,6 @@
 package com.homepantry.app.data
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -38,6 +39,8 @@ object ImageCompressor {
      * comprimir en vez de tumbar la corrutina que llama a esto -- mismo
      * criterio que ya usa esta función cuando `decodeStream` devuelve null.
      */
+    // El lint de Kotlin 2 no ve el `.use {}` que cierra el flujo de inJustDecodeBounds (falso positivo).
+    @SuppressLint("Recycle")
     fun compress(context: Context, sourceUri: Uri): Uri {
         return try {
             // Se decodifica ya reducida (potencia de 2 por encima de MAX_PHOTO_SIDE): cargar la foto

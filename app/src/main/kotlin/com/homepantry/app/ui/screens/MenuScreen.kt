@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.stringResource
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
@@ -71,6 +72,7 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     val state by menuViewModel.state.collectAsState()
     val appState by appViewModel.state.collectAsState()
     val context = LocalContext.current
+    val resources = LocalResources.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
@@ -139,7 +141,7 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
         if (granted) {
             launchCamera()
         } else {
-            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.camera_permission_denied)) }
+            scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.camera_permission_denied)) }
         }
     }
 
@@ -240,15 +242,15 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
             onDone = { plan ->
                 importedMenu = null
                 val summary = buildList {
-                    add(context.getString(R.string.menu_import_summary_added, plan.entries.size))
+                    add(resources.getString(R.string.menu_import_summary_added, plan.entries.size))
                     if (plan.newDishes.isNotEmpty()) {
-                        add(context.getString(R.string.menu_import_summary_new, plan.newDishes.size))
+                        add(resources.getString(R.string.menu_import_summary_new, plan.newDishes.size))
                     }
                     if (plan.alreadyPresent > 0) {
-                        add(context.getString(R.string.menu_import_summary_present, plan.alreadyPresent))
+                        add(resources.getString(R.string.menu_import_summary_present, plan.alreadyPresent))
                     }
                     if (plan.droppedDays > 0) {
-                        add(context.getString(R.string.menu_import_summary_dropped, plan.droppedDays))
+                        add(resources.getString(R.string.menu_import_summary_dropped, plan.droppedDays))
                     }
                 }.joinToString(" · ")
                 scope.launch { snackbarHostState.showSnackbar(summary) }
@@ -279,7 +281,7 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
                 // Con el día abierto la hoja ya se reordena sola: el aviso solo hace falta para el mes,
                 // que se ve en el calendario de fondo, y la hoja modal taparía un Snackbar.
                 if (assign.announce) {
-                    scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.menu_assign_done, changed)) }
+                    scope.launch { snackbarHostState.showSnackbar(resources.getString(R.string.menu_assign_done, changed)) }
                 }
             }
         )
