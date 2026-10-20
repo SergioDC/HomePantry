@@ -246,4 +246,12 @@ class PurchaseAggregationTest {
     @Test fun `ticketsByMonth is empty when there are no tickets`() {
         assertEquals(emptyList<MonthSection>(), ticketsByMonth(emptyList()))
     }
+
+    @Test fun `an old ticket keeps its key when its date changes if its old key becomes its ticketId`() {
+        val old = Purchase(rawName = "X", price = 1.0, date = at("2026-10-20 10:00"), store = "Lidl")
+        val key = ticketKey(old)
+        val redated = old.copy(date = at("2026-10-18 10:00"), ticketId = key)
+        assertEquals(key, ticketKey(redated))
+        assertEquals(listOf(key), tickets(listOf(redated)).map { it.key })
+    }
 }

@@ -21,6 +21,7 @@ import com.homepantry.app.data.nextZoneColor
 import com.homepantry.app.data.normalizeProductName
 import com.homepantry.app.data.productSummaries
 import com.homepantry.app.data.storeSections
+import com.homepantry.app.data.ticketTimestamp
 import com.homepantry.app.data.tickets
 import com.homepantry.app.data.zoneColorBackfill
 import kotlinx.coroutines.delay
@@ -233,6 +234,8 @@ class AppViewModel(
         if (receipt.lines.isEmpty()) return@launch
         val batchId = java.util.UUID.randomUUID().toString()
         val now = java.util.Date()
+        // La fecha impresa en el ticket (elegida en la revisión), no la del escaneo.
+        val ticketDate = receipt.date?.let { ticketTimestamp(it, now) } ?: now
         val store = receipt.store?.trim()?.takeIf { it.isNotEmpty() }
         val purchases = receipt.lines.map { line ->
             Purchase(
@@ -243,7 +246,7 @@ class AppViewModel(
                 unit = line.unit,
                 store = store,
                 ticketId = batchId,
-                date = now,
+                date = ticketDate,
                 addedBy = userName
             )
         }
@@ -264,6 +267,18 @@ class AppViewModel(
             ?: return@launch
         runCatching { purchasesRepository.deletePurchases(ids) }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /** Corrige la fecha de un ticket ya guardado (los anteriores a leerla del ticket llevan la del escaneo). */
+    fun updateTicketDate(ticketKey: String, day: java.util.Date) = viewModelScope.launch {
+        val ticket = _state.value.purchaseTickets.firstOrNull { it.key == ticketKey } ?: return@launch
+        runCatching {
+            purchasesRepository.updateTicketDate(
+                ids = ticket.purchases.map { it.id },
+                date = ticketTimestamp(day, ticket.date),
+                ticketId = ticket.key
+            )
+        }.onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
 
     fun deletePurchase(purchaseId: String) = viewModelScope.launch {

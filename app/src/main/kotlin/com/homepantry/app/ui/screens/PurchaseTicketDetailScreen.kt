@@ -12,7 +12,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -53,6 +55,7 @@ import com.homepantry.app.data.unitPrice
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.DeleteTicketDialog
+import com.homepantry.app.ui.components.TicketDatePickerDialog
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -60,6 +63,7 @@ import java.util.Locale
 /**
  * Detalle de un ticket: sus líneas con cantidad, precio unitario y total. La papelera de
  * arriba borra el ticket entero (con confirmación); la de cada línea la borra con «Deshacer».
+ * La fila de la fecha abre un calendario para corregirla.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,7 +79,9 @@ fun PurchaseTicketDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
+    val longDateFormat = remember { SimpleDateFormat("EEEE d 'de' MMMM yyyy", Locale.forLanguageTag("es-ES")) }
     var showDeleteTicket by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     var purchasePendingEdit by remember { mutableStateOf<Purchase?>(null) }
     val lineDeletedText = stringResource(R.string.purchase_ticket_line_deleted)
     val undoText = stringResource(R.string.purchase_ticket_undo)
@@ -148,6 +154,20 @@ fun PurchaseTicketDetailScreen(
                         modifier = Modifier.padding(16.dp)
                     )
                 }
+                // Los tickets guardados antes de leer la fecha impresa llevan la del escaneo: se corrige aquí.
+                item(key = "date") {
+                    ListItem(
+                        modifier = Modifier.clickable { showDatePicker = true },
+                        leadingContent = { Icon(Icons.Filled.CalendarMonth, contentDescription = null) },
+                        overlineContent = { Text(stringResource(R.string.ticket_date_label)) },
+                        headlineContent = {
+                            Text(longDateFormat.format(ticket.date).replaceFirstChar { it.uppercase() })
+                        },
+                        trailingContent = {
+                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.ticket_date_edit_cd))
+                        }
+                    )
+                }
                 items(ticket.purchases, key = { it.id }) { purchase ->
                     ListItem(
                         modifier = Modifier.clickable { purchasePendingEdit = purchase },
@@ -197,6 +217,17 @@ fun PurchaseTicketDetailScreen(
                 showDeleteTicket = false
             },
             onDismiss = { showDeleteTicket = false }
+        )
+    }
+
+    if (showDatePicker && ticket != null) {
+        TicketDatePickerDialog(
+            initialDay = ticket.date,
+            onConfirm = { day ->
+                viewModel.updateTicketDate(ticket.key, day)
+                showDatePicker = false
+            },
+            onDismiss = { showDatePicker = false }
         )
     }
 

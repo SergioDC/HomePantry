@@ -55,6 +55,19 @@ class PurchasesRepository(
         }
     }
 
+    /**
+     * Cambia la fecha de todas las líneas de un ticket. También fija `ticketId` a la clave que ya
+     * tenía el ticket: las compras antiguas sin `ticketId` se agrupan por su fecha exacta, y sin
+     * esto el ticket cambiaría de clave (y su pantalla de detalle se cerraría) al cambiarla.
+     */
+    suspend fun updateTicketDate(ids: List<String>, date: java.util.Date, ticketId: String) {
+        ids.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { id -> batch.update(collection().document(id), "date", date, "ticketId", ticketId) }
+            batch.commit().await()
+        }
+    }
+
     /** Borra las compras indicadas; Firestore admite como máximo 500 operaciones por lote. */
     suspend fun deletePurchases(ids: List<String>) {
         ids.chunked(500).forEach { chunk ->

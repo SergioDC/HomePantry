@@ -41,6 +41,7 @@ val PRODUCTS_JSON_SCHEMA: Map<String, Any> = mapOf(
     "type" to "object",
     "properties" to mapOf(
         "store" to mapOf("type" to "string"),
+        "date" to mapOf("type" to "string"),
         "products" to mapOf(
             "type" to "array",
             "items" to mapOf(

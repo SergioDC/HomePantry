@@ -13,7 +13,7 @@ data class MonthSummary(
     val averagePerTicket: Double
 )
 
-/** Gasto de un supermercado en el mes; `fraction` (0..1) sobre el total del mes. */
+/** Gasto de un supermercado en un periodo; `fraction` (0..1) sobre el total de ese periodo. */
 data class StoreSpend(val storeKey: String, val displayName: String, val total: Double, val fraction: Double)
 
 enum class TopBy { SPEND, COUNT }
@@ -54,6 +54,35 @@ private fun monthKey(date: Date, offset: Int = 0): String {
 
 private fun List<Purchase>.inMonth(key: String) = filter { yearMonth(it.date) == key }
 
+/** Primer día (a medianoche local) del mes "yyyy-MM": sirve de `referenceDate` para un mes elegido. */
+fun monthStart(yearMonth: String): Date = SimpleDateFormat("yyyy-MM", Locale.US).parse(yearMonth)!!
+
+/** Compras de un supermercado (por [storeKey]; vacío = sin supermercado). `null` = todos. */
+fun purchasesOfStore(purchases: List<Purchase>, storeKey: String?): List<Purchase> =
+    if (storeKey == null) purchases else purchases.filter { storeKey(it.store) == storeKey }
+
+/** Gasto acumulado de un conjunto de compras (típicamente las de un supermercado). */
+data class StoreOverview(val total: Double, val ticketCount: Int, val monthlyAverage: Double)
+
+/**
+ * Total, tickets y media mensual de [purchases]. La media se reparte entre todos los meses
+ * desde el de la primera compra hasta el de [referenceDate], también los que no tienen
+ * compras: si no, un súper visitado dos veces al año parecería tan caro como el de diario.
+ */
+fun storeOverview(purchases: List<Purchase>, referenceDate: Date = Date()): StoreOverview {
+    if (purchases.isEmpty()) return StoreOverview(0.0, 0, 0.0)
+    val total = purchases.sumOf { it.price }
+    val first = Calendar.getInstance().apply { time = purchases.minOf { it.date } }
+    val last = Calendar.getInstance().apply { time = maxOf(referenceDate, purchases.maxOf { it.date }) }
+    val months = (last.get(Calendar.YEAR) - first.get(Calendar.YEAR)) * 12 +
+        (last.get(Calendar.MONTH) - first.get(Calendar.MONTH)) + 1
+    return StoreOverview(
+        total = total,
+        ticketCount = purchases.map { ticketKey(it) }.distinct().size,
+        monthlyAverage = total / months
+    )
+}
+
 fun monthSummary(purchases: List<Purchase>, referenceDate: Date = Date()): MonthSummary {
     val current = purchases.inMonth(monthKey(referenceDate))
     val previous = purchases.inMonth(monthKey(referenceDate, -1))
@@ -76,17 +105,20 @@ fun lastMonthsSpend(purchases: List<Purchase>, months: Int = 6, referenceDate: D
     }
 }
 
-fun spendByStore(purchases: List<Purchase>, referenceDate: Date = Date()): List<StoreSpend> {
-    val current = purchases.inMonth(monthKey(referenceDate))
-    val monthTotal = current.sumOf { it.price }
-    return current.groupBy { storeKey(it.store) }
+fun spendByStore(purchases: List<Purchase>, referenceDate: Date = Date()): List<StoreSpend> =
+    storeShares(purchases.inMonth(monthKey(referenceDate)))
+
+/** Reparto de [purchases] entre supermercados, del que más gasto tiene al que menos; `fraction` sobre su total. */
+fun storeShares(purchases: List<Purchase>): List<StoreSpend> {
+    val sum = purchases.sumOf { it.price }
+    return purchases.groupBy { storeKey(it.store) }
         .map { (key, group) ->
             val total = group.sumOf { it.price }
             StoreSpend(
                 storeKey = key,
                 displayName = group.maxBy { it.date }.store?.trim().orEmpty(),
                 total = total,
-                fraction = if (monthTotal == 0.0) 0.0 else total / monthTotal
+                fraction = if (sum == 0.0) 0.0 else total / sum
             )
         }
         .sortedByDescending { it.total }
