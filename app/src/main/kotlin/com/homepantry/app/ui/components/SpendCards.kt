@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.homepantry.app.data.Ticket
+import com.homepantry.app.data.storeKey
 import com.homepantry.app.data.storesByFirstPurchase
 import com.homepantry.app.ui.theme.NocturneOnSurfaceVariant
 import com.homepantry.app.ui.theme.StoreColors
@@ -64,6 +65,18 @@ fun rememberStoreColors(tickets: List<Ticket>): Map<String, Color> {
  * al montar los items de una lista.
  */
 fun Map<String, Color>.colorOf(storeKey: String): Color = this[storeKey] ?: NocturneOnSurfaceVariant
+
+/**
+ * Color que tendrá un ticket de [store] aún sin guardar (hoja de revisión): el de la tienda si ya
+ * tiene compras, el siguiente de [StoreColors] si es nueva (se añade al final del orden de primera
+ * compra) y gris sin tienda. Solo fallaría con una tienda nueva cuyo ticket sea más antiguo que la
+ * primera compra de otras, que entonces se colocaría delante.
+ */
+fun Map<String, Color>.colorForNewTicket(store: String): Color {
+    val key = storeKey(store)
+    if (key.isEmpty()) return NocturneOnSurfaceVariant
+    return this[key] ?: StoreColors[keys.count { it.isNotEmpty() } % StoreColors.size]
+}
 
 @Composable
 fun ColorDot(color: Color, modifier: Modifier = Modifier) {

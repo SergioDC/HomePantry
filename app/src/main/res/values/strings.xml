@@ -155,8 +155,7 @@
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
     <string name="receipt_review_save">Guardar compras</string>
     <string name="receipt_review_back">Volver</string>
-    <string name="receipt_review_total">Total: %1$.2f €</string>
-    <string name="ticket_date_label">Fecha del ticket</string>
+    <string name="receipt_review_total">Total</string>
     <string name="ticket_date_choose">Toca para elegirla</string>
     <string name="ticket_date_read">Leída del ticket. Tócala si no es correcta.</string>
     <string name="ticket_date_manual">Elegida a mano</string>
