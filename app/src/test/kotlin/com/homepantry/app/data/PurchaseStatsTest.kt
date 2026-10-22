@@ -162,4 +162,57 @@ class PurchaseStatsTest {
         assertTrue(cheapestStores(mixedUnits).isEmpty())
         assertTrue(cheapestStores(noStore).isEmpty())
     }
+
+    @Test fun `purchasesOfStore filters by normalized store key and null means every store`() {
+        val purchases = listOf(
+            p("a", 1.0, "2026-03-01", store = "Lidl"),
+            p("b", 2.0, "2026-03-02", store = " lidl "),
+            p("c", 3.0, "2026-03-03", store = "Dia"),
+            p("d", 4.0, "2026-03-04")
+        )
+        assertEquals(listOf("a", "b"), purchasesOfStore(purchases, "lidl").map { it.rawName })
+        assertEquals(listOf("d"), purchasesOfStore(purchases, "").map { it.rawName })
+        assertEquals(4, purchasesOfStore(purchases, null).size)
+    }
+
+    @Test fun `monthStart and monthSummary work for a month other than the current one`() {
+        val purchases = listOf(
+            p("a", 10.0, "2026-01-10", ticket = "t1"),
+            p("b", 4.0, "2025-12-31", ticket = "t2")
+        )
+        val s = monthSummary(purchases, monthStart("2026-01"))
+        assertEquals(10.0, s.total, 0.001)
+        assertEquals(4.0, s.previousTotal!!, 0.001)
+        assertEquals(date("2026-01-01"), monthStart("2026-01"))
+    }
+
+    @Test fun `storeOverview totals all months, counts tickets and averages per month since the first purchase`() {
+        val purchases = listOf(
+            p("a", 30.0, "2026-01-10", ticket = "t1"),
+            p("b", 10.0, "2026-01-10", ticket = "t1"),
+            p("c", 20.0, "2026-03-02", ticket = "t2")
+        )
+        val o = storeOverview(purchases, ref)
+        assertEquals(60.0, o.total, 0.001)
+        assertEquals(2, o.ticketCount)
+        // Enero, febrero y marzo: 3 meses, aunque febrero no tenga compras.
+        assertEquals(20.0, o.monthlyAverage, 0.001)
+    }
+
+    @Test fun `storeOverview of nothing is all zeros`() {
+        assertEquals(StoreOverview(0.0, 0, 0.0), storeOverview(emptyList(), ref))
+    }
+
+    @Test fun `storeShares splits any set of purchases by store, biggest first`() {
+        val purchases = listOf(
+            p("a", 30.0, "2026-01-10", store = "Lidl"),
+            p("b", 10.0, "2026-03-02", store = "lidl "),
+            p("c", 60.0, "2026-02-02", store = "Dia")
+        )
+        val shares = storeShares(purchases)
+        assertEquals(listOf("dia", "lidl"), shares.map { it.storeKey })
+        assertEquals(0.6, shares[0].fraction, 0.001)
+        assertEquals(40.0, shares[1].total, 0.001)
+        assertTrue(storeShares(emptyList()).isEmpty())
+    }
 }

@@ -59,3 +59,15 @@ val NocturneOnErrorContainer = Color(0xFFE9E9ED)
 val NocturneOnSurface = Color(0xFFE9E9ED)
 val NocturneOnSurfaceVariant = Color(0xFFB8B8C4)
 val NocturneOutline = Color(0xFFE9E9ED).copy(alpha = 0.16f)
+
+// Supermercados en el panel de gastos (franja de cada ticket y reparto del mes), paleta
+// "Natural" elegida en el mock. Sin coral, reservado para alertas y borrar, y sin morado,
+// para no confundir una tienda con los títulos de la app (NocturnePrimary).
+val StoreColors = listOf(
+    Color(0xFF4CB782), // verde
+    Color(0xFF5B9BD5), // azul
+    Color(0xFFE3A64B), // ámbar
+    Color(0xFFA5C85A), // lima
+    Color(0xFF4FB8C2), // turquesa
+    Color(0xFFC9A27A)  // arena
+)

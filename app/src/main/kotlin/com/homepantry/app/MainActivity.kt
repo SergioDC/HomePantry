@@ -74,6 +74,7 @@ import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.MenuScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
+import com.homepantry.app.ui.screens.PurchaseProductsScreen
 import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
 import com.homepantry.app.ui.screens.SearchScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
@@ -338,13 +339,20 @@ fun ListaDeLaCasaApp() {
                     viewModel = viewModel,
                     geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
-                    onOpenProduct = { normalizedName ->
-                        navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
-                    },
                     onOpenTicket = { ticketKey ->
                         navController.navigate("purchaseTicket/${Uri.encode(ticketKey)}")
                     },
+                    onOpenProducts = { navController.navigate("purchaseProducts") },
                     onOpenStats = { navController.navigate("purchaseStats") }
+                )
+            }
+            composable("purchaseProducts") {
+                PurchaseProductsScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenProduct = { normalizedName ->
+                        navController.navigate("purchaseDetail/${Uri.encode(normalizedName)}")
+                    }
                 )
             }
             composable("purchaseStats") {

@@ -41,7 +41,7 @@ class GeminiServerException(code: Int, detail: String?) : GeminiReceiptException
 private val geminiGson = Gson()
 
 private data class GeminiProduct(val name: String?, val price: Double?, val quantity: Double?, val unit: String?)
-private data class GeminiProductsPayload(val store: String?, val products: List<GeminiProduct>?)
+private data class GeminiProductsPayload(val store: String?, val date: String?, val products: List<GeminiProduct>?)
 
 /**
  * La API de `generativelanguage` devuelve 400 con `API_KEY_INVALID` (no 401/403)
@@ -123,7 +123,7 @@ internal fun extractOutputText(response: GeminiInteractionResponse): String {
     return texts.joinToString("")
 }
 
-internal fun mapGeminiOutputText(outputText: String): ParsedReceipt {
+internal fun mapGeminiOutputText(outputText: String, today: java.util.Date = java.util.Date()): ParsedReceipt {
     val payload = try {
         geminiGson.fromJson(outputText, GeminiProductsPayload::class.java)
     } catch (e: JsonSyntaxException) {
@@ -144,7 +144,11 @@ internal fun mapGeminiOutputText(outputText: String): ParsedReceipt {
             )
         }
     }
-    return ParsedReceipt(store = payload.store?.trim()?.takeIf { it.isNotEmpty() }, lines = lines)
+    return ParsedReceipt(
+        store = payload.store?.trim()?.takeIf { it.isNotEmpty() },
+        lines = lines,
+        date = plausibleReceiptDate(parseIsoReceiptDate(payload.date), today)
+    )
 }
 
 /** Modelo usado si el usuario nunca ha elegido uno explícitamente en Ajustes. */
@@ -180,6 +184,9 @@ private val RECEIPT_PROMPT = """
     Devuelve además store: el nombre del supermercado o cadena que aparece en
     la cabecera del ticket (por ejemplo "Mercadona" o "Lidl"), sin dirección
     ni CIF; omítelo si no se lee con claridad.
+    Devuelve además date: la fecha de la compra impresa en el ticket, en
+    formato YYYY-MM-DD (en España se imprime como día/mes/año); omítela si
+    no se lee con claridad.
     Ignora totales, subtotales, líneas de IVA, cambio, tarjeta/efectivo,
     promociones sueltas y cualquier línea que no sea un producto comprado.
 """.trimIndent()

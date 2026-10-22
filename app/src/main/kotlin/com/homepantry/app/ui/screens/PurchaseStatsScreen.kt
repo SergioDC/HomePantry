@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -42,22 +41,15 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
-import com.homepantry.app.data.MonthlySpend
 import com.homepantry.app.data.TopBy
 import com.homepantry.app.data.cheapestStores
-import com.homepantry.app.data.lastMonthsSpend
-import com.homepantry.app.data.monthSummary
 import com.homepantry.app.data.priceRises
 import com.homepantry.app.data.purchaseMonths
 import com.homepantry.app.data.purchaseYears
 import com.homepantry.app.data.purchasesInPeriod
-import com.homepantry.app.data.spendByStore
 import com.homepantry.app.data.topProducts
 import com.homepantry.app.ui.AppViewModel
-import java.text.SimpleDateFormat
-import java.util.Date
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val esLocale = Locale.forLanguageTag("es-ES")
@@ -73,12 +65,8 @@ fun PurchaseStatsScreen(
 ) {
     val state by viewModel.state.collectAsState()
     val purchases = state.purchases
-    val now = remember { Date() }
     var topBy by rememberSaveable { mutableStateOf(TopBy.SPEND) }
 
-    val summary = remember(purchases) { monthSummary(purchases, now) }
-    val months = remember(purchases) { lastMonthsSpend(purchases, 6, now) }
-    val stores = remember(purchases) { spendByStore(purchases, now) }
     val years = remember(purchases) { purchaseYears(purchases) }
     var yearKey by rememberSaveable { mutableStateOf<Int?>(null) }
     var monthKey by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -114,38 +102,6 @@ fun PurchaseStatsScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-            item {
-                Section(stringResource(R.string.stats_this_month)) {
-                    Text(money(summary.total), style = MaterialTheme.typography.headlineMedium)
-                    summary.previousTotal?.let { previous ->
-                        val diff = summary.total - previous
-                        val sign = if (diff >= 0) "+" else "−"
-                        val pct = if (previous > 0) " ($sign${(abs(diff) / previous * 100).roundToInt()} %)" else ""
-                        Text(
-                            stringResource(R.string.stats_vs_previous, "$sign${money(abs(diff))}$pct"),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (diff > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    Text(
-                        pluralStringResource(R.plurals.stats_tickets_avg, summary.ticketCount, summary.ticketCount, money(summary.averagePerTicket)),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            }
-            item { Section(stringResource(R.string.stats_last_months)) { MonthBars(months) } }
-            item {
-                Section(stringResource(R.string.stats_by_store)) {
-                    if (stores.isEmpty()) Text(stringResource(R.string.stats_none_yet))
-                    stores.forEach { store ->
-                        LabeledBar(
-                            label = store.displayName.ifEmpty { stringResource(R.string.stats_no_store) },
-                            value = "${money(store.total)} · ${(store.fraction * 100).roundToInt()} %",
-                            fraction = store.fraction.toFloat()
-                        )
-                    }
-                }
-            }
             item {
                 Section(stringResource(R.string.stats_top_products)) {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -256,37 +212,5 @@ private fun LabeledBar(label: String, value: String, fraction: Float) {
             Text(value, style = MaterialTheme.typography.bodyMedium)
         }
         Bar(fraction)
-    }
-}
-
-@Composable
-private fun MonthBars(months: List<MonthlySpend>) {
-    val max = months.maxOfOrNull { it.total }?.takeIf { it > 0 } ?: 1.0
-    val parse = remember { SimpleDateFormat("yyyy-MM", Locale.US) }
-    val label = remember { SimpleDateFormat("LLL", esLocale) }
-    Row(
-        Modifier.fillMaxWidth().height(130.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        months.forEachIndexed { index, month ->
-            val isCurrent = index == months.lastIndex
-            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(
-                    if (month.total > 0) month.total.roundToInt().toString() else "",
-                    style = MaterialTheme.typography.labelSmall, maxLines = 1
-                )
-                Box(
-                    Modifier.width(24.dp)
-                        .height((80 * (month.total / max)).toFloat().coerceAtLeast(2f).dp)
-                        .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
-                        .background(
-                            if (isCurrent) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.secondary
-                        )
-                )
-                Text(label.format(parse.parse(month.yearMonth)!!), style = MaterialTheme.typography.labelSmall)
-            }
-        }
     }
 }

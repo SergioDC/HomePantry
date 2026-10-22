@@ -95,7 +95,7 @@
     </plurals>
     <string name="dashboard_up_to_date">al día</string>
     <string name="dashboard_new_zone">+ Nueva zona</string>
-    <string name="dashboard_purchase_history_cd">Historial de compras</string>
+    <string name="dashboard_purchase_history_cd">Gastos</string>
 
     <!-- ZoneDetailScreen -->
     <string name="zone_detail_back_cd">Volver</string>
@@ -155,9 +155,16 @@
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
     <string name="receipt_review_save">Guardar compras</string>
     <string name="receipt_review_back">Volver</string>
+    <string name="receipt_review_total">Total</string>
+    <string name="ticket_date_choose">Toca para elegirla</string>
+    <string name="ticket_date_read">Leída del ticket. Tócala si no es correcta.</string>
+    <string name="ticket_date_manual">Elegida a mano</string>
+    <string name="ticket_date_missing">No se ha podido leer: elígela para poder guardar</string>
+    <string name="ticket_date_ok">Aceptar</string>
+    <string name="ticket_date_edit_cd">Cambiar la fecha del ticket</string>
 
     <!-- PurchaseHistoryScreen -->
-    <string name="purchase_history_title">Historial de compras</string>
+    <string name="purchase_history_title">Gastos</string>
     <string name="purchase_history_scan_cd">Escanear ticket</string>
     <string name="purchase_history_empty">Aún no hay compras. Toca el botón de la cámara para escanear un ticket.</string>
     <string name="purchase_history_ocr_empty">No se ha detectado texto en el ticket. Prueba con mejor luz o añade productos a mano.</string>
@@ -173,22 +180,11 @@
     <string name="purchase_history_scan_dialog_title">Escanear ticket</string>
     <string name="purchase_history_scan_dialog_camera">Sacar foto</string>
     <string name="purchase_history_scan_dialog_gallery">Elegir de galería</string>
-    <string name="purchase_history_tab_months">Por mes</string>
-    <string name="purchase_history_tab_products">Productos</string>
 
     <!-- PurchaseDetailScreen -->
     <string name="purchase_detail_not_found">No se encontró el producto</string>
-    <string name="purchase_detail_monthly_title">Gasto por mes</string>
-    <string name="purchase_detail_history_title">Historial de compras</string>
-    <string name="purchase_detail_amount">%1$.2f €</string>
-    <string name="purchase_detail_line_info">%1$s · %2$s %3$s</string>
 
     <!-- PurchaseTicketDetailScreen / DeleteTicketDialog -->
-    <string name="purchase_ticket_title">%1$s · %2$s</string>
-    <plurals name="purchase_ticket_summary">
-        <item quantity="one">%1$d línea · %2$.2f €</item>
-        <item quantity="other">%1$d líneas · %2$.2f €</item>
-    </plurals>
     <string name="purchase_ticket_line_info">%1$s %2$s · %3$s</string>
     <string name="purchase_ticket_delete_cd">Eliminar ticket</string>
     <string name="purchase_ticket_delete_line_cd">Eliminar línea</string>
@@ -203,10 +199,47 @@
     <string name="purchase_ticket_undo">Deshacer</string>
     <string name="purchase_ticket_edit_line_title">Editar línea</string>
 
-    <!-- PurchaseMonthsTab -->
-    <string name="purchase_tickets_all">Todos</string>
+    <!-- Panel de gastos (PurchaseHistoryScreen) -->
+    <string name="purchase_tickets_all">Todas</string>
     <string name="purchase_tickets_duplicate">Posible duplicado</string>
     <string name="purchase_tickets_delete">Eliminar</string>
+    <string name="spend_month_tickets">Tickets de %1$s</string>
+    <string name="spend_month_no_tickets">No hay tickets este mes.</string>
+    <string name="spend_all_months">Todos los meses</string>
+    <string name="spend_ticket_products">Productos</string>
+    <string name="spend_purchases">Compras</string>
+    <string name="spend_product_total">Gastado en total</string>
+    <string name="spend_last_unit_price">Último precio: %1$s</string>
+    <string name="spend_purchase_line">%1$s · %2$s %3$s · %4$s</string>
+    <plurals name="spend_month_purchases">
+        <item quantity="one">%1$d compra · %2$s</item>
+        <item quantity="other">%1$d compras · %2$s</item>
+    </plurals>
+    <plurals name="spend_products_count">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
+    <plurals name="spend_all_overview">
+        <item quantity="one">%1$d ticket · media %2$s/mes</item>
+        <item quantity="other">%1$d tickets · media %2$s/mes</item>
+    </plurals>
+    <plurals name="spend_month_header">
+        <item quantity="one">%1$d ticket · %2$s</item>
+        <item quantity="other">%1$d tickets · %2$s</item>
+    </plurals>
+    <string name="spend_by_store">Reparto por supermercado</string>
+    <string name="spend_more">Más</string>
+    <string name="spend_all_products">Todos los productos</string>
+    <string name="spend_all_products_hint">Último precio de cada producto en cada supermercado</string>
+    <string name="spend_stats_hint">Los que más compras, subidas de precio y dónde es más barato</string>
+    <plurals name="spend_store_overview">
+        <item quantity="one">En total: %1$s en %2$d ticket · media %3$s/mes</item>
+        <item quantity="other">En total: %1$s en %2$d tickets · media %3$s/mes</item>
+    </plurals>
+    <plurals name="spend_ticket_line">
+        <item quantity="one">%1$s · %2$d producto</item>
+        <item quantity="other">%1$s · %2$d productos</item>
+    </plurals>
 
     <!-- Menú semanal -->
     <string name="nav_menu">Menú</string>
@@ -314,17 +347,11 @@
 
     <!-- Estadísticas de gasto -->
     <string name="stats_title">Estadísticas</string>
-    <string name="stats_open_cd">Ver estadísticas de gasto</string>
     <string name="stats_empty">Aún no hay compras. Escanea un ticket para ver estadísticas.</string>
-    <string name="stats_this_month">Este mes</string>
-    <string name="stats_vs_previous">%1$s frente al mes anterior</string>
     <plurals name="stats_tickets_avg">
         <item quantity="one">%1$d ticket · media %2$s</item>
         <item quantity="other">%1$d tickets · media %2$s</item>
     </plurals>
-    <string name="stats_last_months">Últimos 6 meses</string>
-    <string name="stats_by_store">Por supermercado (este mes)</string>
-    <string name="stats_no_store">Sin supermercado</string>
     <string name="stats_top_products">Productos que más compras</string>
     <string name="stats_by_spend">Por gasto</string>
     <string name="stats_by_count">Por veces</string>

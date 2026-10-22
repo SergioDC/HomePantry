@@ -14,8 +14,8 @@ data class ParsedReceiptLine(
     val unit: String = Unit.UD.name
 )
 
-/** Resultado de leer un ticket: supermercado (si se detectó) y sus líneas. */
-data class ParsedReceipt(val store: String?, val lines: List<ParsedReceiptLine>)
+/** Resultado de leer un ticket: supermercado y fecha de compra (si se detectaron) y sus líneas. */
+data class ParsedReceipt(val store: String?, val lines: List<ParsedReceiptLine>, val date: java.util.Date? = null)
 
 /**
  * Muchos tickets imprimen la categoría de IVA de cada producto justo después

@@ -17,6 +17,17 @@ class GeminiReceiptRecognizerTest {
         )
     }
 
+    @Test fun `reads a plausible ticket date and drops a missing, malformed or future one`() {
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse("2026-10-20")!!
+        assertEquals(
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).parse("2026-10-18"),
+            mapGeminiOutputText("""{"date":"2026-10-18","products":[]}""", today).date
+        )
+        assertNull(mapGeminiOutputText("""{"products":[]}""", today).date)
+        assertNull(mapGeminiOutputText("""{"date":"18/10/2026","products":[]}""", today).date)
+        assertNull(mapGeminiOutputText("""{"date":"2027-01-01","products":[]}""", today).date)
+    }
+
     @Test fun `skips entries missing a name or price instead of crashing`() {
         val json = """{"products":[
             {"name":"TOMATE RAMA","price":1.5},
