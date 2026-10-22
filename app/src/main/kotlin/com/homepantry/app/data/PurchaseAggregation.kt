@@ -176,3 +176,10 @@ fun ticketsByMonth(tickets: List<Ticket>): List<MonthSection> =
     tickets.groupBy { yearMonthOf(it.date) }
         .map { (yearMonth, group) -> MonthSection(yearMonth, group.sumOf { it.total }, group) }
         .sortedByDescending { it.yearMonth }
+
+/**
+ * Supermercados (por clave) en el orden en que se compró por primera vez en cada uno. Sirve para
+ * darles un color fijo: una tienda nueva se añade al final y no desplaza a las demás.
+ */
+fun storesByFirstPurchase(tickets: List<Ticket>): List<String> =
+    tickets.sortedWith(compareBy<Ticket>({ it.date }, { it.key })).map { it.storeKey }.distinct()

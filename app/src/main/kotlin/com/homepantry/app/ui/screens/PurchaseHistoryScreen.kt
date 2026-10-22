@@ -11,7 +11,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -19,14 +18,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -36,7 +32,6 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -72,7 +67,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
@@ -96,9 +90,16 @@ import com.homepantry.app.data.storeOverview
 import com.homepantry.app.data.storeShares
 import com.homepantry.app.data.ticketsByMonth
 import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.ColorDot
 import com.homepantry.app.ui.components.DeleteTicketDialog
+import com.homepantry.app.ui.components.MonthHeader
+import com.homepantry.app.ui.components.SpendHeaderCard
+import com.homepantry.app.ui.components.SpendSectionTitle
+import com.homepantry.app.ui.components.StripedCard
+import com.homepantry.app.ui.components.colorOf
+import com.homepantry.app.ui.components.euros
+import com.homepantry.app.ui.components.rememberStoreColors
 import com.homepantry.app.ui.components.SpendMonthBars
-import com.homepantry.app.ui.theme.StoreColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -108,7 +109,6 @@ import kotlin.math.roundToInt
 
 private val esLocale = Locale.forLanguageTag("es-ES")
 
-private fun money(value: Double): String = String.format(esLocale, "%,.2f €", value)
 
 /** Meses que muestra la gráfica del panel, el actual incluido. */
 private const val CHART_MONTHS = 12
@@ -344,15 +344,7 @@ private fun SpendPanel(
     val stores = remember(allTickets) {
         allTickets.distinctBy { it.storeKey }.map { it.storeKey to it.store }.sortedBy { it.first.isEmpty() }
     }
-    val noStoreColor = MaterialTheme.colorScheme.onSurfaceVariant
-    // Colores por orden de primera compra (los tickets van del más reciente al más antiguo): así una
-    // tienda conserva su color aunque otra pase a ser la última visitada.
-    val storeColors = remember(allTickets, noStoreColor) {
-        var next = 0
-        allTickets.asReversed().map { it.storeKey }.distinct().associateWith { key ->
-            if (key.isEmpty()) noStoreColor else StoreColors[next++ % StoreColors.size]
-        }
-    }
+    val storeColors = rememberStoreColors(allTickets)
     // Si el súper elegido ya no tiene tickets (se borraron todos), se vuelve a «Todas».
     val selectedStore = selectedStoreKey?.takeIf { key -> stores.any { it.first == key } }
 
@@ -404,7 +396,7 @@ private fun SpendPanel(
                     FilterChip(
                         selected = selectedStore == key,
                         onClick = { selectedStoreKey = key },
-                        leadingIcon = { ColorDot(storeColors.getValue(key)) },
+                        leadingIcon = { ColorDot(storeColors.colorOf(key)) },
                         label = { Text(name.ifEmpty { stringResource(R.string.purchase_history_no_store) }) }
                     )
                 }
@@ -445,14 +437,14 @@ private fun SpendPanel(
                     if (summary != null) {
                         add(
                             pluralStringResource(
-                                R.plurals.stats_tickets_avg, summary.ticketCount, summary.ticketCount, money(summary.averagePerTicket)
+                                R.plurals.stats_tickets_avg, summary.ticketCount, summary.ticketCount, euros(summary.averagePerTicket)
                             )
                         )
                         if (selectedStore != null) {
                             add(
                                 pluralStringResource(
                                     R.plurals.spend_store_overview, overview.ticketCount,
-                                    money(overview.total), overview.ticketCount, money(overview.monthlyAverage)
+                                    euros(overview.total), overview.ticketCount, euros(overview.monthlyAverage)
                                 )
                             )
                         }
@@ -460,7 +452,7 @@ private fun SpendPanel(
                         add(
                             pluralStringResource(
                                 R.plurals.spend_all_overview, overview.ticketCount,
-                                overview.ticketCount, money(overview.monthlyAverage)
+                                overview.ticketCount, euros(overview.monthlyAverage)
                             )
                         )
                     }
@@ -486,7 +478,7 @@ private fun SpendPanel(
         }
         if (month != null) {
             item(key = "ticketsHeader") {
-                SectionTitle(
+                SpendSectionTitle(
                     stringResource(R.string.spend_month_tickets, SimpleDateFormat("LLLL", esLocale).format(monthStart(month)))
                 )
             }
@@ -507,7 +499,7 @@ private fun SpendPanel(
                     MonthHeader(
                         title = monthTitle.format(monthStart(section.yearMonth)).uppercase(esLocale),
                         detail = pluralStringResource(
-                            R.plurals.spend_month_header, section.tickets.size, section.tickets.size, money(section.total)
+                            R.plurals.spend_month_header, section.tickets.size, section.tickets.size, euros(section.total)
                         ),
                         onClick = { selectedMonthKey = section.yearMonth }
                     )
@@ -516,14 +508,14 @@ private fun SpendPanel(
             items(section.tickets, key = { it.key }) { ticket ->
                 TicketCard(
                     ticket = ticket,
-                    color = storeColors[ticket.storeKey] ?: noStoreColor,
+                    color = storeColors.colorOf(ticket.storeKey),
                     dateText = dayFormat.format(ticket.date),
                     onOpen = { onOpenTicket(ticket.key) },
                     onDelete = { ticketPendingDelete = ticket }
                 )
             }
         }
-        item(key = "moreHeader") { SectionTitle(stringResource(R.string.spend_more)) }
+        item(key = "moreHeader") { SpendSectionTitle(stringResource(R.string.spend_more)) }
         item(key = "products") {
             MoreRow(
                 icon = { Icon(Icons.AutoMirrored.Filled.List, contentDescription = null) },
@@ -564,65 +556,37 @@ private fun SummaryCard(
     lines: List<String>,
     bars: @Composable () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(money(total), style = MaterialTheme.typography.headlineMedium)
-                previousTotal?.let { previous ->
-                    val diff = total - previous
-                    val arrow = if (diff > 0) "▲" else "▼"
-                    val sign = if (diff >= 0) "+" else "−"
-                    val pct = if (previous > 0) " ($sign${(abs(diff) / previous * 100).roundToInt()} %)" else ""
-                    Text(
-                        "$arrow $sign${money(abs(diff))}$pct",
-                        style = MaterialTheme.typography.labelLarge,
-                        // Gastar más es la alerta (coral); gastar menos, buena noticia.
-                        color = if (diff > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(bottom = 6.dp)
-                    )
-                }
-            }
-            lines.forEachIndexed { index, line ->
+    SpendHeaderCard {
+        Text(title, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.primary)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(euros(total), style = MaterialTheme.typography.headlineMedium)
+            previousTotal?.let { previous ->
+                val diff = total - previous
+                val arrow = if (diff > 0) "▲" else "▼"
+                val sign = if (diff >= 0) "+" else "−"
+                val pct = if (previous > 0) " ($sign${(abs(diff) / previous * 100).roundToInt()} %)" else ""
                 Text(
-                    line,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (index == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(top = if (index == 0) 0.dp else 4.dp)
+                    "$arrow $sign${euros(abs(diff))}$pct",
+                    style = MaterialTheme.typography.labelLarge,
+                    // Gastar más es la alerta (coral); gastar menos, buena noticia.
+                    color = if (diff > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
-            bars()
         }
-    }
-}
-
-/** Cabecera de un mes en la vista «Todos los meses»: nombre, tickets y gasto del mes. */
-@Composable
-private fun MonthHeader(title: String, detail: String, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 12.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            title,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-            letterSpacing = 1.sp,
-            modifier = Modifier.weight(1f)
-        )
-        Text(detail, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        lines.forEachIndexed { index, line ->
+            Text(
+                line,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (index == 0) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = if (index == 0) 0.dp else 4.dp)
+            )
+        }
+        bars()
     }
 }
 
@@ -635,7 +599,7 @@ private fun StoreShares(
 ) {
     val fallback = MaterialTheme.colorScheme.onSurfaceVariant
     Column(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        SectionTitle(stringResource(R.string.spend_by_store))
+        SpendSectionTitle(stringResource(R.string.spend_by_store))
         Row(
             Modifier.fillMaxWidth().padding(top = 8.dp).height(12.dp).clip(RoundedCornerShape(6.dp))
         ) {
@@ -664,7 +628,7 @@ private fun StoreShares(
                     modifier = Modifier.weight(1f).padding(start = 8.dp)
                 )
                 Text(
-                    "${money(share.total)} · ${(share.fraction * 100).roundToInt()} %",
+                    "${euros(share.total)} · ${(share.fraction * 100).roundToInt()} %",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -681,41 +645,36 @@ private fun TicketCard(
     onOpen: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(onClick = onOpen, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.height(IntrinsicSize.Min)) {
-            Box(Modifier.width(5.dp).fillMaxHeight().background(color))
-            Column(modifier = Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp)) {
-                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) },
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Text(text = money(ticket.total), style = MaterialTheme.typography.titleMedium)
-                }
+    StripedCard(color = color, onClick = onOpen) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) },
+                style = MaterialTheme.typography.titleMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            Text(text = euros(ticket.total), style = MaterialTheme.typography.titleMedium)
+        }
+        Text(
+            text = pluralStringResource(R.plurals.spend_ticket_line, ticket.purchases.size, dateText, ticket.purchases.size),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 2.dp)
+        )
+        if (ticket.possibleDuplicate) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
-                    text = pluralStringResource(R.plurals.spend_ticket_line, ticket.purchases.size, dateText, ticket.purchases.size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 2.dp)
+                    text = stringResource(R.string.purchase_tickets_duplicate),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
                 )
-                if (ticket.possibleDuplicate) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = stringResource(R.string.purchase_tickets_duplicate),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(onClick = onDelete) {
-                            Text(stringResource(R.string.purchase_tickets_delete), color = MaterialTheme.colorScheme.error)
-                        }
-                    }
+                TextButton(onClick = onDelete) {
+                    Text(stringResource(R.string.purchase_tickets_delete), color = MaterialTheme.colorScheme.error)
                 }
             }
         }
@@ -733,19 +692,4 @@ private fun MoreRow(icon: @Composable () -> Unit, title: String, subtitle: Strin
             colors = ListItemDefaults.colors(containerColor = Color.Transparent)
         )
     }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text,
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.primary,
-        modifier = Modifier.padding(top = 12.dp)
-    )
-}
-
-@Composable
-private fun ColorDot(color: Color) {
-    Box(Modifier.size(10.dp).clip(CircleShape).background(color))
 }

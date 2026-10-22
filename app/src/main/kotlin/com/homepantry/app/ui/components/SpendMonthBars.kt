@@ -31,15 +31,15 @@ import kotlin.math.roundToInt
 private const val MAX_BAR_HEIGHT = 80f
 
 /**
- * Gasto de cada mes en barras, en orden cronológico. Tocar una barra elige ese mes; la elegida
- * va en el color primario. Con más meses de los que caben se desplaza en horizontal y empieza
- * mostrando los más recientes.
+ * Gasto de cada mes en barras, en orden cronológico. Con [onSelect], tocar una barra elige ese
+ * mes; la elegida va en el color primario. Con más meses de los que caben se desplaza en
+ * horizontal y empieza mostrando los más recientes.
  */
 @Composable
 fun SpendMonthBars(
     months: List<MonthlySpend>,
     selectedYearMonth: String?,
-    onSelect: (String) -> Unit,
+    onSelect: ((String) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val max = months.maxOfOrNull { it.total }?.takeIf { it > 0 } ?: 1.0
@@ -57,7 +57,7 @@ fun SpendMonthBars(
                 modifier = Modifier
                     .width(44.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onSelect(month.yearMonth) }
+                    .then(if (onSelect != null) Modifier.clickable { onSelect(month.yearMonth) } else Modifier)
                     .padding(vertical = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {

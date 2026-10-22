@@ -254,4 +254,17 @@ class PurchaseAggregationTest {
         assertEquals(key, ticketKey(redated))
         assertEquals(listOf(key), tickets(listOf(redated)).map { it.key })
     }
+
+    @Test fun `storesByFirstPurchase orders stores by their oldest ticket whatever the input order`() {
+        val ts = tickets(
+            listOf(
+                ticketLine("t1", "Lidl", 5.0, "2026-10-18 10:00"),
+                ticketLine("t2", "Mercadona", 5.0, "2026-09-01 10:00"),
+                ticketLine("t3", "lidl", 5.0, "2026-08-15 10:00"),
+                ticketLine("t4", "Dia", 5.0, "2026-10-01 10:00")
+            )
+        )
+        assertEquals(listOf("lidl", "mercadona", "dia"), storesByFirstPurchase(ts))
+        assertEquals(listOf("lidl", "mercadona", "dia"), storesByFirstPurchase(ts.reversed()))
+    }
 }

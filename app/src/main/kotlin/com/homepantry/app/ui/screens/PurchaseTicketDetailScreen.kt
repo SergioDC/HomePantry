@@ -1,14 +1,18 @@
 package com.homepantry.app.ui.screens
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -21,7 +25,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -43,8 +46,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.Purchase
@@ -54,16 +59,24 @@ import com.homepantry.app.data.parseUserPrice
 import com.homepantry.app.data.unitPrice
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.components.ColorDot
 import com.homepantry.app.ui.components.DeleteTicketDialog
+import com.homepantry.app.ui.components.SpendHeaderCard
+import com.homepantry.app.ui.components.SpendSectionTitle
+import com.homepantry.app.ui.components.StripedCard
 import com.homepantry.app.ui.components.TicketDatePickerDialog
+import com.homepantry.app.ui.components.colorOf
+import com.homepantry.app.ui.components.euros
+import com.homepantry.app.ui.components.rememberStoreColors
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 
 /**
- * Detalle de un ticket: sus líneas con cantidad, precio unitario y total. La papelera de
+ * Detalle de un ticket, con el estilo del panel de gastos: arriba la tarjeta con la tienda (en
+ * su color), el total y la fecha (tocarla abre un calendario para corregirla); debajo, cada
+ * producto en su tarjeta con la franja de la tienda. Tocar un producto lo edita. La papelera de
  * arriba borra el ticket entero (con confirmación); la de cada línea la borra con «Deshacer».
- * La fila de la fecha abre un calendario para corregirla.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,9 +89,9 @@ fun PurchaseTicketDetailScreen(
     val ticket = remember(state.purchases, ticketKey) {
         state.purchaseTickets.firstOrNull { it.key == ticketKey }
     }
+    val storeColors = rememberStoreColors(state.purchaseTickets)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    val dateFormat = remember { SimpleDateFormat("d MMM yyyy", Locale.forLanguageTag("es-ES")) }
     val longDateFormat = remember { SimpleDateFormat("EEEE d 'de' MMMM yyyy", Locale.forLanguageTag("es-ES")) }
     var showDeleteTicket by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
@@ -116,13 +129,7 @@ fun PurchaseTicketDetailScreen(
             TopAppBar(
                 title = {
                     if (ticket != null) {
-                        Text(
-                            stringResource(
-                                R.string.purchase_ticket_title,
-                                ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) },
-                                dateFormat.format(ticket.date)
-                            )
-                        )
+                        Text(ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) })
                     }
                 },
                 navigationIcon = {
@@ -146,33 +153,73 @@ fun PurchaseTicketDetailScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
         if (ticket != null) {
-            LazyColumn(modifier = Modifier.fillMaxSize().padding(padding)) {
+            val color = storeColors.colorOf(ticket.storeKey)
+            LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 item(key = "summary") {
-                    Text(
-                        text = pluralStringResource(R.plurals.purchase_ticket_summary, ticket.purchases.size, ticket.purchases.size, ticket.total),
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-                // Los tickets guardados antes de leer la fecha impresa llevan la del escaneo: se corrige aquí.
-                item(key = "date") {
-                    ListItem(
-                        modifier = Modifier.clickable { showDatePicker = true },
-                        leadingContent = { Icon(Icons.Filled.CalendarMonth, contentDescription = null) },
-                        overlineContent = { Text(stringResource(R.string.ticket_date_label)) },
-                        headlineContent = {
-                            Text(longDateFormat.format(ticket.date).replaceFirstChar { it.uppercase() })
-                        },
-                        trailingContent = {
-                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.ticket_date_edit_cd))
+                    SpendHeaderCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ColorDot(color)
+                            Text(
+                                ticket.store.ifEmpty { stringResource(R.string.purchase_history_no_store) },
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
                         }
-                    )
+                        Text(
+                            euros(ticket.total),
+                            style = MaterialTheme.typography.headlineMedium,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                        Text(
+                            pluralStringResource(R.plurals.spend_products_count, ticket.purchases.size, ticket.purchases.size),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        // Los tickets guardados antes de leer la fecha impresa llevan la del escaneo: se corrige aquí.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { showDatePicker = true }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Filled.CalendarMonth, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Text(
+                                longDateFormat.format(ticket.date).replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f).padding(start = 8.dp)
+                            )
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.ticket_date_edit_cd),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+                item(key = "productsHeader") {
+                    SpendSectionTitle(stringResource(R.string.spend_ticket_products))
                 }
                 items(ticket.purchases, key = { it.id }) { purchase ->
-                    ListItem(
-                        modifier = Modifier.clickable { purchasePendingEdit = purchase },
-                        headlineContent = { Text(purchase.rawName) },
-                        supportingContent = {
+                    StripedCard(color = color, onClick = { purchasePendingEdit = purchase }) {
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                purchase.rawName,
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(euros(purchase.price), style = MaterialTheme.typography.titleMedium)
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 stringResource(
                                     R.string.purchase_ticket_line_info,
@@ -183,27 +230,28 @@ fun PurchaseTicketDetailScreen(
                                         purchase.unitPrice(),
                                         unitSuffix(purchase.unit)
                                     )
-                                )
+                                ),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
                             )
-                        },
-                        trailingContent = {
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(stringResource(R.string.purchase_detail_amount, purchase.price))
-                                IconButton(
-                                    onClick = {
-                                        // Con una sola línea, borrarla equivale a borrar el ticket: se pide
-                                        // confirmación (la pantalla se cerraría y no habría dónde deshacer).
-                                        if (ticket.purchases.size == 1) showDeleteTicket = true else deleteLine(purchase)
-                                    }
-                                ) {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        contentDescription = stringResource(R.string.purchase_ticket_delete_line_cd)
-                                    )
-                                }
+                            IconButton(
+                                onClick = {
+                                    // Con una sola línea, borrarla equivale a borrar el ticket: se pide
+                                    // confirmación (la pantalla se cerraría y no habría dónde deshacer).
+                                    if (ticket.purchases.size == 1) showDeleteTicket = true else deleteLine(purchase)
+                                },
+                                modifier = Modifier.size(36.dp)
+                            ) {
+                                Icon(
+                                    Icons.Filled.Delete,
+                                    contentDescription = stringResource(R.string.purchase_ticket_delete_line_cd),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
-                    )
+                    }
                 }
             }
         }

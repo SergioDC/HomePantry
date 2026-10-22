@@ -184,17 +184,8 @@
 
     <!-- PurchaseDetailScreen -->
     <string name="purchase_detail_not_found">No se encontró el producto</string>
-    <string name="purchase_detail_monthly_title">Gasto por mes</string>
-    <string name="purchase_detail_history_title">Historial de compras</string>
-    <string name="purchase_detail_amount">%1$.2f €</string>
-    <string name="purchase_detail_line_info">%1$s · %2$s %3$s</string>
 
     <!-- PurchaseTicketDetailScreen / DeleteTicketDialog -->
-    <string name="purchase_ticket_title">%1$s · %2$s</string>
-    <plurals name="purchase_ticket_summary">
-        <item quantity="one">%1$d línea · %2$.2f €</item>
-        <item quantity="other">%1$d líneas · %2$.2f €</item>
-    </plurals>
     <string name="purchase_ticket_line_info">%1$s %2$s · %3$s</string>
     <string name="purchase_ticket_delete_cd">Eliminar ticket</string>
     <string name="purchase_ticket_delete_line_cd">Eliminar línea</string>
@@ -216,6 +207,19 @@
     <string name="spend_month_tickets">Tickets de %1$s</string>
     <string name="spend_month_no_tickets">No hay tickets este mes.</string>
     <string name="spend_all_months">Todos los meses</string>
+    <string name="spend_ticket_products">Productos</string>
+    <string name="spend_purchases">Compras</string>
+    <string name="spend_product_total">Gastado en total</string>
+    <string name="spend_last_unit_price">Último precio: %1$s</string>
+    <string name="spend_purchase_line">%1$s · %2$s %3$s · %4$s</string>
+    <plurals name="spend_month_purchases">
+        <item quantity="one">%1$d compra · %2$s</item>
+        <item quantity="other">%1$d compras · %2$s</item>
+    </plurals>
+    <plurals name="spend_products_count">
+        <item quantity="one">%1$d producto</item>
+        <item quantity="other">%1$d productos</item>
+    </plurals>
     <plurals name="spend_all_overview">
         <item quantity="one">%1$d ticket · media %2$s/mes</item>
         <item quantity="other">%1$d tickets · media %2$s/mes</item>
