@@ -95,7 +95,6 @@
     </plurals>
     <string name="dashboard_up_to_date">al día</string>
     <string name="dashboard_new_zone">+ Nueva zona</string>
-    <string name="dashboard_purchase_history_cd">Gastos</string>
 
     <!-- ZoneDetailScreen -->
     <string name="zone_detail_back_cd">Volver</string>
@@ -367,4 +366,126 @@
     <string name="auth_error">No se pudo conectar para iniciar la app. Comprueba tu conexión.</string>
     <string name="auth_retry">Reintentar</string>
     <string name="camera_permission_denied">Hace falta el permiso de cámara. Puedes darlo en los ajustes del móvil o elegir una foto de la galería.</string>
+
+    <!-- Home (spec 2026-10-22) -->
+    <string name="nav_inicio">Inicio</string>
+    <string name="home_almacen_title">Almacén</string>
+    <string name="home_gastos_title">Gastos</string>
+    <string name="home_reparto_title">SNcount</string>
+    <plurals name="home_almacen_pending">
+        <item quantity="one">%d producto en la lista</item>
+        <item quantity="other">%d productos en la lista</item>
+    </plurals>
+    <string name="home_almacen_none">Lista de la compra al día</string>
+    <string name="home_gastos_month">%1$s este mes</string>
+    <string name="home_gastos_none">Sin tickets este mes</string>
+    <plurals name="home_reparto_months">
+        <item quantity="one">%d grupo</item>
+        <item quantity="other">%d grupos</item>
+    </plurals>
+    <string name="home_reparto_none">Sin grupos todavía</string>
+
+    <!-- SNcount: reparto de gastos por mes o actividad (spec 2026-10-22) -->
+    <string name="split_title">SNcount</string>
+    <string name="split_months_empty">Todavía no hay grupos. Crea un mes o una actividad para empezar a repartir gastos.</string>
+    <string name="split_month_create">Nuevo grupo</string>
+    <string name="split_kind_month">Mes</string>
+    <string name="split_kind_activity">Actividad</string>
+    <string name="split_activity_name_hint">Por ejemplo, Viaje a Málaga</string>
+    <string name="split_month_name">Nombre</string>
+    <string name="split_month_participants">Participantes</string>
+    <string name="split_month_prev_cd">Mes anterior</string>
+    <string name="split_month_next_cd">Mes siguiente</string>
+    <string name="split_month_participants_error">Elige al menos un participante</string>
+    <string name="split_month_menu_cd">Opciones del grupo</string>
+    <string name="split_month_rename">Renombrar</string>
+    <string name="split_month_rename_title">Renombrar grupo</string>
+    <string name="split_month_delete">Borrar</string>
+    <string name="split_month_delete_title">¿Borrar el grupo?</string>
+    <string name="split_month_delete_message">Se borrará «%1$s» con todos sus gastos y fotos. No se puede deshacer.</string>
+    <plurals name="split_participants_count">
+        <item quantity="one">%d participante</item>
+        <item quantity="other">%d participantes</item>
+    </plurals>
+    <string name="split_unknown_member">Miembro anterior</string>
+    <string name="split_member_you">%1$s (tú)</string>
+    <string name="split_save">Guardar</string>
+    <string name="split_create">Crear</string>
+    <string name="split_cancel">Cancelar</string>
+    <string name="split_delete">Borrar</string>
+    <string name="split_close">Cerrar</string>
+    <string name="split_tab_expenses">Gastos</string>
+    <string name="split_tab_balances">Saldos</string>
+    <string name="split_tab_photos">Fotos</string>
+
+    <string name="split_cat_supermarket">Súper</string>
+    <string name="split_cat_coffee">Café</string>
+    <string name="split_cat_restaurant">Comer fuera</string>
+    <string name="split_cat_drinks">Copas</string>
+    <string name="split_cat_car">Coche</string>
+    <string name="split_cat_transport">Transporte</string>
+    <string name="split_cat_flight">Vuelos</string>
+    <string name="split_cat_hotel">Alojamiento</string>
+    <string name="split_cat_home">Casa</string>
+    <string name="split_cat_shopping">Compras</string>
+    <string name="split_cat_gift">Regalos</string>
+    <string name="split_cat_leisure">Ocio</string>
+    <string name="split_cat_health">Salud</string>
+    <string name="split_cat_pets">Mascotas</string>
+    <string name="split_cat_sport">Deporte</string>
+    <string name="split_cat_other">Otros</string>
+    <string name="split_my_expenses">Mis gastos</string>
+    <string name="split_total_expenses">Total gastos</string>
+    <string name="split_no_date">Sin fecha</string>
+    <string name="split_expenses_empty">Sin gastos todavía. Pulsa + para añadir el primero.</string>
+    <string name="split_expense_add_cd">Añadir gasto</string>
+    <string name="split_paid_by">Pagado por %1$s</string>
+    <string name="split_reimbursement_detail">%1$s → %2$s</string>
+    <string name="split_reimbursement_title">Reembolso</string>
+    <string name="split_expense_new_title">Nuevo gasto</string>
+    <string name="split_expense_edit_title">Editar gasto</string>
+    <string name="split_expense_title">Concepto</string>
+    <string name="split_expense_amount">Importe (€)</string>
+    <string name="split_expense_payer">Pagó</string>
+    <string name="split_expense_participants">Repartido entre</string>
+    <string name="split_expense_date">Fecha: %1$s</string>
+    <string name="split_error_title">Escribe un concepto</string>
+    <string name="split_error_amount">Importe no válido (por ejemplo, 12,50)</string>
+    <string name="split_error_participants">Elige al menos una persona</string>
+    <string name="split_error_payer">Elige quién pagó</string>
+    <string name="split_error_date">La fecha tiene que ser de este mes</string>
+    <string name="split_each">Cada uno: %1$s</string>
+    <plurals name="split_each_uneven">
+        <item quantity="one">%2$s a uno, %3$s al resto</item>
+        <item quantity="other">%2$s a %1$d, %3$s al resto</item>
+    </plurals>
+    <string name="split_expense_delete_title">¿Borrar el gasto?</string>
+    <string name="split_expense_delete_message">Se borrará «%1$s». No se puede deshacer.</string>
+
+    <string name="split_balance_detail">Pagó %1$s · Le toca %2$s</string>
+    <string name="split_balance_owed">Le deben</string>
+    <string name="split_balance_owes">Debe</string>
+    <string name="split_balance_even">Al día</string>
+    <string name="split_settlements_title">Quién debe a quién</string>
+    <string name="split_settlement_line">%1$s paga %2$s a %3$s</string>
+    <string name="split_settle">Saldar</string>
+    <string name="split_settle_title">¿Marcar como pagado?</string>
+    <string name="split_settle_message">Se añadirá un reembolso: %1$s paga %2$s a %3$s.</string>
+    <string name="split_all_settled">Todo saldado</string>
+
+    <string name="split_photos_empty">Sin fotos. Pulsa + para guardar tickets, recibos o lo que quieras del mes.</string>
+    <string name="split_photo_add_cd">Añadir foto</string>
+    <string name="split_photo_source_title">Añadir foto</string>
+    <string name="split_photo_camera">Cámara</string>
+    <string name="split_photo_gallery">Galería</string>
+    <string name="split_photo_new_title">Nueva foto</string>
+    <string name="split_photo_note">Nota (opcional)</string>
+    <string name="split_photo_expense">Ligar a un gasto (opcional)</string>
+    <string name="split_photo_no_expense">Ninguno</string>
+    <string name="split_photo_upload">Subir</string>
+    <string name="split_photo_uploading">Subiendo foto…</string>
+    <string name="split_photo_linked">Gasto: %1$s</string>
+    <string name="split_photo_cd">Foto del mes</string>
+    <string name="split_photo_delete_title">¿Borrar la foto?</string>
+    <string name="split_photo_delete_message">La foto se borrará para todos. No se puede deshacer.</string>
 </resources>

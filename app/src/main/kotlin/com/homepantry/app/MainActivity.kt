@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Search
@@ -57,17 +58,22 @@ import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.PeopleRepository
 import com.homepantry.app.data.PurchasesRepository
+import com.homepantry.app.data.SplitExpensesRepository
+import com.homepantry.app.data.SplitMonthsRepository
+import com.homepantry.app.data.SplitPhotosRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.BottomNavBar
 import com.homepantry.app.ui.components.BottomNavItem
 import com.homepantry.app.ui.screens.AddItemSheet
 import com.homepantry.app.ui.screens.DefaultProductsSheet
 import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
+import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
@@ -77,6 +83,8 @@ import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.PurchaseProductsScreen
 import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
 import com.homepantry.app.ui.screens.SearchScreen
+import com.homepantry.app.ui.screens.SplitMonthScreen
+import com.homepantry.app.ui.screens.SplitMonthsScreen
 import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
 import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
@@ -228,6 +236,25 @@ fun ListaDeLaCasaApp() {
         }
     )
 
+    val splitViewModel: SplitViewModel = viewModel(
+        key = "split-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return SplitViewModel(
+                        monthsRepository = SplitMonthsRepository(firestore, code),
+                        expensesRepository = SplitExpensesRepository(firestore, code),
+                        photosRepository = SplitPhotosRepository(firestore, code),
+                        membersRepository = MembersRepository(firestore, code),
+                        storageRepository = StorageRepository(storage, code, context.applicationContext),
+                        currentUid = uid
+                    ) as T
+                }
+            }
+        }
+    )
+
     LaunchedEffect(viewModel, menuViewModel, name) {
         viewModel.updateUserName(name)
         menuViewModel.updateUserName(name)
@@ -244,9 +271,10 @@ fun ListaDeLaCasaApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val showBottomBar = currentRoute == null ||
-        BOTTOM_NAV_ROUTES.contains(currentRoute) ||
-        currentRoute.startsWith("zoneDetail/")
+    // La barra es solo del área Almacén. Con `home` de inicio, la ruta es null el primer fotograma:
+    // se exige que exista para que la barra no aparezca un instante al arrancar.
+    val showBottomBar = currentRoute != null &&
+        (BOTTOM_NAV_ROUTES.contains(currentRoute) || currentRoute.startsWith("zoneDetail/"))
 
     Scaffold(
         bottomBar = {
@@ -257,6 +285,7 @@ fun ListaDeLaCasaApp() {
                 val selectedRoute = if (currentRoute?.startsWith("zoneDetail/") == true) "zonesDashboard" else currentRoute
                 BottomNavBar(
                     items = listOf(
+                        BottomNavItem("home", stringResource(R.string.nav_inicio), Icons.Filled.Home),
                         BottomNavItem("zonesDashboard", stringResource(R.string.nav_almacen), Icons.Filled.Inventory2),
                         BottomNavItem("mainList", stringResource(R.string.nav_lista), Icons.Filled.ShoppingCart, badgeCount = pendingCount),
                         BottomNavItem("menu", stringResource(R.string.nav_menu), Icons.Filled.RestaurantMenu),
@@ -264,6 +293,7 @@ fun ListaDeLaCasaApp() {
                     ),
                     selectedRoute = selectedRoute ?: "zonesDashboard",
                     onSelect = { route ->
+                        // popUpTo(inicio) apunta a `home`: atrás desde cualquier pestaña vuelve a Home.
                         // Sin saveState/restoreState: cada pestaña siempre vuelve a su
                         // pantalla raíz (p.ej. Almacén nunca deja "colgada" la última
                         // zona abierta -- antes restauraba ese zoneDetail en vez de ir
@@ -279,9 +309,20 @@ fun ListaDeLaCasaApp() {
     ) { padding ->
         NavHost(
             navController = navController,
-            startDestination = "zonesDashboard",
+            startDestination = "home",
             modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         ) {
+            composable("home") {
+                HomeScreen(
+                    viewModel = viewModel,
+                    splitViewModel = splitViewModel,
+                    userName = name,
+                    onOpenSettings = { navController.navigate("manageZones") },
+                    onOpenStorage = { navController.navigate("zonesDashboard") },
+                    onOpenSpending = { navController.navigate("purchaseHistory") },
+                    onOpenSplit = { navController.navigate("splitMonths") }
+                )
+            }
             composable("mainList") {
                 MainListScreen(
                     viewModel = viewModel,
@@ -301,8 +342,6 @@ fun ListaDeLaCasaApp() {
                 ZonesDashboardScreen(
                     viewModel = viewModel,
                     userName = name,
-                    onManageZones = { navController.navigate("manageZones") },
-                    onOpenPurchaseHistory = { navController.navigate("purchaseHistory") },
                     onOpenZone = { zoneId -> navController.navigate("zoneDetail/$zoneId") }
                 )
             }
@@ -377,6 +416,21 @@ fun ListaDeLaCasaApp() {
                 PurchaseTicketDetailScreen(
                     viewModel = viewModel,
                     ticketKey = Uri.decode(encodedKey),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("splitMonths") {
+                SplitMonthsScreen(
+                    viewModel = splitViewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") }
+                )
+            }
+            composable("splitMonth/{monthId}") { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                SplitMonthScreen(
+                    viewModel = splitViewModel,
+                    monthId = monthId,
                     onBack = { navController.popBackStack() }
                 )
             }

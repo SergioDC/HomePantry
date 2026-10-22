@@ -170,6 +170,14 @@ Todo en `res/values/strings.xml`, con `plurals` donde corresponda. Comentarios y
 - Mes por zona horaria y validación de fecha.
 - `parseCents` con entradas válidas e inválidas.
 
+## Cambios tras la primera prueba (2026-10-22)
+
+- La sección se llama **SNcount** (antes «Reparto»).
+- Un grupo puede ser un **mes** o una **actividad** (viaje, cena…). La actividad se guarda en `splitMonths` con `activity = true` y `monthKey` = mes de creación (solo para ordenar); sus gastos admiten cualquier fecha.
+- La página de cada grupo sigue la referencia de Tricount: cabecera con icono y nombre, pestañas segmentadas, «Mis gastos» y «Total gastos», gastos agrupados por día con el icono de su tipo y «Pagado por X», y botón «+» centrado abajo.
+- El icono de cada gasto se deduce del concepto con `expenseCategoryOf` (`data/ExpenseCategory.kt`, por palabras clave); no se guarda.
+- Almacén pierde los iconos de Gastos y Ajustes. Regla de navegación: barra inferior solo en el área Almacén; el resto sin barra y con flecha atrás.
+
 ## Fases
 
 Ver el plan. Resumen: lógica con tests, repositorios, ViewModel, lista de meses con detalle vacío, Home y navegación, pestañas Gastos, Saldos y Fotos, verificación completa y prueba del APK release en el S25. Captura con Gemini queda como fase posterior.
