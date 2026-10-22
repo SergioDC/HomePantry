@@ -13,12 +13,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Receipt
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
@@ -56,8 +52,6 @@ import java.util.Locale
 fun ZonesDashboardScreen(
     viewModel: AppViewModel,
     userName: String,
-    onManageZones: () -> Unit,
-    onOpenPurchaseHistory: () -> Unit,
     onOpenZone: (String) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -76,17 +70,8 @@ fun ZonesDashboardScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.dashboard_title)) },
-                actions = {
-                    IconButton(onClick = onOpenPurchaseHistory) {
-                        Icon(Icons.Filled.Receipt, contentDescription = stringResource(R.string.dashboard_purchase_history_cd))
-                    }
-                    IconButton(onClick = onManageZones) {
-                        Icon(Icons.Filled.Settings, contentDescription = stringResource(R.string.main_settings_cd))
-                    }
-                }
-            )
+            // Sin accesos a Gastos ni Ajustes: son de otras áreas y se abren desde Home.
+            TopAppBar(title = { Text(stringResource(R.string.dashboard_title)) })
         },
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
