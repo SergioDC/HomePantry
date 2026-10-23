@@ -33,8 +33,12 @@ fun splitMonthIdFromLink(link: String?): String? {
     val path = uri.path ?: return null
     if (!path.startsWith(SPLIT_LINK_PREFIX)) return null
     val id = path.removePrefix(SPLIT_LINK_PREFIX).removeSuffix("/")
-    return id.takeIf { it.isNotEmpty() && '/' !in it }
+    // El path llega decodificado: un "#" o "?" dentro del id rompería la ruta de navegación.
+    // Los ids automáticos de Firestore son alfanuméricos.
+    return id.takeIf { SPLIT_ID_REGEX.matches(it) }
 }
+
+private val SPLIT_ID_REGEX = Regex("^[A-Za-z0-9]{1,64}$")
 
 /** Abre el menú de compartir de Android con [text] (el aviso y el enlace del grupo). */
 fun shareSplitMonth(context: Context, text: String, chooserTitle: String) {

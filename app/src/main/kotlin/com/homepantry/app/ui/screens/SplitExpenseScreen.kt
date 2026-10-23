@@ -144,7 +144,7 @@ fun SplitExpenseScreen(viewModel: SplitViewModel, monthId: String, expenseId: St
             currentUid = viewModel.currentUid,
             expense = expense,
             onSave = { title, amountText, payerId, participants, date, reimbursement, emoji, shareTexts ->
-                viewModel.saveExpense(expense?.id, title, amountText, payerId, participants, date, reimbursement, emoji, shareTexts)
+                viewModel.saveExpense(monthId, expense?.id, title, amountText, payerId, participants, date, reimbursement, emoji, shareTexts)
             },
             onDelete = { expense?.let { viewModel.deleteExpense(it.id) } },
             onBack = leave

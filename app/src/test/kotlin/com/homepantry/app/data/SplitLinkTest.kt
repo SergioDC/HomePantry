@@ -23,4 +23,10 @@ class SplitLinkTest {
         assertNull(splitMonthIdFromLink("https://home-pantry-bed42.web.app/sncount/a/b"))
         assertNull(splitMonthIdFromLink("no es una url"))
     }
+
+    @Test fun `ids with characters that break a route are rejected`() {
+        // El path llega decodificado: %23 sería un # dentro de la ruta de navegación y la tumbaría.
+        assertNull(splitMonthIdFromLink("https://home-pantry-bed42.web.app/sncount/%23x"))
+        assertNull(splitMonthIdFromLink("https://home-pantry-bed42.web.app/sncount/a%3Fb"))
+    }
 }

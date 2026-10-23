@@ -148,6 +148,9 @@ class SplitViewModel(
     /** La pantalla [holderId] (una entrada de navegación) necesita el grupo [monthId] abierto. */
     fun retainMonth(holderId: String, monthId: String) = setOpenMonth(holders.retain(holderId, monthId))
 
+    /** Si la pantalla [holderId] ya tiene el grupo retenido (ver `RetainSplitMonth`). */
+    fun holdsMonth(holderId: String): Boolean = holders.holds(holderId)
+
     /** La pantalla [holderId] ya no existe; si nadie más lo necesita, el grupo se cierra. */
     fun releaseMonth(holderId: String) = setOpenMonth(holders.release(holderId))
 
@@ -190,6 +193,7 @@ class SplitViewModel(
      * cada participante posible, y [participants] da solo el orden en que se guardan.
      */
     fun saveExpense(
+        monthId: String,
         expenseId: String?,
         title: String,
         amountText: String,
@@ -200,7 +204,9 @@ class SplitViewModel(
         emoji: String,
         shareTexts: Map<String, String>?
     ): Set<SplitExpenseError> {
-        val month = _state.value.openMonth ?: return emptySet()
+        // Se busca en todos los grupos y no en el abierto: tras un cambio de configuración el grupo
+        // se cierra y se reabre, y en ese hueco el guardado se perdería sin avisar.
+        val month = _state.value.months.firstOrNull { it.id == monthId } ?: return emptySet()
         val errors = validateSplitExpense(
             title, amountText, payerId, participants, date, reimbursement, month, shareTexts = shareTexts
         )

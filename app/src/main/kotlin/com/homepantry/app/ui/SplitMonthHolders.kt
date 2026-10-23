@@ -16,6 +16,9 @@ class SplitMonthHolders {
 
     val openMonthId: String? get() = holders.values.lastOrNull()
 
+    /** Si [holderId] ya está registrado: para añadir su observer de ciclo de vida una sola vez. */
+    fun holds(holderId: String): Boolean = holderId in holders
+
     /** [holderId] necesita [monthId]. Devuelve el grupo que queda abierto. */
     fun retain(holderId: String, monthId: String): String? {
         if (holders[holderId] != monthId) {

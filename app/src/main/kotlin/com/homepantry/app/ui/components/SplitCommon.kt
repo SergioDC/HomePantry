@@ -243,16 +243,21 @@ fun SplitAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
  * pantalla salga de la composición al navegar hacia delante (ver [com.homepantry.app.ui.SplitMonthHolders]).
  *
  * El observer no se quita en `onDispose`: la entrada puede destruirse cuando ya no está en
- * composición (dos `popBackStack` seguidos) y entonces nadie liberaría el grupo. Retener y liberar
- * son idempotentes, así que repetir el observer al volver a componer no descuadra nada.
+ * composición (dos `popBackStack` seguidos) y entonces nadie liberaría el grupo. Para no apilar
+ * observers cada vez que se vuelve a la pantalla, solo se añade cuando la entrada aún no estaba
+ * registrada. Al recrear la actividad (girar) las entradas se destruyen y se recrean: el grupo se
+ * cierra y se vuelve a abrir, y la entrada nueva registra su propio observer.
  */
 @Composable
 fun RetainSplitMonth(viewModel: SplitViewModel, entry: NavBackStackEntry, monthId: String) {
     DisposableEffect(entry, monthId) {
+        val firstTime = !viewModel.holdsMonth(entry.id)
         viewModel.retainMonth(entry.id, monthId)
-        entry.lifecycle.addObserver(LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_DESTROY) viewModel.releaseMonth(entry.id)
-        })
+        if (firstTime) {
+            entry.lifecycle.addObserver(LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_DESTROY) viewModel.releaseMonth(entry.id)
+            })
+        }
         onDispose { }
     }
 }
