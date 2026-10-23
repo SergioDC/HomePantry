@@ -19,6 +19,7 @@ import com.homepantry.app.data.computeBalances
 import com.homepantry.app.data.computeSettlements
 import com.homepantry.app.data.monthTotalCents
 import com.homepantry.app.data.parseCents
+import com.homepantry.app.data.parseShares
 import com.homepantry.app.data.validateSplitExpense
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -40,12 +41,21 @@ data class SplitUiState(
     val openMonthId: String? = null,
     /** Gastos del mes abierto, el más reciente primero. */
     val expenses: List<SplitExpense> = emptyList(),
+    /**
+     * Ya llegó el primer snapshot de gastos del mes abierto. Hasta entonces una lista vacía no
+     * significa «sin gastos» (Editar no debe dejar cambiar el mes por eso).
+     */
+    val expensesLoaded: Boolean = false,
     /** Fotos del mes abierto. */
     val photos: List<SplitPhoto> = emptyList(),
     val uploadingPhoto: Boolean = false,
     val error: String? = null
 ) {
     val openMonth: SplitMonth? get() = months.firstOrNull { it.id == openMonthId }
+
+    /** Lista principal: los no archivados, en el orden de [months]. */
+    val activeMonths: List<SplitMonth> by lazy { months.filter { !it.archived } }
+    val archivedMonths: List<SplitMonth> by lazy { months.filter { it.archived } }
 
     // Perezosas: Compose lee el estado muchas veces por fotograma y estas derivadas recorren
     // todos los gastos; cada copia del estado las recalcula una sola vez.
@@ -79,6 +89,7 @@ class SplitViewModel(
     val state: StateFlow<SplitUiState> = _state.asStateFlow()
 
     private val openMonthId = MutableStateFlow<String?>(null)
+    private val holders = SplitMonthHolders()
 
     init {
         viewModelScope.launch {
@@ -101,7 +112,10 @@ class SplitViewModel(
                     if (id == null) flowOf(emptyList())
                     else expensesRepository.observeExpenses(id).catch { e -> setError(e) }
                 }
-                .collect { expenses -> _state.update { it.copy(expenses = expenses) } }
+                .collect { expenses ->
+                    // El flowOf(emptyList()) de «ningún mes» no cuenta como carga.
+                    _state.update { it.copy(expenses = expenses, expensesLoaded = it.openMonthId != null) }
+                }
         }
         viewModelScope.launch {
             openMonthId
@@ -131,21 +145,19 @@ class SplitViewModel(
         _state.update { it.copy(error = null) }
     }
 
-    /** Abre un mes. Se vacían gastos y fotos al momento para no enseñar los del mes anterior. */
-    fun openMonth(id: String) {
-        if (openMonthId.value == id) return
-        _state.update { it.copy(openMonthId = id, expenses = emptyList(), photos = emptyList()) }
-        openMonthId.value = id
-    }
+    /** La pantalla [holderId] (una entrada de navegación) necesita el grupo [monthId] abierto. */
+    fun retainMonth(holderId: String, monthId: String) = setOpenMonth(holders.retain(holderId, monthId))
 
-    /**
-     * Cierra [monthId] solo si es el abierto: en una transición de navegación el `onDispose` de la
-     * pantalla anterior puede llegar después de que la nueva haya abierto su mes.
-     */
-    fun closeMonth(monthId: String) {
-        if (openMonthId.value != monthId) return
-        _state.update { it.copy(openMonthId = null, expenses = emptyList(), photos = emptyList()) }
-        openMonthId.value = null
+    /** La pantalla [holderId] ya no existe; si nadie más lo necesita, el grupo se cierra. */
+    fun releaseMonth(holderId: String) = setOpenMonth(holders.release(holderId))
+
+    /** Cambia el grupo abierto. Se vacían gastos y fotos al momento para no enseñar los del anterior. */
+    private fun setOpenMonth(id: String?) {
+        if (openMonthId.value == id) return
+        _state.update {
+            it.copy(openMonthId = id, expenses = emptyList(), expensesLoaded = false, photos = emptyList())
+        }
+        openMonthId.value = id
     }
 
     fun createMonth(name: String, monthKey: String, memberIds: List<String>, activity: Boolean) = launchCatching {
@@ -159,16 +171,27 @@ class SplitViewModel(
     /**
      * Borra el mes con sus gastos y fotos. Los objetos de Storage van primero (ver
      * [SplitMonthsRepository.delete]); si alguno falla, no se borra nada más y el mes sigue
-     * visible para reintentar.
+     * visible para reintentar. El grupo se cierra solo al salir de sus pantallas.
      */
     fun deleteMonth(monthId: String) = launchCatching {
-        closeMonth(monthId)
         monthsRepository.delete(monthId) { path -> storageRepository.deleteSplitPhoto(path) }
     }
+
+    fun setArchived(monthId: String, archived: Boolean) = launchCatching {
+        monthsRepository.setArchived(monthId, archived)
+    }
+
+    fun editMonth(monthId: String, name: String, monthKey: String, emoji: String, addedMemberIds: List<String>) =
+        launchCatching {
+            monthsRepository.updateMonth(monthId, name.trim(), monthKey, emoji, addedMemberIds.distinct())
+        }
 
     /**
      * Valida y guarda un gasto del mes abierto ([expenseId] null = alta). Devuelve los errores
      * para que el formulario los pinte; si está vacío, el guardado ya está en marcha.
+     *
+     * [shareTexts] null = a partes iguales entre [participants]. Si no, el importe escrito para
+     * cada participante posible, y [participants] da solo el orden en que se guardan.
      */
     fun saveExpense(
         expenseId: String?,
@@ -177,19 +200,26 @@ class SplitViewModel(
         payerId: String,
         participants: List<String>,
         date: Date?,
-        reimbursement: Boolean
+        reimbursement: Boolean,
+        emoji: String,
+        shareTexts: Map<String, String>?
     ): Set<SplitExpenseError> {
         val month = _state.value.openMonth ?: return emptySet()
-        val errors = validateSplitExpense(title, amountText, payerId, participants, date, reimbursement, month)
+        val errors = validateSplitExpense(
+            title, amountText, payerId, participants, date, reimbursement, month, shareTexts = shareTexts
+        )
         if (errors.isNotEmpty()) return errors
+        val shares = shareTexts?.let { parseShares(it)!! } ?: emptyMap()
         val expense = SplitExpense(
             id = expenseId.orEmpty(),
             title = title.trim(),
             amountCents = parseCents(amountText)!!,
             payerId = payerId,
-            participants = participants.distinct(),
+            participants = if (shareTexts == null) participants.distinct() else participants.distinct().filter { it in shares },
             date = date,
-            reimbursement = reimbursement
+            reimbursement = reimbursement,
+            emoji = emoji,
+            shares = shares
         )
         launchCatching {
             if (expenseId == null) expensesRepository.add(month.id, expense)

@@ -34,6 +34,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,12 +43,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavBackStackEntry
 import com.homepantry.app.R
 import com.homepantry.app.data.ExpenseCategory
 import com.homepantry.app.data.SplitExpense
 import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.data.expenseCategoryOf
 import com.homepantry.app.ui.SplitUiState
+import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.theme.NocturneOnSurfaceVariant
 import com.homepantry.app.ui.theme.StoreColors
 
@@ -212,5 +217,24 @@ fun SplitAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
             Icon(Icons.Filled.Add, contentDescription = null)
         }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/**
+ * Mantiene abierto el grupo [monthId] mientras exista la entrada de navegación [entry], aunque la
+ * pantalla salga de la composición al navegar hacia delante (ver [com.homepantry.app.ui.SplitMonthHolders]).
+ *
+ * El observer no se quita en `onDispose`: la entrada puede destruirse cuando ya no está en
+ * composición (dos `popBackStack` seguidos) y entonces nadie liberaría el grupo. Retener y liberar
+ * son idempotentes, así que repetir el observer al volver a componer no descuadra nada.
+ */
+@Composable
+fun RetainSplitMonth(viewModel: SplitViewModel, entry: NavBackStackEntry, monthId: String) {
+    DisposableEffect(entry, monthId) {
+        viewModel.retainMonth(entry.id, monthId)
+        entry.lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) viewModel.releaseMonth(entry.id)
+        })
+        onDispose { }
     }
 }

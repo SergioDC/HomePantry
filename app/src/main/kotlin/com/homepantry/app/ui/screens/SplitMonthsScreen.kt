@@ -113,7 +113,7 @@ fun SplitMonthsScreen(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(state.months, key = { it.id }) { month ->
+                    items(state.activeMonths, key = { it.id }) { month ->
                         val names = month.memberIds.map { splitMemberName(state, it) }
                         SplitMonthCard(
                             month = month,

@@ -75,6 +75,7 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.components.RetainSplitMonth
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.MenuScreen
@@ -428,6 +429,7 @@ fun ListaDeLaCasaApp() {
             }
             composable("splitMonth/{monthId}") { backStackEntry ->
                 val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,

@@ -22,7 +22,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -68,12 +67,8 @@ fun SplitMonthScreen(
     var expenseSheet by remember { mutableStateOf<ExpenseSheetTarget?>(null) }
     val reimbursementTitle = stringResource(R.string.split_reimbursement_title)
 
-    // El ViewModel solo escucha los gastos y fotos del mes abierto: se abre al entrar y se cierra
-    // al salir para no dejar listeners vivos de un mes que ya no se ve.
-    DisposableEffect(monthId) {
-        viewModel.openMonth(monthId)
-        onDispose { viewModel.closeMonth(monthId) }
-    }
+    // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
+    // abierto en las pantallas de gasto y de editar que se apilan encima.
 
     // Si otro miembro borra el mes mientras está abierto, se vuelve a la lista.
     val monthGone = state.monthsLoaded && state.months.none { it.id == monthId }
@@ -165,7 +160,10 @@ fun SplitMonthScreen(
                 currentUid = viewModel.currentUid,
                 expense = editing,
                 onSave = { title, amountText, payerId, participants, date, reimbursement ->
-                    viewModel.saveExpense(editing?.id, title, amountText, payerId, participants, date, reimbursement)
+                    viewModel.saveExpense(
+                        editing?.id, title, amountText, payerId, participants, date, reimbursement,
+                        emoji = editing?.emoji.orEmpty(), shareTexts = null
+                    )
                 },
                 onDelete = { editing?.let { viewModel.deleteExpense(it.id) } },
                 onDismiss = { expenseSheet = null }

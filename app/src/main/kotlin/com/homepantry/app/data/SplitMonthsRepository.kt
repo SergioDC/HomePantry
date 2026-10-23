@@ -1,6 +1,7 @@
 package com.homepantry.app.data
 
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -36,6 +37,20 @@ class SplitMonthsRepository(
 
     suspend fun rename(monthId: String, name: String) {
         collection().document(monthId).update("name", name).await()
+    }
+
+    suspend fun setArchived(monthId: String, archived: Boolean) {
+        collection().document(monthId).update("archived", archived).await()
+    }
+
+    /**
+     * Guarda lo que se cambia desde «Editar SNcount». Los miembros nuevos van con `arrayUnion`
+     * para no pisar a otro miembro que añada a alguien a la vez; nunca se quita a nadie.
+     */
+    suspend fun updateMonth(monthId: String, name: String, monthKey: String, emoji: String, addedMemberIds: List<String>) {
+        val fields = mutableMapOf<String, Any>("name" to name, "monthKey" to monthKey, "emoji" to emoji)
+        if (addedMemberIds.isNotEmpty()) fields["memberIds"] = FieldValue.arrayUnion(*addedMemberIds.toTypedArray())
+        collection().document(monthId).update(fields).await()
     }
 
     /**
