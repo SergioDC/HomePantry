@@ -30,6 +30,13 @@ fun splitEqually(amountCents: Long, participants: List<String>): Map<String, Lon
 }
 
 /**
+ * Lo que le toca a cada participante de [expense]: sus importes explícitos si los tiene y, si no
+ * (todos los gastos anteriores al reparto por importes), el reparto igual de siempre.
+ */
+fun expenseShares(expense: SplitExpense): Map<String, Long> =
+    expense.shares.ifEmpty { splitEqually(expense.amountCents, expense.participants) }
+
+/**
  * Saldo de cada miembro. Un reembolso no necesita rama propia: quien devuelve suma lo pagado y
  * quien recibe suma su parte, igual que en un gasto normal con un único participante.
  *
@@ -41,9 +48,11 @@ fun computeBalances(expenses: List<SplitExpense>, memberIds: List<String>): List
     val paid = HashMap<String, Long>()
     val share = HashMap<String, Long>()
     for (expense in expenses) {
-        if (expense.participants.isEmpty() || expense.amountCents <= 0) continue
+        if (expense.amountCents <= 0) continue
+        val shares = expenseShares(expense)
+        if (shares.isEmpty()) continue
         paid[expense.payerId] = (paid[expense.payerId] ?: 0L) + expense.amountCents
-        splitEqually(expense.amountCents, expense.participants).forEach { (id, cents) ->
+        shares.forEach { (id, cents) ->
             share[id] = (share[id] ?: 0L) + cents
         }
     }
@@ -90,12 +99,16 @@ fun isDateInMonth(date: Date, monthKey: String, timeZone: TimeZone = TimeZone.ge
     monthKeyOf(date, timeZone) == monthKey
 
 /** Campo de un gasto que no pasa la validación; la UI pinta el error bajo ese campo. */
-enum class SplitExpenseError { TITLE, AMOUNT, PARTICIPANTS, PAYER, DATE }
+enum class SplitExpenseError { TITLE, AMOUNT, PARTICIPANTS, PAYER, DATE, SHARES }
 
 /**
  * Errores de un gasto antes de guardarlo; vacío = válido. Devuelve todos a la vez para que el
  * formulario los marque juntos. La fecha de un reembolso no se comprueba: se salda cuando se
  * puede, a veces ya entrado el mes siguiente.
+ *
+ * [shareTexts] null = reparto a partes iguales entre [participants]. Si no es null, es el
+ * importe escrito para cada participante posible: entonces [participants] no se mira, participa
+ * quien tenga importe > 0 y la suma tiene que ser exactamente el total.
  */
 fun validateSplitExpense(
     title: String,
@@ -105,11 +118,26 @@ fun validateSplitExpense(
     date: Date?,
     reimbursement: Boolean,
     month: SplitMonth,
-    timeZone: TimeZone = TimeZone.getDefault()
+    timeZone: TimeZone = TimeZone.getDefault(),
+    shareTexts: Map<String, String>? = null
 ): Set<SplitExpenseError> = buildSet {
     if (title.isBlank()) add(SplitExpenseError.TITLE)
-    if (parseCents(amountText) == null) add(SplitExpenseError.AMOUNT)
-    if (participants.isEmpty()) add(SplitExpenseError.PARTICIPANTS)
+    val amount = parseCents(amountText)
+    if (amount == null) add(SplitExpenseError.AMOUNT)
+    if (shareTexts == null) {
+        if (participants.isEmpty()) add(SplitExpenseError.PARTICIPANTS)
+    } else {
+        val shares = parseShares(shareTexts)
+        if (shares == null) {
+            add(SplitExpenseError.SHARES)
+        } else {
+            if (shares.isEmpty()) add(SplitExpenseError.PARTICIPANTS)
+            // Con el total inválido ya se marca AMOUNT: no se añade un segundo aviso por la suma.
+            if (amount != null && shares.isNotEmpty() && sharesRemainderCents(amount, shares) != 0L) {
+                add(SplitExpenseError.SHARES)
+            }
+        }
+    }
     if (payerId !in month.memberIds) add(SplitExpenseError.PAYER)
     // Una actividad (un viaje, una cena) no está atada a un mes: cualquier fecha vale.
     val dateLimited = !reimbursement && !month.activity
@@ -121,7 +149,36 @@ fun validateSplitExpense(
 /** «Mis gastos»: la suma de mis partes en los gastos del grupo. Los reembolsos no son gasto. */
 fun myShareCents(expenses: List<SplitExpense>, memberId: String): Long =
     expenses.filter { !it.reimbursement && it.amountCents > 0 }
-        .sumOf { splitEqually(it.amountCents, it.participants)[memberId] ?: 0L }
+        .sumOf { expenseShares(it)[memberId] ?: 0L }
+
+/**
+ * Importe de un participante en el reparto por importes. A diferencia de [parseCents], un campo
+ * en blanco o un cero valen 0 (ese miembro no participa); lo demás inválido da null.
+ */
+fun parseShareCents(text: String): Long? {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty() || ZERO_REGEX.matches(trimmed)) return 0L
+    return parseCents(trimmed)
+}
+
+private val ZERO_REGEX = Regex("^0+(?:[.,]0{1,2})?$")
+
+/**
+ * Importes por participante a céntimos, solo los > 0. null si alguno no se puede leer, para que
+ * el formulario lo marque en vez de tomarlo por 0 en silencio.
+ */
+fun parseShares(shareTexts: Map<String, String>): Map<String, Long>? {
+    val result = LinkedHashMap<String, Long>()
+    for ((id, text) in shareTexts) {
+        val cents = parseShareCents(text) ?: return null
+        if (cents > 0) result[id] = cents
+    }
+    return result
+}
+
+/** Lo que falta (positivo) o sobra (negativo) para que [shares] sume [totalCents]. */
+fun sharesRemainderCents(totalCents: Long, shares: Map<String, Long>): Long =
+    totalCents - shares.values.sum()
 
 /**
  * Gastos agrupados por día local ("yyyy-MM-dd"), en el orden en que llegan (ya vienen del más
