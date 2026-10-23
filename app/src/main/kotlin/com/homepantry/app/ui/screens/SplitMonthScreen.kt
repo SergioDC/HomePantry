@@ -25,7 +25,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +41,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
-import com.homepantry.app.data.SplitExpense
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.IconTile
 import com.homepantry.app.ui.components.icon
@@ -58,13 +56,13 @@ import kotlinx.coroutines.launch
 fun SplitMonthScreen(
     viewModel: SplitViewModel,
     monthId: String,
+    onOpenExpense: (expenseId: String?) -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var expenseSheet by remember { mutableStateOf<ExpenseSheetTarget?>(null) }
     val reimbursementTitle = stringResource(R.string.split_reimbursement_title)
 
     // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
@@ -129,8 +127,8 @@ fun SplitMonthScreen(
                     0 -> SplitExpensesTab(
                         state = state,
                         currentUid = viewModel.currentUid,
-                        onAdd = { expenseSheet = ExpenseSheetTarget.New },
-                        onOpen = { expenseSheet = ExpenseSheetTarget.Edit(it) }
+                        onAdd = { onOpenExpense(null) },
+                        onOpen = { onOpenExpense(it.id) }
                     )
                     1 -> SplitBalancesTab(
                         state = state,
@@ -148,28 +146,6 @@ fun SplitMonthScreen(
         }
     }
 
-    val month = state.openMonth
-    val target = expenseSheet
-    if (month != null && target != null) {
-        val editing = (target as? ExpenseSheetTarget.Edit)?.expense
-        // La clave hace que cambiar de gasto reinicie el estado local de la hoja.
-        key(editing?.id) {
-            SplitExpenseSheet(
-                state = state,
-                month = month,
-                currentUid = viewModel.currentUid,
-                expense = editing,
-                onSave = { title, amountText, payerId, participants, date, reimbursement ->
-                    viewModel.saveExpense(
-                        editing?.id, title, amountText, payerId, participants, date, reimbursement,
-                        emoji = editing?.emoji.orEmpty(), shareTexts = null
-                    )
-                },
-                onDelete = { editing?.let { viewModel.deleteExpense(it.id) } },
-                onDismiss = { expenseSheet = null }
-            )
-        }
-    }
 }
 
 /** Pestañas como control segmentado a todo el ancho (Gastos, Saldos, Fotos). */
@@ -200,8 +176,3 @@ private fun SplitTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Un
     }
 }
 
-/** Qué gasto abre la hoja: uno nuevo o uno existente. */
-private sealed interface ExpenseSheetTarget {
-    data object New : ExpenseSheetTarget
-    data class Edit(val expense: SplitExpense) : ExpenseSheetTarget
-}

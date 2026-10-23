@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -75,6 +77,7 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.SplitExpenseScreen
 import com.homepantry.app.ui.components.RetainSplitMonth
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
@@ -433,6 +436,28 @@ fun ListaDeLaCasaApp() {
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
+                    onOpenExpense = { expenseId ->
+                        navController.navigate(
+                            if (expenseId == null) "splitExpense/$monthId" else "splitExpense/$monthId?expenseId=$expenseId"
+                        )
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                "splitExpense/{monthId}?expenseId={expenseId}",
+                arguments = listOf(navArgument("expenseId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                SplitExpenseScreen(
+                    viewModel = splitViewModel,
+                    monthId = monthId,
+                    expenseId = backStackEntry.arguments?.getString("expenseId"),
                     onBack = { navController.popBackStack() }
                 )
             }

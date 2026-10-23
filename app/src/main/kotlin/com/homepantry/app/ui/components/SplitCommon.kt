@@ -39,6 +39,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -181,6 +182,23 @@ fun IconTile(icon: ImageVector, color: Color, modifier: Modifier = Modifier, siz
         contentAlignment = Alignment.Center
     ) {
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(size * 0.55f))
+    }
+}
+
+/** Como [IconTile], pero con [emoji] en lugar del icono si se eligió uno (gastos y grupos). */
+@Composable
+fun SplitIcon(emoji: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    if (emoji.isBlank()) {
+        IconTile(icon, color, modifier, size)
+        return
+    }
+    Box(
+        modifier
+            .size(size)
+            .background(color.copy(alpha = 0.18f), RoundedCornerShape(size * 0.28f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(emoji, fontSize = with(LocalDensity.current) { (size * 0.55f).toSp() })
     }
 }
 

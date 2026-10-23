@@ -447,18 +447,22 @@
     <string name="split_expense_title">Concepto</string>
     <string name="split_expense_amount">Importe (€)</string>
     <string name="split_expense_payer">Pagó</string>
-    <string name="split_expense_participants">Repartido entre</string>
+    <string name="split_expense_split_section">Reparto</string>
+    <string name="split_expense_split_equally">Dividir a partes iguales</string>
+    <string name="split_shares_missing">Faltan %1$s para cuadrar con %2$s</string>
+    <string name="split_shares_extra">Sobran %1$s</string>
+    <string name="split_shares_ok">Cuadra</string>
+    <string name="split_error_shares">Los importes tienen que sumar el total</string>
+    <string name="split_emoji_title">Icono</string>
+    <string name="split_emoji_automatic">Automático (según el concepto)</string>
+    <string name="split_emoji_cd">Cambiar icono</string>
+    <string name="split_expense_delete_cd">Borrar gasto</string>
     <string name="split_expense_date">Fecha: %1$s</string>
     <string name="split_error_title">Escribe un concepto</string>
     <string name="split_error_amount">Importe no válido (por ejemplo, 12,50)</string>
     <string name="split_error_participants">Elige al menos una persona</string>
     <string name="split_error_payer">Elige quién pagó</string>
     <string name="split_error_date">La fecha tiene que ser de este mes</string>
-    <string name="split_each">Cada uno: %1$s</string>
-    <plurals name="split_each_uneven">
-        <item quantity="one">%2$s a uno, %3$s al resto</item>
-        <item quantity="other">%2$s a %1$d, %3$s al resto</item>
-    </plurals>
     <string name="split_expense_delete_title">¿Borrar el gasto?</string>
     <string name="split_expense_delete_message">Se borrará «%1$s». No se puede deshacer.</string>
 
