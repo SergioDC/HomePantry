@@ -35,10 +35,6 @@ class SplitMonthsRepository(
     suspend fun createMonth(name: String, monthKey: String, memberIds: List<String>, activity: Boolean): String =
         collection().add(SplitMonth(name = name, monthKey = monthKey, memberIds = memberIds, activity = activity)).await().id
 
-    suspend fun rename(monthId: String, name: String) {
-        collection().document(monthId).update("name", name).await()
-    }
-
     suspend fun setArchived(monthId: String, archived: Boolean) {
         collection().document(monthId).update("archived", archived).await()
     }

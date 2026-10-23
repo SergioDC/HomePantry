@@ -79,7 +79,9 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
+import com.homepantry.app.ui.screens.SplitMonthEditScreen
 import com.homepantry.app.ui.components.RetainSplitMonth
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
@@ -443,7 +445,26 @@ fun ListaDeLaCasaApp(pendingSplitMonthId: String? = null, onSplitLinkHandled: ()
                 SplitMonthsScreen(
                     viewModel = splitViewModel,
                     onBack = { navController.popBackStack() },
-                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") }
+                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") },
+                    onEditMonth = { monthId -> navController.navigate("splitMonthEdit/$monthId") },
+                    onOpenArchived = { navController.navigate("splitArchived") }
+                )
+            }
+            composable("splitArchived") {
+                SplitArchivedScreen(
+                    viewModel = splitViewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") },
+                    onEditMonth = { monthId -> navController.navigate("splitMonthEdit/$monthId") }
+                )
+            }
+            composable("splitMonthEdit/{monthId}") { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                SplitMonthEditScreen(
+                    viewModel = splitViewModel,
+                    monthId = monthId,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("splitMonth/{monthId}") { backStackEntry ->
@@ -452,6 +473,7 @@ fun ListaDeLaCasaApp(pendingSplitMonthId: String? = null, onSplitLinkHandled: ()
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
+                    onEditMonth = { navController.navigate("splitMonthEdit/$monthId") },
                     onOpenExpense = { expenseId ->
                         navController.navigate(
                             if (expenseId == null) "splitExpense/$monthId" else "splitExpense/$monthId?expenseId=$expenseId"

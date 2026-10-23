@@ -164,10 +164,6 @@ class SplitViewModel(
         monthsRepository.createMonth(name.trim(), monthKey, memberIds.distinct(), activity)
     }
 
-    fun renameMonth(monthId: String, name: String) = launchCatching {
-        monthsRepository.rename(monthId, name.trim())
-    }
-
     /**
      * Borra el mes con sus gastos y fotos. Los objetos de Storage van primero (ver
      * [SplitMonthsRepository.delete]); si alguno falla, no se borra nada más y el mes sigue

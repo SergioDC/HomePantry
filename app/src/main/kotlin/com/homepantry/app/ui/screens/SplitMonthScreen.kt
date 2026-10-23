@@ -42,7 +42,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.ui.SplitViewModel
-import com.homepantry.app.ui.components.IconTile
+import com.homepantry.app.ui.components.SplitIcon
+import com.homepantry.app.ui.components.SplitMonthMenu
 import com.homepantry.app.ui.components.icon
 import com.homepantry.app.ui.components.groupColors
 import kotlinx.coroutines.launch
@@ -57,6 +58,7 @@ fun SplitMonthScreen(
     viewModel: SplitViewModel,
     monthId: String,
     onOpenExpense: (expenseId: String?) -> Unit,
+    onEditMonth: () -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -68,10 +70,22 @@ fun SplitMonthScreen(
     // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
     // abierto en las pantallas de gasto y de editar que se apilan encima.
 
+    val month = state.months.firstOrNull { it.id == monthId }
+
+    // Todas las salidas pasan por aquí: tras borrar el grupo desde el menú, su desaparición en el
+    // snapshot volvería a disparar «atrás» y sacaría también la lista.
+    var leaving by remember { mutableStateOf(false) }
+    val leave = {
+        if (!leaving) {
+            leaving = true
+            onBack()
+        }
+    }
+
     // Si otro miembro borra el mes mientras está abierto, se vuelve a la lista.
-    val monthGone = state.monthsLoaded && state.months.none { it.id == monthId }
+    val monthGone = state.monthsLoaded && month == null
     LaunchedEffect(monthGone) {
-        if (monthGone) onBack()
+        if (monthGone) leave()
     }
 
     LaunchedEffect(state.error) {
@@ -88,8 +102,19 @@ fun SplitMonthScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.split_title), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = leave) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                },
+                actions = {
+                    if (month != null) {
+                        SplitMonthMenu(
+                            month = month,
+                            viewModel = viewModel,
+                            onEdit = onEditMonth,
+                            onMessage = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+                            onDeleted = leave
+                        )
                     }
                 }
             )
@@ -97,13 +122,13 @@ fun SplitMonthScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.openMonth?.let { month ->
+            month?.let { month ->
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     val color = groupColors(state.months)[month.id] ?: MaterialTheme.colorScheme.primary
-                    IconTile(month.icon(), color, size = 64.dp)
+                    SplitIcon(month.emoji, month.icon(), color, size = 64.dp)
                     Text(
                         month.name,
                         style = MaterialTheme.typography.headlineSmall,
