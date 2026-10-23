@@ -398,6 +398,8 @@
     <string name="split_month_next_cd">Mes siguiente</string>
     <string name="split_month_participants_error">Elige al menos un participante</string>
     <string name="split_month_menu_cd">Opciones del grupo</string>
+    <string name="split_share_text">He creado el SNcount «%1$s» en SNHome. Ábrelo aquí: %2$s</string>
+    <string name="split_share_chooser">Compartir SNcount</string>
     <string name="split_month_rename">Renombrar</string>
     <string name="split_month_rename_title">Renombrar grupo</string>
     <string name="split_month_delete">Borrar</string>

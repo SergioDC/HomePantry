@@ -1,6 +1,7 @@
 package com.homepantry.app
 
 import android.net.Uri
+import android.content.Intent
 import android.os.Bundle
 import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -54,6 +55,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.homepantry.app.data.ConnectivityObserver
 import com.homepantry.app.data.DishesRepository
 import com.homepantry.app.data.GeminiApiKeyStore
+import com.homepantry.app.data.splitMonthIdFromLink
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
@@ -101,9 +103,14 @@ import kotlinx.coroutines.tasks.await
  * de casa guardado en DataStore (SPEC.md sec 1.1 y 3).
  */
 class MainActivity : ComponentActivity() {
+    /** Grupo de SNcount de un enlace abierto, pendiente hasta que la app navega a él. */
+    private val pendingSplitMonthId = mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Solo en el arranque real: al recrear la actividad (girar) el intent es el mismo y ya se navegó.
+        if (savedInstanceState == null) pendingSplitMonthId.value = splitMonthIdFromLink(intent?.dataString)
         // Salida del splash: el logo crece un poco y se desvanece junto al fondo,
         // revelando la app por debajo.
         splash.setOnExitAnimationListener { provider ->
@@ -126,17 +133,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             ListaDeLaCasaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ListaDeLaCasaApp()
+                    ListaDeLaCasaApp(
+                        pendingSplitMonthId = pendingSplitMonthId.value,
+                        onSplitLinkHandled = { pendingSplitMonthId.value = null }
+                    )
                 }
             }
         }
+    }
+
+    /** Con `singleTop`, un enlace abierto con la app ya en marcha llega aquí y no a onCreate. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        splitMonthIdFromLink(intent.dataString)?.let { pendingSplitMonthId.value = it }
     }
 }
 
 private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "menu", "search")
 
 @Composable
-fun ListaDeLaCasaApp() {
+fun ListaDeLaCasaApp(pendingSplitMonthId: String? = null, onSplitLinkHandled: () -> Unit = {}) {
     val context = LocalContext.current
     val userPrefs = remember { UserPrefs(context) }
     val geminiApiKeyStore = remember { GeminiApiKeyStore(context) }
@@ -462,6 +478,19 @@ fun ListaDeLaCasaApp() {
                 )
             }
         }
+    }
+
+    // Enlace de SNcount compartido por otro miembro: se navega por Home → SNcount → el grupo
+    // para que «atrás» funcione como si se hubiera llegado a mano. Si el grupo no es de esta casa,
+    // SplitMonthScreen vuelve sola a la lista. Va después del NavHost para que el grafo ya exista.
+    LaunchedEffect(pendingSplitMonthId) {
+        val monthId = pendingSplitMonthId ?: return@LaunchedEffect
+        navController.navigate("splitMonths") {
+            popUpTo("home")
+            launchSingleTop = true
+        }
+        navController.navigate("splitMonth/$monthId")
+        onSplitLinkHandled()
     }
 
     if (showAddItem || itemBeingEdited != null) {
