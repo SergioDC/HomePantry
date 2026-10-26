@@ -1,7 +1,7 @@
 package com.homepantry.app.ui.screens
 
 import android.content.Intent
-import android.net.Uri
+import androidx.core.net.toUri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.OfferMatch
 import com.homepantry.app.data.OfferRowState
+import com.homepantry.app.data.isTrustedOfferUrl
 import com.homepantry.app.data.offerRowState
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.components.euros
@@ -67,6 +69,7 @@ fun NotificationDetailScreen(
     val state by viewModel.state.collectAsState()
     val notification = state.notifications.firstOrNull { it.id == notificationId }
     val context = LocalContext.current
+    val resources = LocalResources.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -107,7 +110,7 @@ fun NotificationDetailScreen(
         bottomBar = {
             if (notification != null) {
                 Surface(tonalElevation = 3.dp) {
-                    val addedMessage = { n: Int -> context.resources.getQuantityString(R.plurals.notification_added_snackbar, n, n) }
+                    val addedMessage = { n: Int -> resources.getQuantityString(R.plurals.notification_added_snackbar, n, n) }
                     Button(
                         onClick = {
                             viewModel.addOffers(notificationId, selectable) { n ->
@@ -144,9 +147,9 @@ fun NotificationDetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(store.store, style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        if (store.url.isNotBlank()) {
+                        if (isTrustedOfferUrl(store.url)) {
                             TextButton(onClick = {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(store.url))) }
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, store.url.toUri())) }
                             }) {
                                 Text(stringResource(if (store.store == "Lidl") R.string.notification_open_leaflet else R.string.notification_open_offers))
                             }

@@ -1,5 +1,6 @@
 package com.homepantry.app
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.view.animation.AccelerateDecelerateInterpolator
@@ -65,6 +66,7 @@ import com.homepantry.app.data.SplitPhotosRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
+import com.homepantry.app.data.initialOffersCheck
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.NotificationsViewModel
@@ -94,6 +96,7 @@ import com.homepantry.app.ui.screens.ZonesDashboardScreen
 import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
+import java.time.ZonedDateTime
 
 /**
  * Punto de entrada. Firma anónimamente (Firebase Auth) antes de tocar
@@ -101,7 +104,17 @@ import kotlinx.coroutines.tasks.await
  * de casa guardado en DataStore (SPEC.md sec 1.1 y 3).
  */
 class MainActivity : ComponentActivity() {
+    /** Aviso que hay que abrir porque se ha tocado su notificación (ver OffersCheckJobService). */
+    private var pendingNotificationId by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.let { pendingNotificationId = it }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Solo en el primer arranque: al recrear la actividad (rotación) el intent sigue siendo el mismo.
+        if (savedInstanceState == null) pendingNotificationId = intent?.getStringExtra(EXTRA_NOTIFICATION_ID)
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         // Salida del splash: el logo crece un poco y se desvanece junto al fondo,
@@ -126,7 +139,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             ListaDeLaCasaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    ListaDeLaCasaApp()
+                    ListaDeLaCasaApp(
+                        pendingNotificationId = pendingNotificationId,
+                        onNotificationOpened = { pendingNotificationId = null }
+                    )
                 }
             }
         }
@@ -136,7 +152,10 @@ class MainActivity : ComponentActivity() {
 private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "menu", "search")
 
 @Composable
-fun ListaDeLaCasaApp() {
+fun ListaDeLaCasaApp(
+    pendingNotificationId: String? = null,
+    onNotificationOpened: () -> Unit = {}
+) {
     val context = LocalContext.current
     val userPrefs = remember { UserPrefs(context) }
     val geminiApiKeyStore = remember { GeminiApiKeyStore(context) }
@@ -284,6 +303,12 @@ fun ListaDeLaCasaApp() {
     }
     val notificationsState by notificationsViewModel.state.collectAsState()
 
+    // Comprobación semanal del aviso de ofertas; si ya hay una programada no se toca.
+    LaunchedEffect(code) {
+        ensureOffersChannel(context)
+        scheduleOffersCheck(context, initialOffersCheck(ZonedDateTime.now()), replace = false)
+    }
+
     val state by viewModel.state.collectAsState()
     val pendingCount = state.items.count { !it.done }
 
@@ -295,6 +320,17 @@ fun ListaDeLaCasaApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+
+    // Se ha tocado la notificación de ofertas: se abre el aviso cuando el NavHost ya tiene grafo
+    // (la ruta deja de ser null). Desde ahí, atrás vuelve a Home.
+    val navReady = currentRoute != null
+    LaunchedEffect(pendingNotificationId, navReady) {
+        val id = pendingNotificationId
+        if (id != null && navReady) {
+            navController.navigate("notification/$id") { launchSingleTop = true }
+            onNotificationOpened()
+        }
+    }
     // La barra es solo del área Almacén. Con `home` de inicio, la ruta es null el primer fotograma:
     // se exige que exista para que la barra no aparezca un instante al arrancar.
     val showBottomBar = currentRoute != null &&

@@ -59,6 +59,20 @@ fun pendingOfferNotification(
         .maxByOrNull { it.createdAt!!.time }
 }
 
+/** Dominios de las tiendas cuyos folletos se pueden abrir desde un aviso. */
+private val OFFER_HOSTS = listOf("lidl.es", "aldi.es")
+
+/**
+ * Cualquiera que conozca el código de casa puede escribir un aviso, así que el enlace no es de
+ * fiar: solo se abre si es https y de una de las tiendas (o un subdominio suyo).
+ */
+fun isTrustedOfferUrl(url: String): Boolean {
+    val uri = runCatching { java.net.URI(url) }.getOrNull() ?: return false
+    val host = uri.host?.lowercase() ?: return false
+    return uri.scheme.equals("https", ignoreCase = true) &&
+        OFFER_HOSTS.any { host == it || host.endsWith(".$it") }
+}
+
 enum class OfferRowState { NEW, IN_LIST, ADDED }
 
 /** Producto existente (despensa o lista) que corresponde a la oferta, por nombre normalizado. */

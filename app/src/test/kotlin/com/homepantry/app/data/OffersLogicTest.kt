@@ -123,6 +123,19 @@ class OffersLogicTest {
         assertEquals("nevera", planOfferAdds(listOf("Aldi" to cheese), items, zones, "Ana").newItems.single().zone)
     }
 
+    @Test fun `isTrustedOfferUrl accepts https links of the stores`() {
+        assertEquals(true, isTrustedOfferUrl("https://www.lidl.es/l/folletos/folleto-alimentacion-x/ar/0"))
+        assertEquals(true, isTrustedOfferUrl("https://www.aldi.es/ofertas.html"))
+    }
+
+    @Test fun `isTrustedOfferUrl rejects other schemes and lookalike hosts`() {
+        assertEquals(false, isTrustedOfferUrl("http://www.lidl.es/"))
+        assertEquals(false, isTrustedOfferUrl("intent://x#Intent;end"))
+        assertEquals(false, isTrustedOfferUrl("https://lidl.es.evil.com/"))
+        assertEquals(false, isTrustedOfferUrl("https://evillidl.es/"))
+        assertEquals(false, isTrustedOfferUrl(""))
+    }
+
     @Test fun `planOfferAdds moves a pantry item back to the list instead of duplicating it`() {
         val items = listOf(Item(id = "t1", name = "Tomate", zone = "nevera", done = true))
         val plan = planOfferAdds(listOf("Lidl" to tomato), items, zones, "Ana")
