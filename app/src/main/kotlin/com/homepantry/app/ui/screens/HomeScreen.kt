@@ -62,7 +62,7 @@ fun HomeScreen(
     val today = remember { SimpleDateFormat("EEEE d MMMM", Locale.forLanguageTag("es-ES")).format(Date()) }
     val pending = state.items.count { !it.done }
     val month = remember(state.purchases) { monthSummary(state.purchases) }
-    val monthCount = splitState.months.size
+    val monthCount = splitState.activeMonths.size
 
     Scaffold(
         topBar = {

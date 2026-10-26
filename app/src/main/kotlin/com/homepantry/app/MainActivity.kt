@@ -43,6 +43,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -53,6 +55,7 @@ import com.google.firebase.storage.FirebaseStorage
 import com.homepantry.app.data.ConnectivityObserver
 import com.homepantry.app.data.DishesRepository
 import com.homepantry.app.data.GeminiApiKeyStore
+import com.homepantry.app.data.splitMonthIdFromLink
 import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
@@ -80,6 +83,10 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.SplitArchivedScreen
+import com.homepantry.app.ui.screens.SplitExpenseScreen
+import com.homepantry.app.ui.screens.SplitMonthEditScreen
+import com.homepantry.app.ui.components.RetainSplitMonth
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.MenuScreen
@@ -105,19 +112,19 @@ import java.time.ZonedDateTime
  * de casa guardado en DataStore (SPEC.md sec 1.1 y 3).
  */
 class MainActivity : ComponentActivity() {
+    /** Grupo de SNcount de un enlace abierto, pendiente hasta que la app navega a él. */
+    private val pendingSplitMonthId = mutableStateOf<String?>(null)
+
     /** Aviso que hay que abrir porque se ha tocado su notificación (ver OffersCheckJobService). */
     private var pendingNotificationId by mutableStateOf<String?>(null)
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)?.let { pendingNotificationId = it }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Solo en el primer arranque: al recrear la actividad (rotación) el intent sigue siendo el mismo.
         if (savedInstanceState == null) pendingNotificationId = intent?.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
+        // Solo en el arranque real: al recrear la actividad (girar) el intent es el mismo y ya se navegó.
+        if (savedInstanceState == null) pendingSplitMonthId.value = splitMonthIdFromLink(intent?.dataString)
         // Salida del splash: el logo crece un poco y se desvanece junto al fondo,
         // revelando la app por debajo.
         splash.setOnExitAnimationListener { provider ->
@@ -141,6 +148,8 @@ class MainActivity : ComponentActivity() {
             ListaDeLaCasaTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     ListaDeLaCasaApp(
+                        pendingSplitMonthId = pendingSplitMonthId.value,
+                        onSplitLinkHandled = { pendingSplitMonthId.value = null },
                         pendingNotificationId = pendingNotificationId,
                         onNotificationOpened = { pendingNotificationId = null }
                     )
@@ -148,12 +157,24 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    /**
+     * Con `singleTop`, un enlace de SNcount o la notificación de ofertas con la app ya en marcha
+     * llegan aquí y no a onCreate.
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        splitMonthIdFromLink(intent.dataString)?.let { pendingSplitMonthId.value = it }
+        intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)?.let { pendingNotificationId = it }
+    }
 }
 
 private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "menu", "search")
 
 @Composable
 fun ListaDeLaCasaApp(
+    pendingSplitMonthId: String? = null,
+    onSplitLinkHandled: () -> Unit = {},
     pendingNotificationId: String? = null,
     onNotificationOpened: () -> Unit = {}
 ) {
@@ -501,18 +522,74 @@ fun ListaDeLaCasaApp(
                 SplitMonthsScreen(
                     viewModel = splitViewModel,
                     onBack = { navController.popBackStack() },
-                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") }
+                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") },
+                    onEditMonth = { monthId -> navController.navigate("splitMonthEdit/$monthId") },
+                    onOpenArchived = { navController.navigate("splitArchived") }
                 )
             }
-            composable("splitMonth/{monthId}") { backStackEntry ->
+            composable("splitArchived") {
+                SplitArchivedScreen(
+                    viewModel = splitViewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenMonth = { monthId -> navController.navigate("splitMonth/$monthId") },
+                    onEditMonth = { monthId -> navController.navigate("splitMonthEdit/$monthId") }
+                )
+            }
+            composable("splitMonthEdit/{monthId}") { backStackEntry ->
                 val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
-                SplitMonthScreen(
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                SplitMonthEditScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
                     onBack = { navController.popBackStack() }
                 )
             }
+            composable("splitMonth/{monthId}") { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                SplitMonthScreen(
+                    viewModel = splitViewModel,
+                    monthId = monthId,
+                    onEditMonth = { navController.navigate("splitMonthEdit/$monthId") },
+                    onOpenExpense = { expenseId ->
+                        navController.navigate(
+                            if (expenseId == null) "splitExpense/$monthId" else "splitExpense/$monthId?expenseId=$expenseId"
+                        )
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                "splitExpense/{monthId}?expenseId={expenseId}",
+                arguments = listOf(navArgument("expenseId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                })
+            ) { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                SplitExpenseScreen(
+                    viewModel = splitViewModel,
+                    monthId = monthId,
+                    expenseId = backStackEntry.arguments?.getString("expenseId"),
+                    onBack = { navController.popBackStack() }
+                )
+            }
         }
+    }
+
+    // Enlace de SNcount compartido por otro miembro: se navega por Home → SNcount → el grupo
+    // para que «atrás» funcione como si se hubiera llegado a mano. Si el grupo no es de esta casa,
+    // SplitMonthScreen vuelve sola a la lista. Va después del NavHost para que el grafo ya exista.
+    LaunchedEffect(pendingSplitMonthId) {
+        val monthId = pendingSplitMonthId ?: return@LaunchedEffect
+        navController.navigate("splitMonths") {
+            popUpTo("home")
+            launchSingleTop = true
+        }
+        navController.navigate("splitMonth/$monthId")
+        onSplitLinkHandled()
     }
 
     if (showAddItem || itemBeingEdited != null) {

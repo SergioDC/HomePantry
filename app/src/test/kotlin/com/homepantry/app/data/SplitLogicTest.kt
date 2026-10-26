@@ -260,4 +260,73 @@ class SplitLogicTest {
         assertNull(parseCents("1000000"))
         assertNull(parseCents("99999999999999999999"))
     }
+
+    // --- reparto por importes ---
+
+    @Test fun `expenseShares falls back to equal split`() {
+        assertEquals(splitEqually(1001, listOf("a", "b", "c")), expenseShares(e("a", 1001, "a", "b", "c")))
+    }
+
+    @Test fun `expenseShares uses explicit shares when present`() {
+        val x = e("a", 6000, "a", "b").copy(shares = mapOf("a" to 4000L, "b" to 2000L))
+        assertEquals(mapOf("a" to 4000L, "b" to 2000L), expenseShares(x))
+    }
+
+    @Test fun `balances are unchanged for expenses without shares`() {
+        // Sin `shares` debe dar lo mismo que con `shares` igual a splitEqually: el reparto de siempre.
+        val explicit = scenario.map { it.copy(shares = splitEqually(it.amountCents, it.participants)) }
+        val members = listOf("a", "b", "c")
+        assertEquals(computeBalances(explicit, members), computeBalances(scenario, members))
+        assertEquals(0L, computeBalances(scenario, members).sumOf { it.netCents })
+    }
+
+    @Test fun `balances with mixed equal and explicit shares sum to zero`() {
+        val members = listOf("a", "b", "c")
+        val mixed = scenario + e("c", 6000, "a", "b", "c").copy(shares = mapOf("a" to 1000L, "b" to 2000L, "c" to 3000L))
+        val balances = computeBalances(mixed, members)
+        assertEquals(0L, balances.sumOf { it.netCents })
+        val before = computeBalances(scenario, members)
+        assertEquals(net(before, "a") - 1000, net(balances, "a"))
+        assertEquals(net(before, "c") + 3000, net(balances, "c"))
+    }
+
+    @Test fun `myShareCents uses explicit shares`() {
+        val x = e("a", 6000, "a", "b").copy(shares = mapOf("a" to 4500L, "b" to 1500L))
+        assertEquals(1500L, myShareCents(listOf(x), "b"))
+    }
+
+    @Test fun `blank or zero share means not participating`() {
+        assertEquals(mapOf("a" to 2500L), parseShares(mapOf("a" to "25", "b" to "", "c" to "0")))
+        assertEquals(0L, parseShareCents("  "))
+        assertEquals(0L, parseShareCents("0,00"))
+        assertNull(parseShareCents("-3"))
+        assertNull(parseShares(mapOf("a" to "abc")))
+    }
+
+    @Test fun `sharesRemainderCents reports missing and extra`() {
+        assertEquals(320L, sharesRemainderCents(6000, mapOf("a" to 2500L, "b" to 1800L, "c" to 1380L)))
+        assertEquals(-100L, sharesRemainderCents(6000, mapOf("a" to 6100L)))
+    }
+
+    @Test fun `shares that no longer match the total are rejected`() {
+        val day = at(2026, 10, 5, 12, 0)
+        val ok = validateSplitExpense(
+            "Cena", "60", "a", emptyList(), day, false, october, madrid,
+            shareTexts = mapOf("a" to "40", "b" to "20")
+        )
+        assertTrue(ok.isEmpty())
+        val changedTotal = validateSplitExpense(
+            "Cena", "65", "a", emptyList(), day, false, october, madrid,
+            shareTexts = mapOf("a" to "40", "b" to "20")
+        )
+        assertEquals(setOf(SplitExpenseError.SHARES), changedTotal)
+    }
+
+    @Test fun `manual mode needs at least one positive share`() {
+        val errors = validateSplitExpense(
+            "Cena", "60", "a", emptyList(), at(2026, 10, 5, 12, 0), false, october, madrid,
+            shareTexts = mapOf("a" to "", "b" to "0")
+        )
+        assertTrue(SplitExpenseError.PARTICIPANTS in errors)
+    }
 }

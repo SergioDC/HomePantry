@@ -48,7 +48,10 @@ class SplitExpensesRepository(
                 "payerId" to expense.payerId,
                 "participants" to expense.participants,
                 "date" to expense.date,
-                "reimbursement" to expense.reimbursement
+                "reimbursement" to expense.reimbursement,
+                "emoji" to expense.emoji,
+                // Un mapa vacío se escribe tal cual: al volver a «partes iguales» borra los importes anteriores.
+                "shares" to expense.shares
             )
         ).await()
     }

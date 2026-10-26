@@ -12,17 +12,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
@@ -36,6 +33,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -47,28 +45,35 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.SplitMonth
+import com.homepantry.app.ui.SplitUiState
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.IconTile
 import com.homepantry.app.ui.components.NocturneFab
+import com.homepantry.app.ui.components.SplitIcon
+import com.homepantry.app.ui.components.SplitMonthMenu
 import com.homepantry.app.ui.components.StripedCard
 import com.homepantry.app.ui.components.groupColors
 import com.homepantry.app.ui.components.icon
 import com.homepantry.app.ui.components.splitMemberName
+import kotlinx.coroutines.launch
 
-/** Lista de meses de reparto, el más reciente arriba, con alta, renombrado y borrado. */
+/**
+ * Lista de grupos de SNcount, el más reciente arriba, con alta y el menú de cada uno. Los
+ * archivados no salen aquí: quedan detrás de la fila «SNcounts archivados» del final.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SplitMonthsScreen(
     viewModel: SplitViewModel,
     onBack: () -> Unit,
-    onOpenMonth: (String) -> Unit
+    onOpenMonth: (String) -> Unit,
+    onEditMonth: (String) -> Unit,
+    onOpenArchived: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
-    val colors = remember(state.months) { groupColors(state.months) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
     var showCreate by remember { mutableStateOf(false) }
-    var renaming by remember { mutableStateOf<SplitMonth?>(null) }
-    var deleting by remember { mutableStateOf<SplitMonth?>(null) }
 
     LaunchedEffect(state.error) {
         val message = state.error
@@ -109,22 +114,18 @@ fun SplitMonthsScreen(
                         Text(stringResource(R.string.split_month_create))
                     }
                 }
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(state.months, key = { it.id }) { month ->
-                        val names = month.memberIds.map { splitMemberName(state, it) }
-                        SplitMonthCard(
-                            month = month,
-                            color = colors[month.id] ?: MaterialTheme.colorScheme.primary,
-                            participants = names.joinToString(", "),
-                            onClick = { onOpenMonth(month.id) },
-                            onRename = { renaming = month },
-                            onDelete = { deleting = month }
-                        )
+                // Si todos están archivados, la lista queda solo con la fila de archivados.
+                else -> SplitMonthList(
+                    state = state,
+                    months = state.activeMonths,
+                    viewModel = viewModel,
+                    onOpenMonth = onOpenMonth,
+                    onEditMonth = onEditMonth,
+                    onMessage = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+                    footer = if (state.archivedMonths.isEmpty()) null else {
+                        { ArchivedRow(state.archivedMonths.size, onOpenArchived) }
                     }
-                }
+                )
             }
         }
     }
@@ -140,52 +141,121 @@ fun SplitMonthsScreen(
             onDismiss = { showCreate = false }
         )
     }
+}
 
-    renaming?.let { month ->
-        var newName by remember(month.id) { mutableStateOf(month.name) }
-        AlertDialog(
-            onDismissRequest = { renaming = null },
-            title = { Text(stringResource(R.string.split_month_rename_title)) },
-            text = {
-                OutlinedTextField(
-                    value = newName,
-                    onValueChange = { newName = it },
-                    label = { Text(stringResource(R.string.split_month_name)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.renameMonth(month.id, newName)
-                        renaming = null
-                    },
-                    enabled = newName.isNotBlank()
-                ) { Text(stringResource(R.string.split_save)) }
-            },
-            dismissButton = {
-                TextButton(onClick = { renaming = null }) { Text(stringResource(R.string.split_cancel)) }
-            }
-        )
+/** Grupos archivados, con las mismas tarjetas y el menú (que aquí ofrece «Desarchivar»). */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SplitArchivedScreen(
+    viewModel: SplitViewModel,
+    onBack: () -> Unit,
+    onOpenMonth: (String) -> Unit,
+    onEditMonth: (String) -> Unit
+) {
+    val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    // Al desarchivar o borrar el último, no queda nada que ver: se vuelve a la lista.
+    var leaving by remember { mutableStateOf(false) }
+    val empty = state.monthsLoaded && state.archivedMonths.isEmpty()
+    LaunchedEffect(empty) {
+        if (empty && !leaving) {
+            leaving = true
+            onBack()
+        }
     }
 
-    deleting?.let { month ->
-        AlertDialog(
-            onDismissRequest = { deleting = null },
-            title = { Text(stringResource(R.string.split_month_delete_title)) },
-            text = { Text(stringResource(R.string.split_month_delete_message, month.name)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.deleteMonth(month.id)
-                    deleting = null
-                }) {
-                    Text(stringResource(R.string.split_delete), color = MaterialTheme.colorScheme.error)
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.split_archived_title)) },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        if (!leaving) {
+                            leaving = true
+                            onBack()
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { deleting = null }) { Text(stringResource(R.string.split_cancel)) }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
+    ) { padding ->
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            SplitMonthList(
+                state = state,
+                months = state.archivedMonths,
+                viewModel = viewModel,
+                onOpenMonth = onOpenMonth,
+                onEditMonth = onEditMonth,
+                onMessage = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+                footer = null
+            )
+        }
+    }
+}
+
+@Composable
+private fun SplitMonthList(
+    state: SplitUiState,
+    months: List<SplitMonth>,
+    viewModel: SplitViewModel,
+    onOpenMonth: (String) -> Unit,
+    onEditMonth: (String) -> Unit,
+    onMessage: (String) -> Unit,
+    footer: (@Composable () -> Unit)?
+) {
+    // Colores de todos los grupos, archivados incluidos: archivar no cambia el color de nadie.
+    val colors = remember(state.months) { groupColors(state.months) }
+    LazyColumn(
+        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        items(months, key = { it.id }) { month ->
+            val names = month.memberIds.map { splitMemberName(state, it) }
+            SplitMonthCard(
+                month = month,
+                color = colors[month.id] ?: MaterialTheme.colorScheme.primary,
+                participants = names.joinToString(", "),
+                onClick = { onOpenMonth(month.id) }
+            ) {
+                SplitMonthMenu(
+                    month = month,
+                    viewModel = viewModel,
+                    onEdit = { onEditMonth(month.id) },
+                    onMessage = onMessage
+                )
             }
-        )
+        }
+        if (footer != null) item(key = "archived") { footer() }
+    }
+}
+
+/** Fila del final de la lista que lleva a los archivados, con cuántos hay. */
+@Composable
+private fun ArchivedRow(count: Int, onClick: () -> Unit) {
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(top = 6.dp)) {
+        Row(Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconTile(Icons.Filled.Inventory2, MaterialTheme.colorScheme.onSurfaceVariant, size = 36.dp)
+            Text(
+                stringResource(R.string.split_archived_title),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.weight(1f).padding(horizontal = 12.dp)
+            )
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Icon(
+                Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -195,16 +265,11 @@ private fun SplitMonthCard(
     color: Color,
     participants: String,
     onClick: () -> Unit,
-    onRename: () -> Unit,
-    onDelete: () -> Unit
+    menu: @Composable () -> Unit
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
     StripedCard(color = color, onClick = onClick) {
-        Row(
-            Modifier,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconTile(month.icon(), color, size = 44.dp)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SplitIcon(month.emoji, month.icon(), color, size = 44.dp)
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(month.name, style = MaterialTheme.typography.titleMedium)
                 val count = pluralStringResource(R.plurals.split_participants_count, month.memberIds.size, month.memberIds.size)
@@ -222,27 +287,7 @@ private fun SplitMonthCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.split_month_menu_cd))
-                }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.split_month_rename)) },
-                        onClick = {
-                            menuOpen = false
-                            onRename()
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.split_month_delete), color = MaterialTheme.colorScheme.error) },
-                        onClick = {
-                            menuOpen = false
-                            onDelete()
-                        }
-                    )
-                }
-            }
+            menu()
         }
     }
 }

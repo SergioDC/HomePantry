@@ -166,20 +166,7 @@ fun SplitMonthFormSheet(
 @Composable
 private fun MonthFields(month: YearMonth, name: String, onMonth: (YearMonth) -> Unit, onName: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { onMonth(month.minusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.split_month_prev_cd))
-            }
-            Text(
-                splitMonthDisplayName(month),
-                style = MaterialTheme.typography.titleMedium,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(onClick = { onMonth(month.plusMonths(1)) }) {
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.split_month_next_cd))
-            }
-        }
+        MonthSelector(month = month, enabled = true, onMonth = onMonth)
         OutlinedTextField(
             value = name,
             onValueChange = onName,
@@ -187,5 +174,25 @@ private fun MonthFields(month: YearMonth, name: String, onMonth: (YearMonth) -> 
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
+    }
+}
+
+/** Mes con flechas para cambiarlo. Desactivado en Editar cuando el grupo ya tiene gastos de ese mes. */
+@Composable
+internal fun MonthSelector(month: YearMonth, enabled: Boolean, onMonth: (YearMonth) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconButton(onClick = { onMonth(month.minusMonths(1)) }, enabled = enabled) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = stringResource(R.string.split_month_prev_cd))
+        }
+        Text(
+            splitMonthDisplayName(month),
+            style = MaterialTheme.typography.titleMedium,
+            textAlign = TextAlign.Center,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = { onMonth(month.plusMonths(1)) }, enabled = enabled) {
+            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = stringResource(R.string.split_month_next_cd))
+        }
     }
 }

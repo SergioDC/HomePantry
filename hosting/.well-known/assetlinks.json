@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.homepantry.app",
+      "sha256_cert_fingerprints": [
+        "D5:09:78:C1:C0:B2:9F:F2:24:41:C3:C9:AA:FA:F0:69:B2:42:8A:E4:0D:BC:46:E1:58:34:AA:1D:F9:47:22:0E"
+      ]
+    }
+  }
+]

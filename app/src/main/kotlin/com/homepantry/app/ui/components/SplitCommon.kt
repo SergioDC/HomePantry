@@ -34,20 +34,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.navigation.NavBackStackEntry
 import com.homepantry.app.R
 import com.homepantry.app.data.ExpenseCategory
 import com.homepantry.app.data.SplitExpense
 import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.data.expenseCategoryOf
 import com.homepantry.app.ui.SplitUiState
+import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.theme.NocturneOnSurfaceVariant
 import com.homepantry.app.ui.theme.StoreColors
 
@@ -179,6 +185,23 @@ fun IconTile(icon: ImageVector, color: Color, modifier: Modifier = Modifier, siz
     }
 }
 
+/** Como [IconTile], pero con [emoji] en lugar del icono si se eligió uno (gastos y grupos). */
+@Composable
+fun SplitIcon(emoji: String, icon: ImageVector, color: Color, modifier: Modifier = Modifier, size: Dp = 40.dp) {
+    if (emoji.isBlank()) {
+        IconTile(icon, color, modifier, size)
+        return
+    }
+    Box(
+        modifier
+            .size(size)
+            .background(color.copy(alpha = 0.18f), RoundedCornerShape(size * 0.28f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(emoji, fontSize = with(LocalDensity.current) { (size * 0.55f).toSp() })
+    }
+}
+
 /** Círculo con la inicial del participante en su color. */
 @Composable
 fun MemberAvatar(name: String, color: Color, modifier: Modifier = Modifier, size: Dp = 36.dp) {
@@ -212,5 +235,29 @@ fun SplitAddButton(label: String, onClick: () -> Unit, modifier: Modifier = Modi
             Icon(Icons.Filled.Add, contentDescription = null)
         }
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/**
+ * Mantiene abierto el grupo [monthId] mientras exista la entrada de navegación [entry], aunque la
+ * pantalla salga de la composición al navegar hacia delante (ver [com.homepantry.app.ui.SplitMonthHolders]).
+ *
+ * El observer no se quita en `onDispose`: la entrada puede destruirse cuando ya no está en
+ * composición (dos `popBackStack` seguidos) y entonces nadie liberaría el grupo. Para no apilar
+ * observers cada vez que se vuelve a la pantalla, solo se añade cuando la entrada aún no estaba
+ * registrada. Al recrear la actividad (girar) las entradas se destruyen y se recrean: el grupo se
+ * cierra y se vuelve a abrir, y la entrada nueva registra su propio observer.
+ */
+@Composable
+fun RetainSplitMonth(viewModel: SplitViewModel, entry: NavBackStackEntry, monthId: String) {
+    DisposableEffect(entry, monthId) {
+        val firstTime = !viewModel.holdsMonth(entry.id)
+        viewModel.retainMonth(entry.id, monthId)
+        if (firstTime) {
+            entry.lifecycle.addObserver(LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_DESTROY) viewModel.releaseMonth(entry.id)
+            })
+        }
+        onDispose { }
     }
 }

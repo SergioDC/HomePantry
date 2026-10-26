@@ -44,4 +44,13 @@ class SplitUiStateTest {
         assertTrue(closed.settlements.isEmpty())
         assertEquals(0L, closed.monthTotalCents)
     }
+
+    @Test fun `active and archived months keep order`() {
+        val m1 = SplitMonth(id = "m1")
+        val m2 = SplitMonth(id = "m2", archived = true)
+        val m3 = SplitMonth(id = "m3")
+        val s = SplitUiState(months = listOf(m1, m2, m3))
+        assertEquals(listOf(m1, m3), s.activeMonths)
+        assertEquals(listOf(m2), s.archivedMonths)
+    }
 }

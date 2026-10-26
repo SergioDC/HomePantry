@@ -22,11 +22,9 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,9 +41,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
-import com.homepantry.app.data.SplitExpense
 import com.homepantry.app.ui.SplitViewModel
-import com.homepantry.app.ui.components.IconTile
+import com.homepantry.app.ui.components.SplitIcon
+import com.homepantry.app.ui.components.SplitMonthMenu
 import com.homepantry.app.ui.components.icon
 import com.homepantry.app.ui.components.groupColors
 import kotlinx.coroutines.launch
@@ -59,26 +57,35 @@ import kotlinx.coroutines.launch
 fun SplitMonthScreen(
     viewModel: SplitViewModel,
     monthId: String,
+    onOpenExpense: (expenseId: String?) -> Unit,
+    onEditMonth: () -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    var expenseSheet by remember { mutableStateOf<ExpenseSheetTarget?>(null) }
     val reimbursementTitle = stringResource(R.string.split_reimbursement_title)
 
-    // El ViewModel solo escucha los gastos y fotos del mes abierto: se abre al entrar y se cierra
-    // al salir para no dejar listeners vivos de un mes que ya no se ve.
-    DisposableEffect(monthId) {
-        viewModel.openMonth(monthId)
-        onDispose { viewModel.closeMonth(monthId) }
+    // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
+    // abierto en las pantallas de gasto y de editar que se apilan encima.
+
+    val month = state.months.firstOrNull { it.id == monthId }
+
+    // Todas las salidas pasan por aquí: tras borrar el grupo desde el menú, su desaparición en el
+    // snapshot volvería a disparar «atrás» y sacaría también la lista.
+    var leaving by remember { mutableStateOf(false) }
+    val leave = {
+        if (!leaving) {
+            leaving = true
+            onBack()
+        }
     }
 
     // Si otro miembro borra el mes mientras está abierto, se vuelve a la lista.
-    val monthGone = state.monthsLoaded && state.months.none { it.id == monthId }
+    val monthGone = state.monthsLoaded && month == null
     LaunchedEffect(monthGone) {
-        if (monthGone) onBack()
+        if (monthGone) leave()
     }
 
     LaunchedEffect(state.error) {
@@ -95,8 +102,19 @@ fun SplitMonthScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.split_title), style = MaterialTheme.typography.titleMedium) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = leave) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                },
+                actions = {
+                    if (month != null) {
+                        SplitMonthMenu(
+                            month = month,
+                            viewModel = viewModel,
+                            onEdit = onEditMonth,
+                            onMessage = { message -> scope.launch { snackbarHostState.showSnackbar(message) } },
+                            onDeleted = leave
+                        )
                     }
                 }
             )
@@ -104,13 +122,13 @@ fun SplitMonthScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
-            state.openMonth?.let { month ->
+            month?.let { month ->
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     val color = groupColors(state.months)[month.id] ?: MaterialTheme.colorScheme.primary
-                    IconTile(month.icon(), color, size = 64.dp)
+                    SplitIcon(month.emoji, month.icon(), color, size = 64.dp)
                     Text(
                         month.name,
                         style = MaterialTheme.typography.headlineSmall,
@@ -134,8 +152,8 @@ fun SplitMonthScreen(
                     0 -> SplitExpensesTab(
                         state = state,
                         currentUid = viewModel.currentUid,
-                        onAdd = { expenseSheet = ExpenseSheetTarget.New },
-                        onOpen = { expenseSheet = ExpenseSheetTarget.Edit(it) }
+                        onAdd = { onOpenExpense(null) },
+                        onOpen = { onOpenExpense(it.id) }
                     )
                     1 -> SplitBalancesTab(
                         state = state,
@@ -153,25 +171,6 @@ fun SplitMonthScreen(
         }
     }
 
-    val month = state.openMonth
-    val target = expenseSheet
-    if (month != null && target != null) {
-        val editing = (target as? ExpenseSheetTarget.Edit)?.expense
-        // La clave hace que cambiar de gasto reinicie el estado local de la hoja.
-        key(editing?.id) {
-            SplitExpenseSheet(
-                state = state,
-                month = month,
-                currentUid = viewModel.currentUid,
-                expense = editing,
-                onSave = { title, amountText, payerId, participants, date, reimbursement ->
-                    viewModel.saveExpense(editing?.id, title, amountText, payerId, participants, date, reimbursement)
-                },
-                onDelete = { editing?.let { viewModel.deleteExpense(it.id) } },
-                onDismiss = { expenseSheet = null }
-            )
-        }
-    }
 }
 
 /** Pestañas como control segmentado a todo el ancho (Gastos, Saldos, Fotos). */
@@ -202,8 +201,3 @@ private fun SplitTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Un
     }
 }
 
-/** Qué gasto abre la hoja: uno nuevo o uno existente. */
-private sealed interface ExpenseSheetTarget {
-    data object New : ExpenseSheetTarget
-    data class Edit(val expense: SplitExpense) : ExpenseSheetTarget
-}

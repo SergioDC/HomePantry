@@ -36,7 +36,7 @@ import com.homepantry.app.data.expensesByDay
 import com.homepantry.app.data.myShareCents
 import com.homepantry.app.ui.SplitUiState
 import com.homepantry.app.ui.components.ColorDot
-import com.homepantry.app.ui.components.IconTile
+import com.homepantry.app.ui.components.SplitIcon
 import com.homepantry.app.ui.components.MonthHeader
 import com.homepantry.app.ui.components.SpendHeaderCard
 import com.homepantry.app.ui.components.SplitAddButton
@@ -157,7 +157,7 @@ private fun ExpenseRow(state: SplitUiState, currentUid: String, expense: SplitEx
     val payer = if (expense.payerId == currentUid) stringResource(R.string.split_member_you, payerName) else payerName
     StripedCard(color = color, onClick = onClick) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconTile(expense.icon(), color)
+            SplitIcon(expense.emoji.takeUnless { expense.reimbursement }.orEmpty(), expense.icon(), color)
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
                 Text(
                     expense.title,
