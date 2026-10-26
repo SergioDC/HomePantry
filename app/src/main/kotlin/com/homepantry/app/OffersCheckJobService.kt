@@ -82,8 +82,10 @@ class OffersCheckJobService : JobService() {
     override fun onStartJob(params: JobParameters): Boolean {
         running = scope.launch {
             val next = check()
-            if (next != null) scheduleOffersCheck(applicationContext, next, replace = true)
+            // Primero se termina este job y después se programa el siguiente: programar con el mismo
+            // id un job que sigue en marcha lo cancela, y onStopJob pisaría la fecha con un reintento.
             jobFinished(params, false)
+            if (next != null) scheduleOffersCheck(applicationContext, next, replace = true)
         }
         return true
     }
