@@ -146,3 +146,9 @@ test("los prompts aceptan variantes del mismo producto", () => {
     assert.match(prompt, /variante/i);
   }
 });
+
+test("los prompts tratan lo elaborado a partir del habitual como otro producto", () => {
+  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
+    assert.match(prompt, /confit de jengibre/i);
+  }
+});

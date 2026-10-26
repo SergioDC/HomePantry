@@ -8,13 +8,15 @@ const CRITERIA = `
 Hay coincidencia si la oferta es EL MISMO PRODUCTO que un habitual o una VARIANTE suya: otra marca,
 otro sabor, otro tipo, otro tamaño o formato, o una preparación ligera (marinado, en lonchas,
 rallado, integral, sin lactosa…). Lo que solo comparte un ingrediente, la sección del súper o el
-uso es OTRO producto y no coincide.
+uso es OTRO producto y no coincide; también lo elaborado a partir del habitual (confitado, en
+salsa, plato preparado, postre o snack hecho con él).
 Sí coinciden (variantes): "leche entera" y "leche semidesnatada"; "pollo" y "pechuga de pollo
 marinada"; "pan" y "pan integral"; "patatas fritas" y "patatas fritas sabor jamón"; "queso
 rallado" y "mozzarella rallada"; "yogur" y "yogur griego".
 NO coinciden (otro producto): "masa de pizza" y "pizza preparada"; "paté" y "albóndigas de pavo";
 "paté" y "pechuga de pavo"; "paté" y "stick de queso"; "leche" y "batido de chocolate"; "tomate" y
-"tomate frito"; "queso" y "pizza con queso"; "pollo" y "nuggets de pollo".
+"tomate frito"; "queso" y "pizza con queso"; "pollo" y "nuggets de pollo"; "jengibre" y
+"confit de jengibre"; "piña" y "zumo de piña".
 Si no está claro que sea el mismo producto o una variante suya, no lo incluyas.
 Para cada coincidencia devuelve "habitual" copiado EXACTAMENTE de la lista (campo normalizedName) y
 "habitualLabel": un nombre genérico corto en español, con tildes y mayúscula inicial (p. ej. "Plátanos").
