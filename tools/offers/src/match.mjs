@@ -143,11 +143,12 @@ export function lidlMatches(raw, pages, habituals) {
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 /**
- * Modelos por orden de preferencia. En las pruebas reales (2026-10-26) gemini-3.8-flash no respondía
- * en 5 min: por eso hay respaldo. Sin flash-lite: emparejaba "piña" con tomate y "leche" con pan.
- * Si ninguno responde, mejor no avisar esa semana (workflow en rojo) que avisar con ruido.
+ * Los Flash vigentes (lista de la API a 2026-10-26), del más nuevo al más antiguo. En las pruebas
+ * reales los más nuevos daban 503/429 a ratos mientras los otros respondían: por eso hay respaldo.
+ * Sin flash-lite: emparejaba "piña" con tomate y "leche" con pan. Si ninguno responde, mejor no
+ * avisar esa semana (workflow en rojo) que avisar con ruido.
  */
-export const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"];
+export const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"];
 const ATTEMPTS_PER_MODEL = 2;
 const RETRY_DELAY_MS = 2_000;
 /** Sin límite, fetch espera 5 min a las cabeceras: mejor pasar antes al siguiente modelo. */

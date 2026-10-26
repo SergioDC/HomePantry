@@ -181,3 +181,7 @@ test("los modelos de respaldo no incluyen flash-lite", () => {
   assert.ok(DEFAULT_MODELS.length >= 2);
   assert.ok(DEFAULT_MODELS.every((m) => !m.includes("lite")));
 });
+
+test("los modelos de respaldo son los Flash vigentes, del más nuevo al más antiguo", () => {
+  assert.deepEqual(DEFAULT_MODELS, ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"]);
+});
