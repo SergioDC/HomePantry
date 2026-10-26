@@ -502,4 +502,30 @@
     <string name="split_photo_cd">Foto del mes</string>
     <string name="split_photo_delete_title">¿Borrar la foto?</string>
     <string name="split_photo_delete_message">La foto se borrará para todos. No se puede deshacer.</string>
+
+    <!-- Avisos de ofertas -->
+    <string name="notifications_cd">Avisos</string>
+    <string name="notifications_title">Avisos</string>
+    <string name="notifications_empty">No hay avisos. Cada lunes, si hay ofertas de Lidl o Aldi en cosas que soléis comprar, aparecerán aquí.</string>
+    <string name="notifications_week">%1$s · %2$s</string>
+    <string name="notifications_stores_join">%1$s y %2$s</string>
+    <string name="notification_title_range">Ofertas %1$s – %2$s</string>
+    <string name="notification_missing">Este aviso ya no existe.</string>
+    <string name="notification_open_leaflet">Ver folleto ↗</string>
+    <string name="notification_open_offers">Ver ofertas ↗</string>
+    <string name="notification_old_price">antes %1$s</string>
+    <string name="notification_page">pág. %1$d</string>
+    <string name="notification_see_page">ver pág. %1$d</string>
+    <string name="notification_in_list">ya en la lista</string>
+    <string name="notification_added">añadida</string>
+    <string name="offers_channel_name">Ofertas</string>
+    <string name="offers_channel_description">Ofertas de Lidl y Aldi en cosas que soléis comprar</string>
+    <plurals name="notification_add_button">
+        <item quantity="one">Añadir %d a la lista</item>
+        <item quantity="other">Añadir %d a la lista</item>
+    </plurals>
+    <plurals name="notification_added_snackbar">
+        <item quantity="one">%d producto añadido</item>
+        <item quantity="other">%d productos añadidos</item>
+    </plurals>
 </resources>

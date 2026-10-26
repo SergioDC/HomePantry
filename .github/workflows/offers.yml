@@ -1,0 +1,39 @@
+# Cada lunes cruza las ofertas de Lidl y Aldi con los productos habituales de la casa y deja un
+# aviso en Firestore (ver tools/offers/README.md). Los logs de este repo son públicos: el script
+# solo imprime recuentos.
+name: Avisos de ofertas
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'   # lunes 07:00 UTC (08:00 o 09:00 en España)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'No escribir en Firestore'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  offers:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/offers
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/offers/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - name: Generar aviso
+        run: node src/index.mjs ${{ inputs.dry_run && '--dry-run' || '' }}
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          HOUSEHOLD_CODE: ${{ secrets.HOUSEHOLD_CODE }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
