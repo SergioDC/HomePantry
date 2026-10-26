@@ -138,3 +138,11 @@ test("los prompts incluyen ejemplos de lo que NO coincide", () => {
 test("el prompt de Lidl no pide precios", () => {
   assert.doesNotMatch(lidlPrompt(habituals, []), /precio|price/i);
 });
+
+test("los prompts aceptan variantes del mismo producto", () => {
+  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
+    assert.match(prompt, /marinad/i);
+    assert.match(prompt, /pan integral/i);
+    assert.match(prompt, /variante/i);
+  }
+});
