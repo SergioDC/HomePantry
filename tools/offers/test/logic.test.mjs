@@ -29,10 +29,10 @@ const aldiOffers = [
 
 test("aldiMatches toma los datos de la oferta por índice y descarta lo inválido", () => {
   const raw = [
-    { index: 0, habitual: "queso", habitualLabel: "Queso", price: 99 },
-    { index: 5, habitual: "queso", habitualLabel: "Queso" },
-    { index: 1, habitual: "inventado", habitualLabel: "Inventado" },
-    { index: 0, habitual: "queso", habitualLabel: "Queso" },
+    { index: 0, habitual: "queso", habitualLabel: "Queso", price: 99, score: 95 },
+    { index: 5, habitual: "queso", habitualLabel: "Queso", score: 95 },
+    { index: 1, habitual: "inventado", habitualLabel: "Inventado", score: 95 },
+    { index: 0, habitual: "queso", habitualLabel: "Queso", score: 95 },
   ];
   assert.deepEqual(aldiMatches(raw, aldiOffers, habituals), [{
     key: "aldi-10", habitual: "queso", habitualLabel: "Queso", product: "Queso semicurado (PLENO SABOR)",
@@ -43,9 +43,9 @@ test("aldiMatches toma los datos de la oferta por índice y descarta lo inválid
 test("lidlMatches descarta páginas inexistentes y habituales desconocidos, y nunca da precio", () => {
   const pages = [1, 2, 3].map((page) => ({ page, text: "", description: "" }));
   const raw = [
-    { page: 9, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", price: 1.59, oldPrice: null },
-    { page: 2, habitual: "inventado", habitualLabel: "X", product: "X", price: 1, oldPrice: null },
-    { page: 2, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", price: "1,59", oldPrice: 1.69 },
+    { page: 9, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", price: 1.59, oldPrice: null, score: 95 },
+    { page: 2, habitual: "inventado", habitualLabel: "X", product: "X", price: 1, oldPrice: null, score: 95 },
+    { page: 2, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", price: "1,59", oldPrice: 1.69, score: 95 },
   ];
   assert.deepEqual(lidlMatches(raw, pages, habituals), [{
     key: "lidl-p2-tomate", habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama",
@@ -66,7 +66,7 @@ test("buildNotification sin ofertas devuelve null", () => {
 });
 
 test("buildNotification incluye solo las tiendas con ofertas", () => {
-  const match = aldiMatches([{ index: 0, habitual: "queso", habitualLabel: "Queso" }], aldiOffers, habituals)[0];
+  const match = aldiMatches([{ index: 0, habitual: "queso", habitualLabel: "Queso", score: 95 }], aldiOffers, habituals)[0];
   const n = buildNotification({
     stores: [{ source: lidlSource, offers: [] }, { source: aldiSource, offers: [match] }],
     now: new Date("2026-11-01T23:30:00Z"),
@@ -128,29 +128,8 @@ test("callGemini con todos los modelos caídos falla con el último estado", asy
   );
 });
 
-test("los prompts incluyen ejemplos de lo que NO coincide", () => {
-  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
-    assert.match(prompt, /pizza/i);
-    assert.match(prompt, /paté/i);
-  }
-});
-
 test("el prompt de Lidl no pide precios", () => {
   assert.doesNotMatch(lidlPrompt(habituals, []), /precio|price/i);
-});
-
-test("los prompts aceptan variantes del mismo producto", () => {
-  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
-    assert.match(prompt, /marinad/i);
-    assert.match(prompt, /pan integral/i);
-    assert.match(prompt, /variante/i);
-  }
-});
-
-test("los prompts tratan lo elaborado a partir del habitual como otro producto", () => {
-  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
-    assert.match(prompt, /confit de jengibre/i);
-  }
 });
 
 import { sharesWord, DEFAULT_MODELS } from "../src/match.mjs";
@@ -171,9 +150,9 @@ test("sharesWord rechaza ofertas sin ninguna palabra en común", () => {
 
 test("aldiMatches y lidlMatches descartan coincidencias sin palabras en común", () => {
   const pages = [{ page: 7, text: "", description: "" }];
-  const lidl = lidlMatches([{ page: 7, habitual: "tomate", habitualLabel: "Tomate", product: "Patatas Sabor Jamón" }], pages, habituals);
+  const lidl = lidlMatches([{ page: 7, habitual: "tomate", habitualLabel: "Tomate", product: "Patatas Sabor Jamón", score: 95 }], pages, habituals);
   assert.deepEqual(lidl, []);
-  const aldi = aldiMatches([{ index: 1, habitual: "queso", habitualLabel: "Queso" }], aldiOffers, habituals);
+  const aldi = aldiMatches([{ index: 1, habitual: "queso", habitualLabel: "Queso", score: 95 }], aldiOffers, habituals);
   assert.deepEqual(aldi, []);
 });
 
@@ -184,4 +163,106 @@ test("los modelos de respaldo no incluyen flash-lite", () => {
 
 test("los modelos de respaldo son los Flash vigentes, del más nuevo al más antiguo", () => {
   assert.deepEqual(DEFAULT_MODELS, ["gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"]);
+});
+
+import { MIN_SCORE, expandPrompt, expandHabituals, verifyPrompt, keepVerified, otherModels } from "../src/match.mjs";
+
+test("la nota mínima para avisar es 90", () => {
+  assert.equal(MIN_SCORE, 90);
+});
+
+test("aldiMatches y lidlMatches descartan las notas por debajo de 90 o sin nota", () => {
+  const aldi = aldiMatches([
+    { index: 0, habitual: "queso", habitualLabel: "Queso", score: 89 },
+    { index: 0, habitual: "queso", habitualLabel: "Queso" },
+  ], aldiOffers, habituals);
+  assert.deepEqual(aldi, []);
+  const pages = [{ page: 2, text: "", description: "" }];
+  const lidl = lidlMatches([
+    { page: 2, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", score: 60 },
+    { page: 2, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate pera", score: 90 },
+  ], pages, habituals);
+  assert.deepEqual(lidl.map((m) => m.product), ["Tomate pera"]);
+});
+
+test("expandPrompt pasa los nombres del ticket y el ejemplo de abreviatura", () => {
+  const prompt = expandPrompt([{ normalizedName: "sandia negra s/n sem", example: "SANDIA NEGRA S/N SEM" }]);
+  assert.match(prompt, /sandia negra s\/n sem/);
+  assert.match(prompt, /SANDIA NEGRA S\/N SEM/);
+  assert.match(prompt, /sin semillas/);
+});
+
+test("expandHabituals añade fullName y, si falta o viene vacío, usa el nombre normalizado", () => {
+  const raw = [
+    { normalizedName: "queso", fullName: "  queso semicurado  " },
+    { normalizedName: "tomate", fullName: " " },
+    { normalizedName: "inventado", fullName: "algo" },
+  ];
+  assert.deepEqual(expandHabituals(raw, [...habituals, { normalizedName: "pan", example: "PAN" }]), [
+    { normalizedName: "queso", example: "QUESO", fullName: "queso semicurado" },
+    { normalizedName: "tomate", example: "TOMATE", fullName: "tomate" },
+    { normalizedName: "pan", example: "PAN", fullName: "pan" },
+  ]);
+});
+
+const expanded = [
+  { normalizedName: "sandia negra s/n sem", example: "SANDIA NEGRA S/N SEM", fullName: "sandía negra sin semillas" },
+  { normalizedName: "queso", example: "QUESO", fullName: "queso" },
+];
+
+test("verifyPrompt numera las parejas con el nombre completo, el del ticket y la oferta", () => {
+  const prompt = verifyPrompt(expanded, [
+    { habitual: "queso", product: "Queso semicurado (PLENO SABOR)", page: null },
+    { habitual: "sandia negra s/n sem", product: "Sandía mini", page: 5 },
+  ], [{ page: 5, description: "Fruta", text: "SANDIA MINI 1,49" }]);
+  assert.match(prompt, /0\. .*queso.*Queso semicurado \(PLENO SABOR\)/);
+  assert.match(prompt, /1\. .*sandía negra sin semillas.*SANDIA NEGRA S\/N SEM.*Sandía mini/);
+  assert.match(prompt, /SANDIA MINI 1,49/);
+});
+
+test("verifyPrompt solo adjunta el texto de las páginas con candidatas", () => {
+  const prompt = verifyPrompt(expanded, [{ habitual: "queso", product: "Queso", page: 2 }],
+    [{ page: 2, description: "", text: "QUESO TIERNO" }, { page: 3, description: "", text: "OTRA PAGINA" }]);
+  assert.match(prompt, /QUESO TIERNO/);
+  assert.doesNotMatch(prompt, /OTRA PAGINA/);
+});
+
+test("keepVerified deja solo las candidatas con nota ≥ 90 del revisor y, si repite, la peor", () => {
+  const candidates = ["a", "b", "c", "d"].map((product) => ({ product }));
+  const raw = [
+    { index: 0, score: 95 },
+    { index: 1, score: 70 },
+    { index: 3, score: 99 },
+    { index: 3, score: 40 },
+    { index: 9, score: 100 },
+  ];
+  assert.deepEqual(keepVerified(candidates, raw), [{ product: "a" }]);
+});
+
+test("otherModels quita el modelo que ya ha respondido", () => {
+  assert.deepEqual(otherModels(["a", "b", "c"], "b"), ["a", "c"]);
+});
+
+test("los prompts puntúan con la escala y el caso de la sandía mini", () => {
+  for (const prompt of [aldiPrompt(expanded, aldiOffers), lidlPrompt(expanded, []), verifyPrompt(expanded, [], [])]) {
+    assert.match(prompt, /0 a 100/);
+    assert.match(prompt, /Sandía mini/);
+    assert.match(prompt, /Jengibre confitado/);
+    assert.match(prompt, /más baja/);
+  }
+});
+
+test("los prompts del buscador muestran el nombre completo junto al del ticket", () => {
+  assert.match(aldiPrompt(expanded, aldiOffers), /sandia negra s\/n sem: sandía negra sin semillas \(en el ticket: SANDIA NEGRA S\/N SEM\)/);
+});
+
+test("callGemini pide razonar a fondo y no fija la temperatura", async () => {
+  let sent;
+  const fetchImpl = async (url, init) => {
+    sent = JSON.parse(init.body);
+    return okResponse([]);
+  };
+  await callGemini({ apiKey: "k", models: ["a"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 });
+  assert.equal(sent.generationConfig.thinkingConfig.thinkingLevel, "high");
+  assert.equal(sent.generationConfig.temperature, undefined);
 });
