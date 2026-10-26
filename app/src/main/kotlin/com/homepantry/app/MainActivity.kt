@@ -56,6 +56,7 @@ import com.homepantry.app.data.Item
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
+import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.SplitExpensesRepository
@@ -66,6 +67,7 @@ import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.BottomNavBar
 import com.homepantry.app.ui.components.BottomNavItem
@@ -78,6 +80,8 @@ import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.MainListScreen
 import com.homepantry.app.ui.screens.ManageZonesScreen
 import com.homepantry.app.ui.screens.MenuScreen
+import com.homepantry.app.ui.screens.NotificationDetailScreen
+import com.homepantry.app.ui.screens.NotificationsScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.PurchaseProductsScreen
@@ -255,10 +259,30 @@ fun ListaDeLaCasaApp() {
         }
     )
 
-    LaunchedEffect(viewModel, menuViewModel, name) {
+    val notificationsViewModel: NotificationsViewModel = viewModel(
+        key = "notifications-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return NotificationsViewModel(
+                        notificationsRepository = NotificationsRepository(firestore, code),
+                        itemsRepository = ItemsRepository(firestore, code),
+                        zonesRepository = ZonesRepository(firestore, code),
+                        uid = uid,
+                        userName = name
+                    ) as T
+                }
+            }
+        }
+    )
+
+    LaunchedEffect(viewModel, menuViewModel, notificationsViewModel, name) {
         viewModel.updateUserName(name)
         menuViewModel.updateUserName(name)
+        notificationsViewModel.updateUserName(name)
     }
+    val notificationsState by notificationsViewModel.state.collectAsState()
 
     val state by viewModel.state.collectAsState()
     val pendingCount = state.items.count { !it.done }
@@ -320,7 +344,24 @@ fun ListaDeLaCasaApp() {
                     onOpenSettings = { navController.navigate("manageZones") },
                     onOpenStorage = { navController.navigate("zonesDashboard") },
                     onOpenSpending = { navController.navigate("purchaseHistory") },
-                    onOpenSplit = { navController.navigate("splitMonths") }
+                    onOpenSplit = { navController.navigate("splitMonths") },
+                    unreadNotifications = notificationsState.unreadCount,
+                    onOpenNotifications = { navController.navigate("notifications") }
+                )
+            }
+            composable("notifications") {
+                NotificationsScreen(
+                    viewModel = notificationsViewModel,
+                    uid = uid,
+                    onBack = { navController.popBackStack() },
+                    onOpenNotification = { id -> navController.navigate("notification/$id") }
+                )
+            }
+            composable("notification/{id}") { backStackEntry ->
+                NotificationDetailScreen(
+                    viewModel = notificationsViewModel,
+                    notificationId = backStackEntry.arguments?.getString("id").orEmpty(),
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("mainList") {
