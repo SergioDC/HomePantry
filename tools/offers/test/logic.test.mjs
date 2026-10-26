@@ -152,3 +152,32 @@ test("los prompts tratan lo elaborado a partir del habitual como otro producto",
     assert.match(prompt, /confit de jengibre/i);
   }
 });
+
+import { sharesWord, DEFAULT_MODELS } from "../src/match.mjs";
+
+test("sharesWord acepta variantes que comparten palabra, sin tildes ni plurales", () => {
+  assert.equal(sharesWord("pollo", "Pollo", "Pechuga Pollo Marinada"), true);
+  assert.equal(sharesWord("mozzarella rallado", "Mozzarella rallada", "Milbona Mozzarella Rallada"), true);
+  assert.equal(sharesWord("pina en rodaja", "Piña", "Piña en almíbar"), true);
+  assert.equal(sharesWord("uva sin pepita", "Uvas", "Uva blanca"), true);
+});
+
+test("sharesWord rechaza ofertas sin ninguna palabra en común", () => {
+  assert.equal(sharesWord("pina en rodaja", "Piña", "Tomate Rama"), false);
+  assert.equal(sharesWord("leche entera", "Leche", "Pan Integral"), false);
+  // "de", "en", "sin"… no cuentan como palabra en común.
+  assert.equal(sharesWord("masa de pizza", "Masa de pizza", "Crema de calabaza"), false);
+});
+
+test("aldiMatches y lidlMatches descartan coincidencias sin palabras en común", () => {
+  const pages = [{ page: 7, text: "", description: "" }];
+  const lidl = lidlMatches([{ page: 7, habitual: "tomate", habitualLabel: "Tomate", product: "Patatas Sabor Jamón" }], pages, habituals);
+  assert.deepEqual(lidl, []);
+  const aldi = aldiMatches([{ index: 1, habitual: "queso", habitualLabel: "Queso" }], aldiOffers, habituals);
+  assert.deepEqual(aldi, []);
+});
+
+test("los modelos de respaldo no incluyen flash-lite", () => {
+  assert.ok(DEFAULT_MODELS.length >= 2);
+  assert.ok(DEFAULT_MODELS.every((m) => !m.includes("lite")));
+});

@@ -73,10 +73,37 @@ function dedupeByKey(matches) {
   return matches.filter((m) => !seen.has(m.key) && seen.add(m.key));
 }
 
+const STOPWORDS = new Set(["de", "del", "la", "el", "los", "las", "con", "sin", "para", "en", "y", "al", "a", "s/n"]);
+
+/** Palabras significativas: minúsculas, sin tildes ni plural simple, sin artículos ni preposiciones. */
+function words(text) {
+  return (text ?? "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .split(/[^a-z0-9ñ/]+/)
+    .filter((w) => w.length >= 3 && !STOPWORDS.has(w))
+    .map((w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w));
+}
+
+/** Misma palabra o una variante de género/número ("rallado"/"rallada"): mismo tronco de 5 letras. */
+const sameWord = (a, b) => a === b || (a.length >= 5 && b.length >= 5 && a.slice(0, 5) === b.slice(0, 5));
+
+/**
+ * Red de seguridad sin IA: la oferta tiene que compartir alguna palabra con el habitual (su nombre
+ * normalizado o el del ticket). Las variantes reales la comparten ("pollo" → "pechuga de pollo
+ * marinada"); las invenciones de Gemini no ("piña" → "tomate rama"). Se compara con lo que viene de
+ * los tickets y no con `habitualLabel`, que también lo escribe Gemini.
+ */
+export function sharesWord(normalizedName, example, product) {
+  const habitualWords = [...words(normalizedName), ...words(example)];
+  return words(product).some((p) => habitualWords.some((h) => sameWord(p, h)));
+}
+
 export function aldiMatches(raw, offers, habituals) {
-  const known = new Set(habituals.map((h) => h.normalizedName));
+  const examples = new Map(habituals.map((h) => [h.normalizedName, h.example]));
   return dedupeByKey(raw
-    .filter((r) => Number.isInteger(r.index) && r.index >= 0 && r.index < offers.length && known.has(r.habitual))
+    .filter((r) => Number.isInteger(r.index) && r.index >= 0 && r.index < offers.length && examples.has(r.habitual))
+    .filter((r) => sharesWord(r.habitual, examples.get(r.habitual), offers[r.index].name))
     .map((r) => {
       const o = offers[r.index];
       return {
@@ -95,10 +122,11 @@ export function aldiMatches(raw, offers, habituals) {
 }
 
 export function lidlMatches(raw, pages, habituals) {
-  const known = new Set(habituals.map((h) => h.normalizedName));
+  const examples = new Map(habituals.map((h) => [h.normalizedName, h.example]));
   const pageNumbers = new Set(pages.map((p) => p.page));
   return dedupeByKey(raw
-    .filter((r) => pageNumbers.has(r.page) && known.has(r.habitual))
+    .filter((r) => pageNumbers.has(r.page) && examples.has(r.habitual))
+    .filter((r) => sharesWord(r.habitual, examples.get(r.habitual), r.product))
     .map((r) => ({
       key: `lidl-p${r.page}-${r.habitual}`,
       habitual: r.habitual,
@@ -115,10 +143,11 @@ export function lidlMatches(raw, pages, habituals) {
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
 /**
- * Modelos por orden de preferencia (los mismos que ofrece la app en Ajustes). En la primera prueba
- * real (2026-10-26) gemini-3.8-flash no respondía en 5 min mientras los otros sí: por eso hay respaldo.
+ * Modelos por orden de preferencia. En las pruebas reales (2026-10-26) gemini-3.8-flash no respondía
+ * en 5 min: por eso hay respaldo. Sin flash-lite: emparejaba "piña" con tomate y "leche" con pan.
+ * Si ninguno responde, mejor no avisar esa semana (workflow en rojo) que avisar con ruido.
  */
-export const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+export const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"];
 const ATTEMPTS_PER_MODEL = 2;
 const RETRY_DELAY_MS = 2_000;
 /** Sin límite, fetch espera 5 min a las cabeceras: mejor pasar antes al siguiente modelo. */
