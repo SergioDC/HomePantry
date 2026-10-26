@@ -5,7 +5,7 @@
 //   --print    imprime el aviso completo; se ignora en CI porque los logs del repo son públicos.
 //
 // Variables: FIREBASE_SERVICE_ACCOUNT (JSON) o FIREBASE_SERVICE_ACCOUNT_FILE (ruta, en local),
-// HOUSEHOLD_CODE, GEMINI_API_KEY y, opcional, GEMINI_MODEL.
+// HOUSEHOLD_CODE y GEMINI_API_KEY.
 //
 // IMPORTANTE: los logs solo pueden llevar recuentos. Nada de código de casa, productos ni ofertas.
 import { readFileSync } from "node:fs";
@@ -14,7 +14,10 @@ import { getFirestore } from "firebase-admin/firestore";
 import { fetchLidl } from "./lidl.mjs";
 import { fetchAldi } from "./aldi.mjs";
 import { habitualProducts } from "./habitual.mjs";
-import { aldiPrompt, lidlPrompt, ALDI_SCHEMA, LIDL_SCHEMA, aldiMatches, lidlMatches, callGemini, DEFAULT_MODELS } from "./match.mjs";
+import {
+  aldiPrompt, lidlPrompt, ALDI_SCHEMA, LIDL_SCHEMA, aldiMatches, lidlMatches, callGemini, DEFAULT_MODELS,
+  expandPrompt, EXPAND_SCHEMA, expandHabituals, verifyPrompt, VERIFY_SCHEMA, keepVerified, otherModels,
+} from "./match.mjs";
 import { buildNotification } from "./notification.mjs";
 import { readPurchases, upsertWeekNotification, deleteOldNotifications } from "./firestore.mjs";
 
@@ -45,8 +48,6 @@ async function main() {
   const account = serviceAccount();
   const code = requireEnv("HOUSEHOLD_CODE");
   const apiKey = requireEnv("GEMINI_API_KEY");
-  // GEMINI_MODEL fija un único modelo (sin respaldo); si no, se prueban los de DEFAULT_MODELS.
-  const models = process.env.GEMINI_MODEL?.trim() ? [process.env.GEMINI_MODEL.trim()] : DEFAULT_MODELS;
 
   initializeApp({ credential: cert(account) });
   const db = getFirestore();
@@ -56,16 +57,28 @@ async function main() {
   console.log(`habituales: ${habituals.length}`);
   if (habituals.length === 0) return 0;
 
+  // Nombres completos para comparar ("s/n sem" → "sin semillas"). Si falla, se sigue con los del
+  // ticket: ayuda a puntuar, pero sin ella el buscador y el revisor aún pueden trabajar.
+  let expanded;
+  try {
+    const { items, model } = await callGemini({ apiKey, prompt: expandPrompt(habituals), schema: EXPAND_SCHEMA });
+    expanded = expandHabituals(items, habituals);
+    console.log(`nombres: modelo ${model}`);
+  } catch (e) {
+    expanded = expandHabituals([], habituals);
+    console.log(`nombres: ERROR ${safeError(e)}, se usan los del ticket`);
+  }
+
   let failed = false;
   const stores = [];
   const counts = {};
 
   const sources = [
     ["Lidl", () => fetchLidl(now), (s) => `${s.pages.length} páginas`,
-      (s) => ({ prompt: lidlPrompt(habituals, s.pages), schema: LIDL_SCHEMA }),
+      (s) => ({ prompt: lidlPrompt(expanded, s.pages), schema: LIDL_SCHEMA }),
       (raw, s) => lidlMatches(raw, s.pages, habituals)],
     ["Aldi", () => fetchAldi(), (s) => `${s.offers.length} ofertas`,
-      (s) => ({ prompt: aldiPrompt(habituals, s.offers), schema: ALDI_SCHEMA }),
+      (s) => ({ prompt: aldiPrompt(expanded, s.offers), schema: ALDI_SCHEMA }),
       (raw, s) => aldiMatches(raw, s.offers, habituals)],
   ];
 
@@ -81,9 +94,22 @@ async function main() {
     }
     try {
       const { prompt, schema } = request(source);
-      const { items, model } = await callGemini({ apiKey, models, prompt, schema });
-      console.log(`${store}: modelo ${model}`);
-      const offers = toMatches(items, source);
+      const found = await callGemini({ apiKey, prompt, schema });
+      const candidates = toMatches(found.items, source);
+      // Solo se avisa de lo que confirma otro modelo. Si el revisor no responde, la tienda cuenta
+      // como fallida: mejor sin aviso que con candidatas sin revisar.
+      let review = null;
+      let offers = [];
+      if (candidates.length > 0) {
+        review = await callGemini({
+          apiKey, models: otherModels(DEFAULT_MODELS, found.model),
+          prompt: verifyPrompt(expanded, candidates, source.pages ?? []), schema: VERIFY_SCHEMA,
+        });
+        offers = keepVerified(candidates, review.items);
+      }
+      console.log(`${store}: ${candidates.length} candidatas, ${offers.length} confirmadas ` +
+        `(buscador ${found.model}, revisor ${review?.model ?? "-"})`);
+      if (print) console.log(JSON.stringify({ store, buscador: found.items, revisor: review?.items ?? [] }, null, 2));
       counts[store] = offers.length;
       stores.push({ source, offers });
     } catch (e) {

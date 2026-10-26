@@ -15,14 +15,45 @@ Lo ejecuta `.github/workflows/offers.yml` (lunes 07:00 UTC, o a mano desde la pe
 | `HOUSEHOLD_CODE` | Código de la casa |
 | `GEMINI_API_KEY` | API key de Gemini |
 
-Opcional: `GEMINI_MODEL` fija un único modelo. Si no, se prueban por orden `gemini-3.8-flash`,
-`gemini-3.7-flash`, `gemini-3.6-flash` y `gemini-3.5-flash`, pasando al siguiente si uno está
-saturado o no responde. `flash-lite` no se usa:
-en las pruebas emparejaba productos que no tenían nada que ver. Además, una oferta solo cuenta si
-comparte alguna palabra con el producto habitual (filtro sin IA contra las invenciones).
-
 **El repo es público y sus logs también.** El script solo imprime recuentos. No añadas logs con
 productos, ofertas ni el código de casa.
+
+## Cómo decide qué es una oferta
+
+Solo se avisa del **mismo producto** que compráis: da igual la marca o el tamaño, pero no las
+variantes ("Sandía mini" no vale para "sandía"). Para eso hay tres pasos con Gemini (`src/match.mjs`):
+
+1. **Nombres completos.** Los del ticket vienen abreviados ("sandia negra s/n sem") y se pasan a
+   nombre completo ("sandía negra sin semillas").
+2. **Buscador.** Por cada tienda, Gemini busca candidatos y pone a cada uno una nota de 0 a 100
+   con una escala fija y ejemplos (`RUBRIC`).
+3. **Revisor.** Otro modelo distinto puntúa las candidatas con la misma escala. En Lidl, además,
+   comprueba en el texto de la página que el producto está y cómo se llama.
+
+Solo se avisa si las dos notas llegan a 90 (`MIN_SCORE`) y, además, la oferta comparte alguna
+palabra con el producto del ticket (filtro sin IA contra las invenciones). Si el revisor no
+responde, esa tienda se da por fallida: mejor sin aviso que con candidatas sin revisar.
+
+Modelos: se prueban por orden `gemini-3.8-flash`, `gemini-3.7-flash`, `gemini-3.6-flash` y
+`gemini-3.5-flash`, pasando al siguiente si uno está saturado o no responde. El revisor usa la misma
+lista sin el modelo que ha buscado. Los modelos razonan a fondo (`thinkingLevel: high`) y sin
+temperatura fija. Los Pro no se usan porque el plan gratuito de Gemini no los incluye, y
+`flash-lite` tampoco: en las pruebas emparejaba productos que no tenían nada que ver.
+
+El plan gratuito da 20 llamadas al día por modelo. Una ejecución gasta unas 5.
+
+### Afinar la escala
+
+`eval/cases.json` tiene casos etiquetados a mano (compran → folleto, avisa o no). Para medir cada
+modelo con el prompt del revisor:
+
+```bash
+GEMINI_API_KEY=... npm run eval                      # todos los modelos de la lista
+GEMINI_API_KEY=... npm run eval -- gemini-3.6-flash   # solo uno
+```
+
+Si cambias `RUBRIC`, pasa el eval antes y después. Los casos son genéricos: no metas productos de
+la casa, porque el repo es público.
 
 ## En local
 
@@ -34,4 +65,5 @@ FIREBASE_SERVICE_ACCOUNT_FILE=/ruta/sa.json HOUSEHOLD_CODE=... GEMINI_API_KEY=..
   node src/index.mjs --dry-run --print > aviso.json
 ```
 
-`--dry-run` no escribe en Firestore; `--print` vuelca el aviso completo (se ignora en CI).
+`--dry-run` no escribe en Firestore; `--print` vuelca el aviso completo y las notas y razones del
+buscador y del revisor de cada tienda (se ignora en CI).
