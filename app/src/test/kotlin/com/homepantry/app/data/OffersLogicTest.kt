@@ -136,6 +136,17 @@ class OffersLogicTest {
         assertEquals(false, isTrustedOfferUrl(""))
     }
 
+    @Test fun `isValidNotificationId accepts Firestore ids`() {
+        assertEquals(true, isValidNotificationId("aB3dE5fG7hJ9kL1mN2pQ"))
+    }
+
+    @Test fun `isValidNotificationId rejects route injection and empty ids`() {
+        assertEquals(false, isValidNotificationId("x/../home"))
+        assertEquals(false, isValidNotificationId("a?b=c"))
+        assertEquals(false, isValidNotificationId(""))
+        assertEquals(false, isValidNotificationId("a".repeat(41)))
+    }
+
     @Test fun `planOfferAdds moves a pantry item back to the list instead of duplicating it`() {
         val items = listOf(Item(id = "t1", name = "Tomate", zone = "nevera", done = true))
         val plan = planOfferAdds(listOf("Lidl" to tomato), items, zones, "Ana")

@@ -73,6 +73,14 @@ fun isTrustedOfferUrl(url: String): Boolean {
         OFFER_HOSTS.any { host == it || host.endsWith(".$it") }
 }
 
+private val NOTIFICATION_ID_PATTERN = Regex("^[A-Za-z0-9]{1,40}$")
+
+/**
+ * MainActivity es exportada: el id que llega en el intent puede venir de otra app, no solo de
+ * nuestra notificación. Se exige el formato de un id de Firestore antes de meterlo en una ruta.
+ */
+fun isValidNotificationId(id: String): Boolean = NOTIFICATION_ID_PATTERN.matches(id)
+
 enum class OfferRowState { NEW, IN_LIST, ADDED }
 
 /** Producto existente (despensa o lista) que corresponde a la oferta, por nombre normalizado. */

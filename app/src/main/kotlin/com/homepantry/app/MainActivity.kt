@@ -67,6 +67,7 @@ import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
 import com.homepantry.app.data.initialOffersCheck
+import com.homepantry.app.data.isValidNotificationId
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.NotificationsViewModel
@@ -109,12 +110,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.let { pendingNotificationId = it }
+        intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)?.let { pendingNotificationId = it }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // Solo en el primer arranque: al recrear la actividad (rotación) el intent sigue siendo el mismo.
-        if (savedInstanceState == null) pendingNotificationId = intent?.getStringExtra(EXTRA_NOTIFICATION_ID)
+        if (savedInstanceState == null) pendingNotificationId = intent?.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         // Salida del splash: el logo crece un poco y se desvanece junto al fondo,
