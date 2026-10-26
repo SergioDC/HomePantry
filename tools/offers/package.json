@@ -1,0 +1,15 @@
+{
+  "name": "homepantry-offers",
+  "private": true,
+  "description": "Script semanal que cruza las ofertas de Lidl y Aldi con los productos habituales de la casa y escribe un aviso en Firestore.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}
