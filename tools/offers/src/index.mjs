@@ -81,7 +81,9 @@ async function main() {
     }
     try {
       const { prompt, schema } = request(source);
-      const offers = toMatches(await callGemini({ apiKey, models, prompt, schema }), source);
+      const { items, model } = await callGemini({ apiKey, models, prompt, schema });
+      console.log(`${store}: modelo ${model}`);
+      const offers = toMatches(items, source);
       counts[store] = offers.length;
       stores.push({ source, offers });
     } catch (e) {

@@ -2,11 +2,17 @@
 // Gemini decide qué coincide; los datos que se guardan salen de la tienda siempre que se puede,
 // para no depender de que Gemini transcriba bien precios y fechas.
 
+// Los ejemplos de "NO" salen de la primera prueba real (2026-10-26), en la que Gemini emparejó
+// "masa de pizza" con pizzas preparadas y "paté" con albóndigas y pechuga de pavo.
 const CRITERIA = `
-Hay coincidencia si la oferta es EL MISMO TIPO DE PRODUCTO que un habitual, aunque cambien la marca
-o la variante: "leche entera" y "leche semidesnatada" sí coinciden; "leche" y "batido de chocolate" no;
-"pollo" y "pechuga de pollo" sí; "tomate" y "tomate frito" no. Ante la duda, NO hay coincidencia:
-es mejor perder una oferta que avisar de algo que no compramos.
+Hay coincidencia SOLO si la oferta es EL MISMO TIPO DE PRODUCTO que un habitual, aunque cambien la
+marca o la variante. Que compartan un ingrediente, la sección del súper o el uso NO basta.
+Sí coinciden: "leche entera" y "leche semidesnatada"; "pollo" y "pechuga de pollo"; "pan" y
+"pan integral"; "patatas fritas" y "patatas fritas sabor jamón".
+NO coinciden: "masa de pizza" y "pizza preparada"; "paté" y "albóndigas de pavo"; "paté" y
+"pechuga de pavo"; "paté" y "stick de queso"; "leche" y "batido de chocolate"; "tomate" y
+"tomate frito"; "queso" y "pizza con queso".
+Ante la duda, NO hay coincidencia: es mejor perder una oferta que avisar de algo que no compramos.
 Para cada coincidencia devuelve "habitual" copiado EXACTAMENTE de la lista (campo normalizedName) y
 "habitualLabel": un nombre genérico corto en español, con tildes y mayúscula inicial (p. ej. "Plátanos").
 Si no hay ninguna coincidencia devuelve [].`;
@@ -25,14 +31,13 @@ export function aldiPrompt(habituals, offers) {
 
 export function lidlPrompt(habituals, pages) {
   const lines = pages.map((p) => `Página ${p.page}: ${p.description}\n  Texto: ${p.text}`);
+  // Sin precios: en la prueba real Gemini los sacaba mal del OCR (mezcla €/kg, packs y Lidl Plus).
+  // Basta con el nombre del producto y la página; el enlace lleva al folleto.
   return `Productos que compra habitualmente una casa:\n${habitualLines(habituals)}\n\n` +
-    `Folleto de Lidl de esta semana, página a página. El texto viene de un OCR desordenado; los precios ` +
-    `aparecen sin coma ("436 396" significa 4,36 € antes y 3,96 € ahora):\n${lines.join("\n")}\n\n` +
-    `Indica qué productos del folleto coinciden con algún habitual: "page", "product" (nombre del folleto), ` +
-    `"price" y "oldPrice" en euros si los puedes deducir con seguridad (si no, null).${CRITERIA}`;
+    `Folleto de Lidl de esta semana, página a página. El texto viene de un OCR desordenado:\n${lines.join("\n")}\n\n` +
+    `Indica qué productos del folleto coinciden con algún habitual: "page" y "product" (nombre del ` +
+    `producto tal y como aparece en el folleto, limpio y corto).${CRITERIA}`;
 }
-
-const nullableNumber = { type: "number", nullable: true };
 
 export const ALDI_SCHEMA = {
   type: "array",
@@ -49,13 +54,12 @@ export const LIDL_SCHEMA = {
     type: "object",
     properties: {
       page: { type: "integer" }, habitual: { type: "string" }, habitualLabel: { type: "string" },
-      product: { type: "string" }, price: nullableNumber, oldPrice: nullableNumber,
+      product: { type: "string" },
     },
     required: ["page", "habitual", "habitualLabel", "product"],
   },
 };
 
-const numberOrNull = (v) => (typeof v === "number" && Number.isFinite(v) ? v : null);
 
 const label = (r) => (typeof r.habitualLabel === "string" && r.habitualLabel.trim()) || r.habitual;
 
@@ -95,8 +99,8 @@ export function lidlMatches(raw, pages, habituals) {
       habitual: r.habitual,
       habitualLabel: label(r),
       product: typeof r.product === "string" && r.product.trim() ? r.product.trim() : label(r),
-      price: numberOrNull(r.price),
-      oldPrice: numberOrNull(r.oldPrice),
+      price: null,
+      oldPrice: null,
       promo: null,
       page: r.page,
       validFrom: null,
@@ -145,7 +149,7 @@ async function callModel({ apiKey, model, body, fetchImpl }) {
  * Llama a Gemini con salida JSON, probando [models] por orden: cada uno se reintenta ante errores
  * pasajeros y, si sigue fallando, se pasa al siguiente. Un error que no es pasajero (p. ej. 400 o
  * key inválida) corta en seco. La key va en cabecera, nunca en la URL, y los errores solo llevan
- * el estado: los logs de Actions son públicos.
+ * el estado: los logs de Actions son públicos. Devuelve también qué modelo respondió, para el log.
  */
 export async function callGemini({ apiKey, models = DEFAULT_MODELS, prompt, schema, fetchImpl = fetch, retryDelayMs = RETRY_DELAY_MS }) {
   const body = JSON.stringify({
@@ -156,7 +160,7 @@ export async function callGemini({ apiKey, models = DEFAULT_MODELS, prompt, sche
   for (const model of models) {
     for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
       try {
-        return await callModel({ apiKey, model, body, fetchImpl });
+        return { items: await callModel({ apiKey, model, body, fetchImpl }), model };
       } catch (e) {
         if (!(e instanceof TransientGeminiError)) throw e;
         lastError = e;

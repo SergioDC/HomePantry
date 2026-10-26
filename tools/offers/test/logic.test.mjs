@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { habitualProducts } from "../src/habitual.mjs";
-import { aldiMatches, lidlMatches } from "../src/match.mjs";
+import { aldiMatches, lidlMatches, aldiPrompt, lidlPrompt } from "../src/match.mjs";
 import { offersTitle, buildNotification, mergeWeekNotification } from "../src/notification.mjs";
 
 const now = new Date("2026-10-26T07:00:00Z");
@@ -40,7 +40,7 @@ test("aldiMatches toma los datos de la oferta por índice y descarta lo inválid
   }]);
 });
 
-test("lidlMatches descarta páginas inexistentes, habituales desconocidos y precios no numéricos", () => {
+test("lidlMatches descarta páginas inexistentes y habituales desconocidos, y nunca da precio", () => {
   const pages = [1, 2, 3].map((page) => ({ page, text: "", description: "" }));
   const raw = [
     { page: 9, habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama", price: 1.59, oldPrice: null },
@@ -49,7 +49,7 @@ test("lidlMatches descarta páginas inexistentes, habituales desconocidos y prec
   ];
   assert.deepEqual(lidlMatches(raw, pages, habituals), [{
     key: "lidl-p2-tomate", habitual: "tomate", habitualLabel: "Tomate", product: "Tomate rama",
-    price: null, oldPrice: 1.69, promo: null, page: 2, validFrom: null, validUntil: null,
+    price: null, oldPrice: null, promo: null, page: 2, validFrom: null, validUntil: null,
   }]);
 });
 
@@ -102,7 +102,7 @@ test("callGemini pasa al siguiente modelo si uno está saturado o no responde", 
     return okResponse([{ index: 0 }]);
   };
   const result = await callGemini({ apiKey: "k", models: ["lento", "saturado", "bueno"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 });
-  assert.deepEqual(result, [{ index: 0 }]);
+  assert.deepEqual(result, { items: [{ index: 0 }], model: "bueno" });
   assert.deepEqual(calls.filter((m) => m === "bueno"), ["bueno"]);
   assert.ok(calls.includes("lento") && calls.includes("saturado"));
 });
@@ -126,4 +126,15 @@ test("callGemini con todos los modelos caídos falla con el último estado", asy
     callGemini({ apiKey: "k", models: ["a", "b"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 }),
     /Gemini: 503/,
   );
+});
+
+test("los prompts incluyen ejemplos de lo que NO coincide", () => {
+  for (const prompt of [aldiPrompt(habituals, aldiOffers), lidlPrompt(habituals, [])]) {
+    assert.match(prompt, /pizza/i);
+    assert.match(prompt, /paté/i);
+  }
+});
+
+test("el prompt de Lidl no pide precios", () => {
+  assert.doesNotMatch(lidlPrompt(habituals, []), /precio|price/i);
 });
