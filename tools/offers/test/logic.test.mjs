@@ -87,3 +87,43 @@ test("mergeWeekNotification conserva readBy y addedKeys del aviso existente", ()
   );
   assert.deepEqual(mergeWeekNotification(null, { title: "nuevo" }), { title: "nuevo", readBy: [], addedKeys: [] });
 });
+
+import { callGemini } from "../src/match.mjs";
+
+const okResponse = (payload) => new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: JSON.stringify(payload) }] } }] }), { status: 200 });
+
+test("callGemini pasa al siguiente modelo si uno está saturado o no responde", async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    const model = url.split("/models/")[1].split(":")[0];
+    calls.push(model);
+    if (model === "lento") throw Object.assign(new Error("timeout"), { name: "TimeoutError" });
+    if (model === "saturado") return new Response("{}", { status: 503 });
+    return okResponse([{ index: 0 }]);
+  };
+  const result = await callGemini({ apiKey: "k", models: ["lento", "saturado", "bueno"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 });
+  assert.deepEqual(result, [{ index: 0 }]);
+  assert.deepEqual(calls.filter((m) => m === "bueno"), ["bueno"]);
+  assert.ok(calls.includes("lento") && calls.includes("saturado"));
+});
+
+test("callGemini no prueba otros modelos ante un error que no es pasajero", async () => {
+  const calls = [];
+  const fetchImpl = async (url) => {
+    calls.push(url);
+    return new Response("{}", { status: 400 });
+  };
+  await assert.rejects(
+    callGemini({ apiKey: "k", models: ["a", "b"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 }),
+    /Gemini: 400/,
+  );
+  assert.equal(calls.length, 1);
+});
+
+test("callGemini con todos los modelos caídos falla con el último estado", async () => {
+  const fetchImpl = async () => new Response("{}", { status: 503 });
+  await assert.rejects(
+    callGemini({ apiKey: "k", models: ["a", "b"], prompt: "p", schema: {}, fetchImpl, retryDelayMs: 0 }),
+    /Gemini: 503/,
+  );
+});

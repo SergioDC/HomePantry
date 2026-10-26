@@ -105,36 +105,64 @@ export function lidlMatches(raw, pages, habituals) {
 }
 
 const GEMINI_BASE = "https://generativelanguage.googleapis.com/v1beta/models";
-const MAX_ATTEMPTS = 3;
-const INITIAL_DELAY_MS = 2_000;
+/**
+ * Modelos por orden de preferencia (los mismos que ofrece la app en Ajustes). En la primera prueba
+ * real (2026-10-26) gemini-3.8-flash no respondía en 5 min mientras los otros sí: por eso hay respaldo.
+ */
+export const DEFAULT_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite"];
+const ATTEMPTS_PER_MODEL = 2;
+const RETRY_DELAY_MS = 2_000;
+/** Sin límite, fetch espera 5 min a las cabeceras: mejor pasar antes al siguiente modelo. */
+const REQUEST_TIMEOUT_MS = 90_000;
+
+/** Error de Gemini que merece reintento u otro modelo: saturación, límite de cuota o sin respuesta. */
+class TransientGeminiError extends Error {}
+
+async function callModel({ apiKey, model, body, fetchImpl }) {
+  let response;
+  try {
+    response = await fetchImpl(`${GEMINI_BASE}/${model}:generateContent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    });
+  } catch {
+    throw new TransientGeminiError("Gemini: sin respuesta");
+  }
+  if (!response.ok) {
+    const message = `Gemini: ${response.status}`;
+    throw response.status === 429 || response.status >= 500 ? new TransientGeminiError(message) : new Error(message);
+  }
+  const data = await response.json();
+  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  const parsed = JSON.parse(text || "[]");
+  if (!Array.isArray(parsed)) throw new Error("Gemini: respuesta que no es una lista");
+  return parsed;
+}
 
 /**
- * Llama a Gemini con salida JSON. La key va en cabecera, nunca en la URL, y los errores solo
- * llevan el estado: los logs de Actions son públicos.
+ * Llama a Gemini con salida JSON, probando [models] por orden: cada uno se reintenta ante errores
+ * pasajeros y, si sigue fallando, se pasa al siguiente. Un error que no es pasajero (p. ej. 400 o
+ * key inválida) corta en seco. La key va en cabecera, nunca en la URL, y los errores solo llevan
+ * el estado: los logs de Actions son públicos.
  */
-export async function callGemini({ apiKey, model, prompt, schema }) {
-  const url = `${GEMINI_BASE}/${model}:generateContent`;
+export async function callGemini({ apiKey, models = DEFAULT_MODELS, prompt, schema, fetchImpl = fetch, retryDelayMs = RETRY_DELAY_MS }) {
   const body = JSON.stringify({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { responseMimeType: "application/json", responseSchema: schema, temperature: 0 },
   });
-  let delay = INITIAL_DELAY_MS;
-  for (let attempt = 1; ; attempt++) {
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body,
-    });
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
-      const parsed = JSON.parse(text || "[]");
-      if (!Array.isArray(parsed)) throw new Error("Gemini: respuesta que no es una lista");
-      return parsed;
+  let lastError;
+  for (const model of models) {
+    for (let attempt = 1; attempt <= ATTEMPTS_PER_MODEL; attempt++) {
+      try {
+        return await callModel({ apiKey, model, body, fetchImpl });
+      } catch (e) {
+        if (!(e instanceof TransientGeminiError)) throw e;
+        lastError = e;
+        if (attempt < ATTEMPTS_PER_MODEL) await new Promise((r) => setTimeout(r, retryDelayMs));
+      }
     }
-    const retryable = response.status === 429 || response.status >= 500;
-    if (!retryable || attempt >= MAX_ATTEMPTS) throw new Error(`Gemini: ${response.status}`);
-    await new Promise((r) => setTimeout(r, delay));
-    delay *= 2;
   }
+  throw new Error(lastError.message);
 }

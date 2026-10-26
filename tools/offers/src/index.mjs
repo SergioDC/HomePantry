@@ -14,11 +14,9 @@ import { getFirestore } from "firebase-admin/firestore";
 import { fetchLidl } from "./lidl.mjs";
 import { fetchAldi } from "./aldi.mjs";
 import { habitualProducts } from "./habitual.mjs";
-import { aldiPrompt, lidlPrompt, ALDI_SCHEMA, LIDL_SCHEMA, aldiMatches, lidlMatches, callGemini } from "./match.mjs";
+import { aldiPrompt, lidlPrompt, ALDI_SCHEMA, LIDL_SCHEMA, aldiMatches, lidlMatches, callGemini, DEFAULT_MODELS } from "./match.mjs";
 import { buildNotification } from "./notification.mjs";
 import { readPurchases, upsertWeekNotification, deleteOldNotifications } from "./firestore.mjs";
-
-const DEFAULT_MODEL = "gemini-3.8-flash";
 
 function requireEnv(name) {
   const value = process.env[name]?.trim();
@@ -47,7 +45,8 @@ async function main() {
   const account = serviceAccount();
   const code = requireEnv("HOUSEHOLD_CODE");
   const apiKey = requireEnv("GEMINI_API_KEY");
-  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  // GEMINI_MODEL fija un único modelo (sin respaldo); si no, se prueban los de DEFAULT_MODELS.
+  const models = process.env.GEMINI_MODEL?.trim() ? [process.env.GEMINI_MODEL.trim()] : DEFAULT_MODELS;
 
   initializeApp({ credential: cert(account) });
   const db = getFirestore();
@@ -82,7 +81,7 @@ async function main() {
     }
     try {
       const { prompt, schema } = request(source);
-      const offers = toMatches(await callGemini({ apiKey, model, prompt, schema }), source);
+      const offers = toMatches(await callGemini({ apiKey, models, prompt, schema }), source);
       counts[store] = offers.length;
       stores.push({ source, offers });
     } catch (e) {

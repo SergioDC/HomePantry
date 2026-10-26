@@ -15,7 +15,8 @@ Lo ejecuta `.github/workflows/offers.yml` (lunes 07:00 UTC, o a mano desde la pe
 | `HOUSEHOLD_CODE` | Código de la casa |
 | `GEMINI_API_KEY` | API key de Gemini |
 
-Opcional: `GEMINI_MODEL` (por defecto `gemini-3.8-flash`).
+Opcional: `GEMINI_MODEL` fija un único modelo. Si no, se prueban por orden `gemini-3.8-flash`,
+`gemini-3.5-flash` y `gemini-3.1-flash-lite`, pasando al siguiente si uno está saturado o no responde.
 
 **El repo es público y sus logs también.** El script solo imprime recuentos. No añadas logs con
 productos, ofertas ni el código de casa.
