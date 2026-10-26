@@ -6,6 +6,9 @@ name: Avisos de ofertas
 on:
   schedule:
     - cron: '0 7 * * 1'   # lunes 07:00 UTC (08:00 o 09:00 en España)
+  # TEMPORAL: prueba antes de fusionar con main (GitHub solo deja lanzar a mano workflows de main).
+  push:
+    branches: [ofertas-folletos]
   workflow_dispatch:
     inputs:
       dry_run:
