@@ -338,6 +338,12 @@
     <string name="menu_import_remove_dish_cd">Quitar plato</string>
     <string name="menu_import_confirm">Importar (%1$d)</string>
     <string name="menu_import_failed">No se pudo guardar el menú. Inténtalo de nuevo.</string>
+    <string name="menu_import_exit">Salir</string>
+    <string name="menu_import_close_cd">Salir sin importar</string>
+    <string name="menu_import_discard_title">¿Salir sin importar?</string>
+    <string name="menu_import_discard_text">Se perderá lo leído de la foto y lo que hayas corregido.</string>
+    <string name="menu_import_discard_confirm">Salir</string>
+    <string name="menu_import_discard_keep">Seguir revisando</string>
     <string name="menu_import_summary_added">Añadidos: %1$d</string>
     <string name="menu_import_summary_new">platos nuevos: %1$d</string>
     <string name="menu_import_summary_present">ya estaban: %1$d</string>
