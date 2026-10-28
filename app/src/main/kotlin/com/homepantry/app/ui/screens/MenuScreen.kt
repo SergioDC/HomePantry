@@ -43,19 +43,16 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.homepantry.app.R
 import com.homepantry.app.data.GeminiApiKeyStore
-import com.homepantry.app.data.ParsedMenu
 import com.homepantry.app.data.WeekShare
 import com.homepantry.app.data.createReceiptCaptureUri
 import com.homepantry.app.data.dayLabel
 import com.homepantry.app.data.knownPeople
 import com.homepantry.app.data.monthLabel
-import com.homepantry.app.data.recognizeMenuWithGemini
 import com.homepantry.app.data.weekDays
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
 import java.time.LocalDate
 import java.time.YearMonth
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 /** Qué se asigna a una persona: un día o un mes (de [from] a [to], ambos incluidos) y si se avisa al terminar. */
@@ -89,36 +86,22 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     val apiKeyStore = remember { GeminiApiKeyStore(context) }
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     var showImportSource by remember { mutableStateOf(false) }
-    var importing by remember { mutableStateOf(false) }
-    var importedMenu by remember { mutableStateOf<ParsedMenu?>(null) }
+    // La lectura y el borrador viven en el ViewModel: sobreviven a cambiar de pestaña y a rotar.
+    val importing by menuViewModel.readingMenu.collectAsState()
+    val importDraft by menuViewModel.importDraft.collectAsState()
     val noKeyMessage = stringResource(R.string.menu_import_no_key)
     val emptyMenuMessage = stringResource(R.string.menu_import_empty)
     val captureLostMessage = stringResource(R.string.menu_import_capture_lost)
 
     fun processImportPhoto(uri: Uri) {
-        importing = true
-        scope.launch {
-            val apiKey = apiKeyStore.getApiKey()
-            var menu: ParsedMenu? = null
-            var failure: String? = null
-            if (apiKey == null) {
-                failure = noKeyMessage
-            } else {
-                try {
-                    menu = recognizeMenuWithGemini(context, uri, apiKey, apiKeyStore.getModel())
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    failure = e.message ?: e.toString()
-                }
-            }
-            importing = false
-            if (menu != null && menu.days.isNotEmpty()) {
-                importedMenu = menu
-            } else {
-                snackbarHostState.showSnackbar(failure ?: emptyMenuMessage)
-            }
-        }
+        menuViewModel.readMenuPhoto(
+            context = context,
+            uri = uri,
+            apiKeyStore = apiKeyStore,
+            defaultMonth = YearMonth.from(state.position.date),
+            noKeyMessage = noKeyMessage,
+            emptyMessage = emptyMenuMessage
+        )
     }
 
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
@@ -230,17 +213,16 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
         )
     }
 
-    importedMenu?.let { parsed ->
-        MenuImportSheet(
-            menu = parsed,
-            defaultMonth = YearMonth.from(state.position.date),
+    importDraft?.let { draft ->
+        MenuImportDialog(
+            draft = draft,
             dishes = state.dishes,
             names = knownPeople(state.entries, state.people),
             people = state.people,
             viewModel = menuViewModel,
-            onDismiss = { importedMenu = null },
+            onDraftChange = menuViewModel::updateImportDraft,
+            onDismiss = menuViewModel::discardImportDraft,
             onDone = { plan ->
-                importedMenu = null
                 val summary = buildList {
                     add(resources.getString(R.string.menu_import_summary_added, plan.entries.size))
                     if (plan.newDishes.isNotEmpty()) {

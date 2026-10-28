@@ -1,15 +1,20 @@
 package com.homepantry.app.ui
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homepantry.app.data.CalendarMode
 import com.homepantry.app.data.Dish
 import com.homepantry.app.data.DishesRepository
 import com.homepantry.app.data.DuplicateMode
+import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MealEntry
 import com.homepantry.app.data.MealSlot
+import com.homepantry.app.data.MenuImportDraft
+import com.homepantry.app.data.MenuImportDraftStore
 import com.homepantry.app.data.MenuImportPlan
 import com.homepantry.app.data.MissingChoice
 import com.homepantry.app.data.ParsedMenu
@@ -22,17 +27,22 @@ import com.homepantry.app.data.matchDish
 import com.homepantry.app.data.nextEntryOrder
 import com.homepantry.app.data.planDuplicateWeek
 import com.homepantry.app.data.planMenuImport
+import com.homepantry.app.data.recognizeMenuWithGemini
 import com.homepantry.app.data.visibleRange
 import java.time.LocalDate
 import java.time.YearMonth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -56,12 +66,13 @@ data class MenuUiState(
  * Estado y acciones del menú semanal, aparte de AppViewModel (que ya tiene cinco repositorios).
  * Los productos y zonas ya cargados los toma la UI del estado de AppViewModel.
  */
-@OptIn(ExperimentalCoroutinesApi::class)
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class MenuViewModel(
     private val dishesRepository: DishesRepository,
     private val entriesRepository: MealEntriesRepository,
     private val itemsRepository: ItemsRepository,
     private val peopleRepository: PeopleRepository,
+    private val importDraftStore: MenuImportDraftStore,
     private var userName: String
 ) : ViewModel() {
 
@@ -70,6 +81,13 @@ class MenuViewModel(
     private val position = MutableStateFlow(CalendarPosition(CalendarMode.WEEK, LocalDate.now()))
     private val people = MutableStateFlow<List<Person>>(emptyList())
     private val error = MutableStateFlow<String?>(null)
+
+    // Importación del menú desde una foto: vive aquí y no en la pantalla para que ni la lectura de
+    // Gemini ni lo corregido se pierdan al cambiar de pestaña o rotar (el borrador va además a disco).
+    private val _readingMenu = MutableStateFlow(false)
+    val readingMenu: StateFlow<Boolean> = _readingMenu.asStateFlow()
+    private val _importDraft = MutableStateFlow<MenuImportDraft?>(null)
+    val importDraft: StateFlow<MenuImportDraft?> = _importDraft.asStateFlow()
 
     val state: StateFlow<MenuUiState> = combine(dishes, entries, position, people, error) { d, e, p, pe, err ->
         MenuUiState(dishes = d, entries = e, position = p, people = pe, error = err)
@@ -94,6 +112,21 @@ class MenuViewModel(
             peopleRepository.observePeople()
                 .catch { e -> error.value = e.message }
                 .collect { people.value = it }
+        }
+        viewModelScope.launch {
+            // Primero se recupera el borrador que quedara en disco y después se guarda cada cambio
+            // (agrupando las pulsaciones seguidas); en este orden el null inicial no lo borra.
+            val saved = importDraftStore.load()
+            if (saved != null && _importDraft.value == null && !_readingMenu.value) _importDraft.value = saved
+            _importDraft.debounce(300).collectLatest { draft ->
+                try {
+                    importDraftStore.save(draft)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Sin disco el borrador sigue en memoria; no merece un aviso.
+                }
+            }
         }
     }
 
@@ -251,12 +284,61 @@ class MenuViewModel(
     // ---- Importar menú desde una foto ----
 
     /**
+     * Lee con Gemini el menú de la foto [uri] y lo deja como borrador para revisarlo, con
+     * [defaultMonth] como mes elegido. Si falta la clave, falla la lectura o no salen platos, publica
+     * el error. Ignora la llamada si ya hay una lectura en marcha.
+     */
+    fun readMenuPhoto(
+        context: Context,
+        uri: Uri,
+        apiKeyStore: GeminiApiKeyStore,
+        defaultMonth: YearMonth,
+        noKeyMessage: String,
+        emptyMessage: String
+    ) {
+        if (_readingMenu.value) return
+        _readingMenu.value = true
+        // Solo el contexto de la aplicación: el de la actividad no debe sobrevivir en el ViewModel.
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            try {
+                val apiKey = apiKeyStore.getApiKey()
+                if (apiKey == null) {
+                    error.value = noKeyMessage
+                    return@launch
+                }
+                val menu = recognizeMenuWithGemini(appContext, uri, apiKey, apiKeyStore.getModel())
+                if (menu.days.isEmpty()) {
+                    error.value = emptyMessage
+                } else {
+                    _importDraft.value = MenuImportDraft(menu.month, defaultMonth, "", menu.days)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                error.value = e.message ?: e.toString()
+            } finally {
+                _readingMenu.value = false
+            }
+        }
+    }
+
+    /** Cambios del usuario al revisar el borrador (mes, persona, platos). */
+    fun updateImportDraft(draft: MenuImportDraft) {
+        if (_importDraft.value != null) _importDraft.value = draft
+    }
+
+    fun discardImportDraft() {
+        _importDraft.value = null
+    }
+
+    /**
      * Vuelca [menu] (ya revisado) en la comida de [month], asignado a [person] (null = sin
      * asignar), y espera a que termine. Lee las entradas
      * del mes en el momento, no de la caché de la pantalla: el mes elegido puede no estar cargado.
      * Escribe primero los platos nuevos y después las entradas, para que ninguna apunte a un plato
      * que no llegó a crearse. Devuelve el plan aplicado (para el resumen) o null si falla, con el
-     * error publicado. Corre en el scope del ViewModel: cerrar la hoja no lo deja a medias.
+     * error publicado. Corre en el scope del ViewModel: salir de la pantalla no lo deja a medias.
      */
     suspend fun importMenu(menu: ParsedMenu, month: YearMonth, person: String?): MenuImportPlan? =
         viewModelScope.async {
@@ -266,6 +348,8 @@ class MenuViewModel(
                 dishesRepository.addDishes(plan.newDishes)
                 entriesRepository.applyBatch(plan.entries, emptyList())
                 person?.let { peopleRepository.ensure(it) }
+                // Ya importado: el borrador sobra aunque la pantalla no llegue a enterarse.
+                _importDraft.value = null
                 plan
             } catch (e: CancellationException) {
                 throw e
