@@ -68,11 +68,6 @@ data class MenuUiState(
     val error: String? = null
 )
 
-/**
- * Estado y acciones del menú semanal, aparte de AppViewModel (que ya tiene cinco repositorios).
- * Los productos y zonas ya cargados los toma la UI del estado de AppViewModel.
- */
-@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 /** Textos (ya resueltos) de los fallos al importar el menú del comedor. */
 data class ComedorMessages(
     val noKey: String,
@@ -82,6 +77,11 @@ data class ComedorMessages(
     val stale: (YearMonth) -> String
 )
 
+/**
+ * Estado y acciones del menú semanal, aparte de AppViewModel (que ya tiene cinco repositorios).
+ * Los productos y zonas ya cargados los toma la UI del estado de AppViewModel.
+ */
+@OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
 class MenuViewModel(
     private val dishesRepository: DishesRepository,
     private val entriesRepository: MealEntriesRepository,
@@ -317,6 +317,7 @@ class MenuViewModel(
         val appContext = context.applicationContext
         viewModelScope.launch {
             try {
+                if (adoptSavedDraft()) return@launch
                 val apiKey = apiKeyStore.getApiKey()
                 if (apiKey == null) {
                     error.value = noKeyMessage
@@ -356,6 +357,7 @@ class MenuViewModel(
         val appContext = context.applicationContext
         viewModelScope.launch {
             try {
+                if (adoptSavedDraft()) return@launch
                 val apiKey = apiKeyStore.getApiKey()
                 if (apiKey == null) {
                     error.value = messages.noKey
@@ -388,6 +390,16 @@ class MenuViewModel(
                 _readingMenu.value = false
             }
         }
+    }
+
+    /**
+     * Si la comprobación del comedor dejó un borrador en disco después de entrar en la pantalla, lo
+     * muestra en vez de leer otro menú, que lo pisaría al guardarse. Devuelve si lo ha hecho.
+     */
+    private suspend fun adoptSavedDraft(): Boolean {
+        val saved = importDraftStore.load() ?: return false
+        if (_importDraft.value == null) _importDraft.value = saved
+        return true
     }
 
     /**

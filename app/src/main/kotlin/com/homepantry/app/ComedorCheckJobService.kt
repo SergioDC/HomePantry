@@ -128,14 +128,19 @@ class ComedorCheckJobService : JobService() {
             val apiKey = keyStore.getApiKey() ?: return nextComedorCheck(now, gotTarget = false)
             val fetched = fetchComedorMenu(context, target, apiKey, keyStore.getModel(), prefs.comedorFingerprint.first())
             if (fetched !is ComedorFetch.Read) return nextComedorCheck(now, gotTarget = false)
-            // Leído, sirva o no: este PDF no se vuelve a mandar a Gemini.
-            prefs.saveComedorFingerprint(fetched.fingerprint)
             val menu = fetched.menu
             if (isStaleComedorMonth(menu.month, target) || menu.days.isEmpty()) {
+                // Este PDF no sirve: no se vuelve a mandar a Gemini.
+                prefs.saveComedorFingerprint(fetched.fingerprint)
                 return nextComedorCheck(now, gotTarget = false)
             }
+            // La lectura tarda segundos: entretanto el usuario puede haber creado otro borrador
+            // (foto o botón del comedor). Ese no se pisa, y sin huella mañana se reintenta.
+            if (draftStore.load() != null) return nextComedorCheck(now, gotTarget = false)
             val month = menu.month ?: target
             draftStore.save(MenuImportDraft(menu.month, month, ComedorConfig.PERSON, menu.days))
+            // La huella va después del borrador: si no llegó a guardarse, mañana se vuelve a leer.
+            prefs.saveComedorFingerprint(fetched.fingerprint)
             notify(month)
             nextComedorCheck(now, gotTarget = true)
         } catch (e: CancellationException) {
