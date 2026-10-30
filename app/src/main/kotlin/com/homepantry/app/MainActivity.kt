@@ -61,6 +61,7 @@ import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.MenuImportDraftStore
+import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
 import com.homepantry.app.data.PurchasesRepository
@@ -105,7 +106,6 @@ import com.homepantry.app.ui.screens.ZonesDashboardScreen
 import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.tasks.await
-import java.io.File
 import java.time.ZonedDateTime
 
 /**
@@ -276,9 +276,7 @@ fun ListaDeLaCasaApp(
                         entriesRepository = MealEntriesRepository(firestore, code),
                         itemsRepository = ItemsRepository(firestore, code),
                         peopleRepository = PeopleRepository(firestore, code),
-                        importDraftStore = MenuImportDraftStore(
-                            File(context.applicationContext.filesDir, "menu_import_draft_$code.json")
-                        ),
+                        importDraftStore = MenuImportDraftStore(menuImportDraftFile(context, code)),
                         userName = name
                     ) as T
                 }

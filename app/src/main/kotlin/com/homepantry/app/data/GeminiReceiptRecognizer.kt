@@ -266,14 +266,23 @@ internal fun loadPhotoBytesForGemini(context: Context, imageUri: Uri): ByteArray
         bitmap
     }
 
-    val output = ByteArrayOutputStream()
     try {
-        rotated.compress(Bitmap.CompressFormat.JPEG, 85, output)
+        return bitmapToJpegBytes(rotated)
     } finally {
         rotated.recycle()
     }
+}
+
+/** JPEG con la calidad que se manda a Gemini. No recicla [bitmap]: es de quien llama. */
+private fun bitmapToJpegBytes(bitmap: Bitmap): ByteArray {
+    val output = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, 85, output)
     return output.toByteArray()
 }
+
+/** Como [encodePhotoForGemini] pero para una imagen ya en memoria (la página del PDF del comedor). */
+internal suspend fun encodeBitmapForGemini(bitmap: Bitmap): String =
+    withContext(Dispatchers.Default) { Base64.encodeToString(bitmapToJpegBytes(bitmap), Base64.NO_WRAP) }
 
 /**
  * [loadPhotoBytesForGemini] + Base64, fuera del hilo principal: decodificar, rotar y recomprimir

@@ -1,5 +1,6 @@
 package com.homepantry.app.data
 
+import android.content.Context
 import com.google.gson.Gson
 import java.io.File
 import java.time.YearMonth
@@ -80,3 +81,7 @@ class MenuImportDraftStore(private val file: File) {
         }
     }
 }
+
+/** Fichero del borrador de una casa; lo comparten MenuViewModel y la comprobación del comedor. */
+fun menuImportDraftFile(context: Context, householdCode: String): File =
+    File(context.applicationContext.filesDir, "menu_import_draft_$householdCode.json")
