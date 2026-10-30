@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import androidx.core.graphics.createBitmap
 import java.io.File
 import java.io.IOException
 import java.time.YearMonth
@@ -32,10 +33,9 @@ suspend fun renderPdfFirstPage(context: Context, pdf: ByteArray): Bitmap = withC
                 if (renderer.pageCount == 0) throw ComedorMenuException.NotPdf()
                 renderer.openPage(0).use { page ->
                     val scale = MAX_OCR_SIDE.toFloat() / maxOf(page.width, page.height)
-                    val bitmap = Bitmap.createBitmap(
+                    val bitmap = createBitmap(
                         (page.width * scale).toInt().coerceAtLeast(1),
-                        (page.height * scale).toInt().coerceAtLeast(1),
-                        Bitmap.Config.ARGB_8888
+                        (page.height * scale).toInt().coerceAtLeast(1)
                     )
                     // Un PDF puede tener fondo transparente, y en JPEG saldría negro.
                     bitmap.eraseColor(Color.WHITE)
