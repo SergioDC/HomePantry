@@ -5,6 +5,12 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homepantry.app.data.CalendarMode
+import com.homepantry.app.data.ComedorConfig
+import com.homepantry.app.data.ComedorFetch
+import com.homepantry.app.data.ComedorMenuException
+import com.homepantry.app.data.UserPrefs
+import com.homepantry.app.data.fetchComedorMenu
+import com.homepantry.app.data.manualComedorMonth
 import com.homepantry.app.data.Dish
 import com.homepantry.app.data.DishesRepository
 import com.homepantry.app.data.DuplicateMode
@@ -67,6 +73,15 @@ data class MenuUiState(
  * Los productos y zonas ya cargados los toma la UI del estado de AppViewModel.
  */
 @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+/** Textos (ya resueltos) de los fallos al importar el menú del comedor. */
+data class ComedorMessages(
+    val noKey: String,
+    val empty: String,
+    val network: String,
+    val changed: String,
+    val stale: (YearMonth) -> String
+)
+
 class MenuViewModel(
     private val dishesRepository: DishesRepository,
     private val entriesRepository: MealEntriesRepository,
@@ -320,6 +335,70 @@ class MenuViewModel(
             } finally {
                 _readingMenu.value = false
             }
+        }
+    }
+
+    /**
+     * Baja el menú del comedor (spec 2026-10-30), lo lee con Gemini y lo deja como borrador para
+     * Oihan, en el mes leído en la cabecera. A diferencia del job, siempre lee el PDF aunque sea el
+     * mismo de la última vez, porque lo ha pedido el usuario. Si es de un mes ya pasado, avisa sin
+     * crear borrador. Ignora la llamada si ya hay una lectura o un borrador.
+     */
+    fun readComedorMenu(
+        context: Context,
+        apiKeyStore: GeminiApiKeyStore,
+        prefs: UserPrefs,
+        today: LocalDate,
+        messages: ComedorMessages
+    ) {
+        if (_readingMenu.value || _importDraft.value != null) return
+        _readingMenu.value = true
+        val appContext = context.applicationContext
+        viewModelScope.launch {
+            try {
+                val apiKey = apiKeyStore.getApiKey()
+                if (apiKey == null) {
+                    error.value = messages.noKey
+                    return@launch
+                }
+                val fetched = fetchComedorMenu(
+                    appContext, YearMonth.from(today).plusMonths(1), apiKey, apiKeyStore.getModel(), skipIfFingerprint = null
+                )
+                // Sin huella con la que comparar nunca sale Unchanged.
+                if (fetched !is ComedorFetch.Read) return@launch
+                // Leído: el job no tiene que volver a gastar Gemini con este mismo PDF.
+                prefs.saveComedorFingerprint(fetched.fingerprint)
+                val menu = fetched.menu
+                val month = manualComedorMonth(menu.month, today)
+                when {
+                    // Null solo si se leyó un mes y es anterior al actual.
+                    month == null -> error.value = messages.stale(menu.month ?: YearMonth.from(today))
+                    menu.days.isEmpty() -> error.value = messages.empty
+                    else -> _importDraft.value = MenuImportDraft(menu.month, month, ComedorConfig.PERSON, menu.days)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: ComedorMenuException.Network) {
+                error.value = messages.network
+            } catch (e: ComedorMenuException) {
+                error.value = messages.changed
+            } catch (e: Exception) {
+                error.value = e.message ?: e.toString()
+            } finally {
+                _readingMenu.value = false
+            }
+        }
+    }
+
+    /**
+     * Recupera el borrador que la comprobación del comedor haya dejado en disco con la app abierta.
+     * No pisa uno que ya esté en memoria ni una lectura en marcha.
+     */
+    fun reloadImportDraft() {
+        if (_importDraft.value != null || _readingMenu.value) return
+        viewModelScope.launch {
+            val saved = importDraftStore.load()
+            if (saved != null && _importDraft.value == null && !_readingMenu.value) _importDraft.value = saved
         }
     }
 
