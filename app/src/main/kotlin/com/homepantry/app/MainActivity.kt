@@ -71,6 +71,7 @@ import com.homepantry.app.data.SplitPhotosRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.ZonesRepository
+import com.homepantry.app.data.initialComedorCheck
 import com.homepantry.app.data.initialOffersCheck
 import com.homepantry.app.data.isValidNotificationId
 import com.homepantry.app.ui.AppViewModel
@@ -120,9 +121,13 @@ class MainActivity : ComponentActivity() {
     /** Aviso que hay que abrir porque se ha tocado su notificación (ver OffersCheckJobService). */
     private var pendingNotificationId by mutableStateOf<String?>(null)
 
+    /** Se ha tocado la notificación del menú del comedor: abrir Menú con la revisión. */
+    private var pendingOpenMenu by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         // Solo en el primer arranque: al recrear la actividad (rotación) el intent sigue siendo el mismo.
         if (savedInstanceState == null) pendingNotificationId = intent?.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)
+        if (savedInstanceState == null) pendingOpenMenu = intent?.getBooleanExtra(EXTRA_OPEN_MENU, false) == true
         val splash = installSplashScreen()
         super.onCreate(savedInstanceState)
         // Solo en el arranque real: al recrear la actividad (girar) el intent es el mismo y ya se navegó.
@@ -153,7 +158,9 @@ class MainActivity : ComponentActivity() {
                         pendingSplitMonthId = pendingSplitMonthId.value,
                         onSplitLinkHandled = { pendingSplitMonthId.value = null },
                         pendingNotificationId = pendingNotificationId,
-                        onNotificationOpened = { pendingNotificationId = null }
+                        onNotificationOpened = { pendingNotificationId = null },
+                        pendingOpenMenu = pendingOpenMenu,
+                        onMenuOpened = { pendingOpenMenu = false }
                     )
                 }
             }
@@ -168,6 +175,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         splitMonthIdFromLink(intent.dataString)?.let { pendingSplitMonthId.value = it }
         intent.getStringExtra(EXTRA_NOTIFICATION_ID)?.takeIf(::isValidNotificationId)?.let { pendingNotificationId = it }
+        if (intent.getBooleanExtra(EXTRA_OPEN_MENU, false)) pendingOpenMenu = true
     }
 }
 
@@ -178,7 +186,9 @@ fun ListaDeLaCasaApp(
     pendingSplitMonthId: String? = null,
     onSplitLinkHandled: () -> Unit = {},
     pendingNotificationId: String? = null,
-    onNotificationOpened: () -> Unit = {}
+    onNotificationOpened: () -> Unit = {},
+    pendingOpenMenu: Boolean = false,
+    onMenuOpened: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val userPrefs = remember { UserPrefs(context) }
@@ -332,6 +342,9 @@ fun ListaDeLaCasaApp(
     LaunchedEffect(code) {
         ensureOffersChannel(context)
         scheduleOffersCheck(context, initialOffersCheck(ZonedDateTime.now()), replace = false)
+        // Igual con el menú del comedor (de 3 días antes de fin de mes al día 5).
+        ensureComedorChannel(context)
+        scheduleComedorCheck(context, initialComedorCheck(ZonedDateTime.now()), replace = false)
     }
 
     val state by viewModel.state.collectAsState()
@@ -349,6 +362,14 @@ fun ListaDeLaCasaApp(
     // Se ha tocado la notificación de ofertas: se abre el aviso cuando el NavHost ya tiene grafo
     // (la ruta deja de ser null). Desde ahí, atrás vuelve a Home.
     val navReady = currentRoute != null
+    // Notificación del comedor: a Menú, recargando el borrador por si la pantalla ya estaba abierta.
+    LaunchedEffect(pendingOpenMenu, navReady) {
+        if (pendingOpenMenu && navReady) {
+            menuViewModel.reloadImportDraft()
+            navController.navigate("menu") { launchSingleTop = true }
+            onMenuOpened()
+        }
+    }
     LaunchedEffect(pendingNotificationId, navReady) {
         val id = pendingNotificationId
         if (id != null && navReady) {
