@@ -24,11 +24,14 @@ import com.homepantry.app.data.storeSections
 import com.homepantry.app.data.ticketTimestamp
 import com.homepantry.app.data.tickets
 import com.homepantry.app.data.zoneColorBackfill
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 data class UiState(
     val items: List<Item> = emptyList(),
@@ -71,6 +74,9 @@ data class UiState(
     }
     val zoneCards: List<ZoneSummary> get() = zoneSummaries(items, zones)
 }
+
+/** Tiempo que la revisión del ticket espera la confirmación de Firestore antes de darlo por guardado. */
+private const val SAVE_CONFIRM_TIMEOUT_MS = 10_000L
 
 /**
  * Une ItemsRepository/ZonesRepository/StorageRepository en un único StateFlow
@@ -229,9 +235,20 @@ class AppViewModel(
      * Las compras se escriben primero: Firestore actualiza la lista al instante, sin
      * esperar a la red. La foto del ticket se sube después y se enlaza a esas líneas;
      * es opcional (no se muestra en la app), así que si falla las compras ya están guardadas.
+     *
+     * Devuelve false si Firestore rechaza la escritura, para que la revisión no descarte el
+     * ticket. Sin red el commit no termina hasta reconectar, pero Firestore ya lo tiene en su cola
+     * local: pasados [SAVE_CONFIRM_TIMEOUT_MS] sin respuesta se da por guardado. La escritura sigue
+     * en el scope del ViewModel aunque quien espera se cancele.
      */
-    fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?) = viewModelScope.launch {
-        if (receipt.lines.isEmpty()) return@launch
+    suspend fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?): Boolean {
+        val saving = viewModelScope.async { writePurchaseBatch(receipt, ticketPhotoLocalUri) }
+        return withTimeoutOrNull(SAVE_CONFIRM_TIMEOUT_MS) { saving.await() } ?: true
+    }
+
+    /** @return false si no se pudieron escribir las compras (con el error publicado). */
+    private suspend fun writePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?): Boolean {
+        if (receipt.lines.isEmpty()) return true
         val batchId = java.util.UUID.randomUUID().toString()
         val now = java.util.Date()
         // La fecha impresa en el ticket (elegida en la revisión), no la del escaneo.
@@ -250,15 +267,24 @@ class AppViewModel(
                 addedBy = userName
             )
         }
-        val ids = runCatching { purchasesRepository.addPurchases(purchases) }
-            .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
-            .getOrNull() ?: return@launch
+        val ids = try {
+            purchasesRepository.addPurchases(purchases)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(error = e.message)
+            return false
+        }
         if (ticketPhotoLocalUri != null) {
-            runCatching {
-                val photoUrl = storageRepository.uploadReceiptPhoto(batchId, ticketPhotoLocalUri)
-                purchasesRepository.attachTicketPhoto(ids, photoUrl)
+            // Aparte: la revisión ya puede cerrarse aunque la foto tarde en subir.
+            viewModelScope.launch {
+                runCatching {
+                    val photoUrl = storageRepository.uploadReceiptPhoto(batchId, ticketPhotoLocalUri)
+                    purchasesRepository.attachTicketPhoto(ids, photoUrl)
+                }
             }
         }
+        return true
     }
 
     /** Borra todas las líneas de un ticket (por su clave de `UiState.purchaseTickets`). */

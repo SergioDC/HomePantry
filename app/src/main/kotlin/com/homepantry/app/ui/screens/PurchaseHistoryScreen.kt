@@ -143,6 +143,8 @@ fun PurchaseHistoryScreen(
     // La lectura y el borrador viven en el ViewModel: sobreviven a girar el móvil y a salir.
     val processingOcr by scanViewModel.scanning.collectAsState()
     val reviewDraft by scanViewModel.draft.collectAsState()
+    val savingTicket by scanViewModel.saving.collectAsState()
+    val saveFailed by scanViewModel.saveFailed.collectAsState()
     var showScanDialog by remember { mutableStateOf(false) }
     var confirmLeaveWhileReading by remember { mutableStateOf(false) }
 
@@ -282,7 +284,9 @@ fun PurchaseHistoryScreen(
             draft = draft,
             onDraftChange = scanViewModel::updateDraft,
             onDiscard = scanViewModel::discardDraft,
-            onSaved = scanViewModel::discardDraft
+            saving = savingTicket,
+            saveFailed = saveFailed,
+            onSave = { scanViewModel.saveDraft(viewModel::savePurchaseBatch) }
         )
     }
 

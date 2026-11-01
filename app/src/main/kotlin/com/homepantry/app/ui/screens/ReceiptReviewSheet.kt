@@ -1,6 +1,5 @@
 package com.homepantry.app.ui.screens
 
-import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -90,7 +89,9 @@ fun ReceiptReviewSheet(
     draft: ReceiptScanDraft,
     onDraftChange: (ReceiptScanDraft) -> Unit,
     onDiscard: () -> Unit,
-    onSaved: () -> Unit
+    saving: Boolean,
+    saveFailed: Boolean,
+    onSave: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     var edited by remember { mutableStateOf(draft) }
@@ -135,7 +136,7 @@ fun ReceiptReviewSheet(
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
         // La hoja no se cierra con atrás (ver arriba), pero atrás tampoco debe quedar mudo: pregunta.
-        BackHandler { confirmDiscard = true }
+        BackHandler { if (!saving) confirmDiscard = true }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -301,17 +302,26 @@ fun ReceiptReviewSheet(
             ) {
                 OutlinedButton(
                     onClick = { confirmDiscard = true },
+                    enabled = !saving,
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.receipt_review_back)) }
                 Button(
-                    onClick = {
-                        viewModel.savePurchaseBatch(edited.toParsedReceipt(), edited.photoUri?.let(Uri::parse))
-                        onSaved()
-                    },
+                    onClick = onSave,
                     // Una línea con nombre y precio ilegible no se descarta en silencio: se marca y bloquea el guardado.
-                    enabled = lines.isNotEmpty() && lines.none { it.hasInvalidPrice() } && ticketDate != null,
+                    enabled = !saving && lines.isNotEmpty() && lines.none { it.hasInvalidPrice() } && ticketDate != null,
                     modifier = Modifier.weight(1f)
-                ) { Text(stringResource(R.string.receipt_review_save)) }
+                ) {
+                    Text(stringResource(if (saving) R.string.receipt_review_saving else R.string.receipt_review_save))
+                }
+            }
+            // El ticket sigue aquí: si no se guardó, se puede reintentar sin perder nada.
+            if (saveFailed) {
+                Text(
+                    stringResource(R.string.receipt_review_save_failed),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                )
             }
         }
     }

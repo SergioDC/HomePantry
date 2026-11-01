@@ -126,8 +126,39 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
         if (_draft.value != null) _draft.value = draft
     }
 
+    private val _saving = MutableStateFlow(false)
+    val saving: StateFlow<Boolean> = _saving.asStateFlow()
+
+    private val _saveFailed = MutableStateFlow(false)
+    val saveFailed: StateFlow<Boolean> = _saveFailed.asStateFlow()
+
+    /**
+     * Guarda el borrador con [save] y solo lo descarta si ha ido bien; si falla se queda para
+     * reintentar. Corre aquí y no en la hoja: girar el móvil a mitad no deja el ticket a medias
+     * ni lo vuelve a ofrecer ya guardado (lo que acabaría duplicándolo).
+     */
+    fun saveDraft(save: suspend (ParsedReceipt, Uri?) -> Boolean) {
+        val draft = _draft.value ?: return
+        if (_saving.value) return
+        _saving.value = true
+        _saveFailed.value = false
+        viewModelScope.launch {
+            try {
+                if (save(draft.toParsedReceipt(), draft.photoUri?.let(Uri::parse))) {
+                    _draft.value = null
+                } else {
+                    _saveFailed.value = true
+                }
+            } finally {
+                _saving.value = false
+            }
+        }
+    }
+
     /** Se descarta (o ya se ha guardado): el borrador sobra. */
     fun discardDraft() {
+        if (_saving.value) return
         _draft.value = null
+        _saveFailed.value = false
     }
 }

@@ -153,6 +153,8 @@
     <string name="receipt_review_add_line">+ Añadir línea</string>
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>
     <string name="receipt_review_save">Guardar compras</string>
+    <string name="receipt_review_saving">Guardando…</string>
+    <string name="receipt_review_save_failed">No se pudo guardar el ticket. Sigue aquí: inténtalo de nuevo.</string>
     <string name="receipt_review_discard_title">¿Salir sin guardar el ticket?</string>
     <string name="receipt_review_discard_text">Se perderá lo leído del ticket y lo que hayas corregido.</string>
     <string name="receipt_review_discard_confirm">Salir</string>
