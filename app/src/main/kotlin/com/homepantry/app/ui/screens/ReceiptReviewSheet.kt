@@ -1,6 +1,6 @@
 package com.homepantry.app.ui.screens
 
-import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -35,11 +36,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,10 +51,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
-import com.homepantry.app.data.ParsedReceipt
-import com.homepantry.app.data.ParsedReceiptLine
+import com.homepantry.app.data.ReceiptDraftLine
+import com.homepantry.app.data.ReceiptScanDraft
 import com.homepantry.app.data.RECEIPT_UNITS
-import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.knownStores
 import com.homepantry.app.data.parseUserPrice
 import com.homepantry.app.data.unitSuffix
@@ -70,14 +70,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private data class EditableLine(val name: String, val qtyText: String, val unit: String, val priceText: String) {
-    /** Las líneas sin nombre se descartan al guardar; las que tienen nombre necesitan un precio válido. */
-    fun hasInvalidPrice(): Boolean = name.isNotBlank() && parseUserPrice(priceText) == null
-}
-
-private fun formatPrice(price: Double): String =
-    String.format(Locale.forLanguageTag("es-ES"), "%.2f", price)
-
 /**
  * Lista editable de las líneas detectadas en el ticket antes de guardarlas,
  * con el supermercado y la fecha detectados y, por línea, cantidad y unidad.
@@ -85,29 +77,37 @@ private fun formatPrice(price: Double): String =
  * y cada línea en una tarjeta con la franja del color de la tienda.
  * Nada se escribe en Firestore hasta que el usuario pulsa "Guardar
  * compras" (spec "Alcance": revisión obligatoria, sin guardado silencioso).
+ *
+ * Se edita en estado local que arranca de [draft], y cada cambio se pasa con [onDraftChange] al
+ * ViewModel, que lo guarda en disco: así nada se pierde al girar el móvil ni al salir. Salir sin
+ * guardar (botón Volver o atrás) pide confirmación.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceiptReviewSheet(
     viewModel: AppViewModel,
-    initialReceipt: ParsedReceipt,
-    ticketPhotoUri: Uri?,
-    notice: String? = null,
-    onDismiss: () -> Unit
+    draft: ReceiptScanDraft,
+    onDraftChange: (ReceiptScanDraft) -> Unit,
+    onDiscard: () -> Unit,
+    saving: Boolean,
+    saveFailed: Boolean,
+    onSave: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
-    var store by remember(initialReceipt) { mutableStateOf(initialReceipt.store.orEmpty()) }
+    var edited by remember { mutableStateOf(draft) }
+    fun edit(value: ReceiptScanDraft) {
+        edited = value
+        onDraftChange(value)
+    }
+    val store = edited.store
     // Sin fecha leída del ticket se pide elegirla: guardarlo con la de hoy lo mandaría a otro mes.
-    var ticketDate by remember(initialReceipt) { mutableStateOf(initialReceipt.date) }
+    val ticketDate = edited.dateMillis?.let(::Date)
+    val lines = edited.lines
+    fun setLine(index: Int, line: ReceiptDraftLine) =
+        edit(edited.copy(lines = lines.mapIndexed { i, old -> if (i == index) line else old }))
+    var confirmDiscard by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("EEEE d 'de' MMMM yyyy", Locale.forLanguageTag("es-ES")) }
-    val lines = remember(initialReceipt) {
-        mutableStateListOf(
-            *initialReceipt.lines.map {
-                EditableLine(it.name, formatQuantity(it.quantity), it.unit, formatPrice(it.price))
-            }.toTypedArray()
-        )
-    }
     // Autocompletar el supermercado contra los ya usados en compras anteriores.
     val previousStores = remember(state.purchases) { knownStores(state.purchases) }
     val storeSuggestions = remember(store, previousStores) {
@@ -135,6 +135,8 @@ fun ReceiptReviewSheet(
         sheetGesturesEnabled = false,
         properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false)
     ) {
+        // La hoja no se cierra con atrás (ver arriba), pero atrás tampoco debe quedar mudo: pregunta.
+        BackHandler { if (!saving) confirmDiscard = true }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -153,6 +155,7 @@ fun ReceiptReviewSheet(
                 }
                 // Un Snackbar del Scaffold queda detrás de esta hoja modal y caduca
                 // antes de que el usuario la cierre; el aviso va aquí, fijo.
+                val notice = edited.notice
                 if (notice != null) {
                     item(key = "notice") {
                         Surface(
@@ -174,7 +177,7 @@ fun ReceiptReviewSheet(
                     SpendHeaderCard {
                         OutlinedTextField(
                             value = store,
-                            onValueChange = { store = it },
+                            onValueChange = { edit(edited.copy(store = it)) },
                             label = { Text(stringResource(R.string.receipt_review_store)) },
                             leadingIcon = { ColorDot(storeColor) },
                             singleLine = true,
@@ -185,7 +188,7 @@ fun ReceiptReviewSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(8.dp))
-                                    .clickable { store = suggestion }
+                                    .clickable { edit(edited.copy(store = suggestion)) }
                                     .padding(horizontal = 4.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -210,7 +213,7 @@ fun ReceiptReviewSheet(
                         )
                         TicketDateRow(
                             date = ticketDate,
-                            readFromTicket = ticketDate != null && ticketDate == initialReceipt.date,
+                            readFromTicket = edited.dateMillis != null && edited.dateMillis == edited.detectedDateMillis,
                             dateFormat = dateFormat,
                             onClick = { showDatePicker = true }
                         )
@@ -224,11 +227,11 @@ fun ReceiptReviewSheet(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
                                 value = line.name,
-                                onValueChange = { newValue -> lines[index] = line.copy(name = newValue) },
+                                onValueChange = { newValue -> setLine(index, line.copy(name = newValue)) },
                                 label = { Text(stringResource(R.string.receipt_review_name)) },
                                 modifier = Modifier.weight(1f)
                             )
-                            IconButton(onClick = { lines.removeAt(index) }) {
+                            IconButton(onClick = { edit(edited.copy(lines = lines.filterIndexed { i, _ -> i != index })) }) {
                                 Icon(
                                     Icons.Filled.Delete,
                                     contentDescription = stringResource(R.string.receipt_review_delete_line_cd),
@@ -242,18 +245,18 @@ fun ReceiptReviewSheet(
                         ) {
                             OutlinedTextField(
                                 value = line.qtyText,
-                                onValueChange = { newValue -> lines[index] = line.copy(qtyText = newValue) },
+                                onValueChange = { newValue -> setLine(index, line.copy(qtyText = newValue)) },
                                 label = { Text(stringResource(R.string.receipt_review_qty)) },
                                 modifier = Modifier.weight(1f)
                             )
                             UnitField(
                                 unit = line.unit,
-                                onSelected = { newUnit -> lines[index] = line.copy(unit = newUnit) },
+                                onSelected = { newUnit -> setLine(index, line.copy(unit = newUnit)) },
                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
                             )
                             OutlinedTextField(
                                 value = line.priceText,
-                                onValueChange = { newValue -> lines[index] = line.copy(priceText = newValue) },
+                                onValueChange = { newValue -> setLine(index, line.copy(priceText = newValue)) },
                                 label = { Text(stringResource(R.string.receipt_review_price)) },
                                 isError = line.hasInvalidPrice(),
                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
@@ -272,7 +275,7 @@ fun ReceiptReviewSheet(
                 }
                 item(key = "addLine") {
                     OutlinedButton(
-                        onClick = { lines.add(EditableLine("", "1", RECEIPT_UNITS.first(), "")) },
+                        onClick = { edit(edited.copy(lines = lines + ReceiptDraftLine("", "1", RECEIPT_UNITS.first(), ""))) },
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                     ) { Text(stringResource(R.string.receipt_review_add_line)) }
                 }
@@ -298,31 +301,27 @@ fun ReceiptReviewSheet(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 OutlinedButton(
-                    onClick = onDismiss,
+                    onClick = { confirmDiscard = true },
+                    enabled = !saving,
                     modifier = Modifier.weight(1f)
                 ) { Text(stringResource(R.string.receipt_review_back)) }
                 Button(
-                    onClick = {
-                        val parsed = lines.mapNotNull { line ->
-                            val price = parseUserPrice(line.priceText)
-                            if (line.name.isBlank() || price == null) {
-                                null
-                            } else {
-                                // Una cantidad ilegible o no positiva no bloquea el guardado: cuenta como 1.
-                                val quantity = line.qtyText.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: 1.0
-                                ParsedReceiptLine(name = line.name.trim(), price = price, quantity = quantity, unit = line.unit)
-                            }
-                        }
-                        viewModel.savePurchaseBatch(
-                            ParsedReceipt(store = store.trim().ifBlank { null }, lines = parsed, date = ticketDate),
-                            ticketPhotoUri
-                        )
-                        onDismiss()
-                    },
+                    onClick = onSave,
                     // Una línea con nombre y precio ilegible no se descarta en silencio: se marca y bloquea el guardado.
-                    enabled = lines.isNotEmpty() && lines.none { it.hasInvalidPrice() } && ticketDate != null,
+                    enabled = !saving && lines.isNotEmpty() && lines.none { it.hasInvalidPrice() } && ticketDate != null,
                     modifier = Modifier.weight(1f)
-                ) { Text(stringResource(R.string.receipt_review_save)) }
+                ) {
+                    Text(stringResource(if (saving) R.string.receipt_review_saving else R.string.receipt_review_save))
+                }
+            }
+            // El ticket sigue aquí: si no se guardó, se puede reintentar sin perder nada.
+            if (saveFailed) {
+                Text(
+                    stringResource(R.string.receipt_review_save_failed),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 12.dp)
+                )
             }
         }
     }
@@ -331,10 +330,29 @@ fun ReceiptReviewSheet(
         TicketDatePickerDialog(
             initialDay = ticketDate ?: Date(),
             onConfirm = {
-                ticketDate = it
+                edit(edited.copy(dateMillis = it.time))
                 showDatePicker = false
             },
             onDismiss = { showDatePicker = false }
+        )
+    }
+
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            title = { Text(stringResource(R.string.receipt_review_discard_title)) },
+            text = { Text(stringResource(R.string.receipt_review_discard_text)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    onDiscard()
+                }) { Text(stringResource(R.string.receipt_review_discard_confirm), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDiscard = false }) {
+                    Text(stringResource(R.string.receipt_review_discard_keep))
+                }
+            }
         )
     }
 }

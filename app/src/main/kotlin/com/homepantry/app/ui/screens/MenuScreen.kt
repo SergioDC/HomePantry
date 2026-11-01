@@ -2,6 +2,8 @@ package com.homepantry.app.ui.screens
 
 import android.Manifest
 import android.net.Uri
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -52,6 +54,7 @@ import com.homepantry.app.data.monthLabel
 import com.homepantry.app.data.weekDays
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.ComedorMessages
+import com.homepantry.app.ui.components.GeminiReadingExitDialog
 import com.homepantry.app.ui.MenuViewModel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -106,6 +109,25 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     )
     // La comprobación del comedor puede haber dejado un borrador en disco con la app abierta.
     LaunchedEffect(Unit) { menuViewModel.reloadImportDraft() }
+
+    // Salir mientras Gemini lee no pierde nada (la lectura sigue en el ViewModel), pero se avisa.
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+    var confirmLeaveWhileReading by remember { mutableStateOf(false) }
+    var leavingWhileReading by remember { mutableStateOf(false) }
+    BackHandler(enabled = importing && !leavingWhileReading) { confirmLeaveWhileReading = true }
+    if (confirmLeaveWhileReading) {
+        GeminiReadingExitDialog(
+            onExit = {
+                confirmLeaveWhileReading = false
+                leavingWhileReading = true
+            },
+            onDismiss = { confirmLeaveWhileReading = false }
+        )
+    }
+    // Ya desactivado este BackHandler (tras recomponer), se repite el atrás para que haga lo de siempre.
+    LaunchedEffect(leavingWhileReading) {
+        if (leavingWhileReading) backDispatcher?.onBackPressed()
+    }
 
     fun processImportPhoto(uri: Uri) {
         menuViewModel.readMenuPhoto(
