@@ -43,6 +43,7 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.homepantry.app.R
 import com.homepantry.app.data.GeminiApiKeyStore
+import com.homepantry.app.data.UserPrefs
 import com.homepantry.app.data.WeekShare
 import com.homepantry.app.data.createReceiptCaptureUri
 import com.homepantry.app.data.dayLabel
@@ -50,6 +51,7 @@ import com.homepantry.app.data.knownPeople
 import com.homepantry.app.data.monthLabel
 import com.homepantry.app.data.weekDays
 import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.ComedorMessages
 import com.homepantry.app.ui.MenuViewModel
 import java.time.LocalDate
 import java.time.YearMonth
@@ -92,6 +94,18 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
     val noKeyMessage = stringResource(R.string.menu_import_no_key)
     val emptyMenuMessage = stringResource(R.string.menu_import_empty)
     val captureLostMessage = stringResource(R.string.menu_import_capture_lost)
+
+    val comedorMessages = ComedorMessages(
+        noKey = noKeyMessage,
+        empty = emptyMenuMessage,
+        network = stringResource(R.string.menu_import_comedor_network),
+        changed = stringResource(R.string.menu_import_comedor_changed),
+        stale = { month ->
+            resources.getString(R.string.menu_import_comedor_stale, monthLabel(month))
+        }
+    )
+    // La comprobación del comedor puede haber dejado un borrador en disco con la app abierta.
+    LaunchedEffect(Unit) { menuViewModel.reloadImportDraft() }
 
     fun processImportPhoto(uri: Uri) {
         menuViewModel.readMenuPhoto(
@@ -193,7 +207,18 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
         AlertDialog(
             onDismissRequest = { showImportSource = false },
             title = { Text(stringResource(R.string.menu_import_action)) },
-            text = null,
+            text = {
+                TextButton(onClick = {
+                    showImportSource = false
+                    menuViewModel.readComedorMenu(
+                        context = context,
+                        apiKeyStore = apiKeyStore,
+                        prefs = UserPrefs(context),
+                        today = LocalDate.now(),
+                        messages = comedorMessages
+                    )
+                }) { Text(stringResource(R.string.menu_import_dialog_comedor)) }
+            },
             confirmButton = {
                 TextButton(onClick = {
                     showImportSource = false

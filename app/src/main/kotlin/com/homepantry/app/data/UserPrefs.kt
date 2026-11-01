@@ -20,6 +20,7 @@ class UserPrefs(private val context: Context) {
     private val userNameKey = stringPreferencesKey("user_name")
     // Lista separada por comas: los ids de Firestore no llevan comas y así el orden se conserva.
     private val notifiedOfferIdsKey = stringPreferencesKey("notified_offer_ids")
+    private val comedorFingerprintKey = stringPreferencesKey("comedor_pdf_fingerprint")
 
     val householdCode: Flow<String?> = context.dataStore.data.map { it[householdCodeKey] }
     val userName: Flow<String?> = context.dataStore.data.map { it[userNameKey] }
@@ -43,6 +44,13 @@ class UserPrefs(private val context: Context) {
             val ids = prefs[notifiedOfferIdsKey]?.split(',')?.filter { it.isNotBlank() }.orEmpty()
             prefs[notifiedOfferIdsKey] = (ids - id + id).takeLast(MAX_NOTIFIED_IDS).joinToString(",")
         }
+    }
+
+    /** Huella del último PDF del comedor leído con Gemini, para no volver a leer el mismo. */
+    val comedorFingerprint: Flow<String?> = context.dataStore.data.map { it[comedorFingerprintKey] }
+
+    suspend fun saveComedorFingerprint(value: String) {
+        context.dataStore.edit { it[comedorFingerprintKey] = value }
     }
 
     /** Borra el código de casa guardado -- MainActivity reacciona mostrando JoinHouseholdScreen. */

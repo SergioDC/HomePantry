@@ -1,6 +1,7 @@
 package com.homepantry.app.data
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import com.google.gson.Gson
 import com.google.gson.JsonParseException
@@ -76,8 +77,14 @@ internal fun mapGeminiMenuText(outputText: String): ParsedMenu {
 }
 
 /** Manda la foto de un menú mensual a Gemini y devuelve el menú ya estructurado y limpio. */
-suspend fun recognizeMenuWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedMenu {
-    val base64Image = encodePhotoForGemini(context, imageUri, "del menú")
+suspend fun recognizeMenuWithGemini(context: Context, imageUri: Uri, apiKey: String, model: String): ParsedMenu =
+    recognizeMenuJpeg(encodePhotoForGemini(context, imageUri, "del menú"), apiKey, model)
+
+/** Lo mismo con una imagen ya en memoria: la página del PDF del comedor. */
+suspend fun recognizeMenuBitmapWithGemini(bitmap: Bitmap, apiKey: String, model: String): ParsedMenu =
+    recognizeMenuJpeg(encodeBitmapForGemini(bitmap), apiKey, model)
+
+private suspend fun recognizeMenuJpeg(base64Image: String, apiKey: String, model: String): ParsedMenu {
     val request = GeminiInteractionRequest(
         model = model,
         input = listOf(

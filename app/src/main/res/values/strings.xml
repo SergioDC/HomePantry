@@ -306,10 +306,14 @@
     <string name="menu_duplicate_merge">Combinar</string>
     <string name="menu_duplicate_done">Semana duplicada</string>
     <string name="menu_share_chooser">Compartir menú</string>
-    <string name="menu_import_action">Importar menú desde foto</string>
+    <string name="menu_import_action">Importar menú</string>
     <string name="menu_import_dialog_camera">Sacar foto</string>
     <string name="menu_import_dialog_gallery">Elegir de galería</string>
-    <string name="menu_import_no_key">Para importar el menú desde una foto hace falta tu clave de Gemini. Añádela en Ajustes, en «Interpretación de tickets con IA».</string>
+    <string name="menu_import_dialog_comedor">Menú del comedor</string>
+    <string name="menu_import_comedor_network">No se pudo descargar el menú del comedor. Comprueba la conexión.</string>
+    <string name="menu_import_comedor_changed">La web del comedor ha cambiado y no se puede leer el menú.</string>
+    <string name="menu_import_comedor_stale">El comedor aún no ha publicado el menú nuevo (sigue el de %1$s).</string>
+    <string name="menu_import_no_key">Para importar el menú hace falta tu clave de Gemini. Añádela en Ajustes, en «Interpretación de tickets con IA».</string>
     <string name="menu_import_empty">No he encontrado platos en la foto. Prueba con mejor luz o con la foto entera del menú.</string>
     <string name="menu_import_capture_lost">Se perdió la foto capturada. Vuelve a intentarlo.</string>
     <string name="menu_import_title">Revisa el menú</string>
@@ -526,6 +530,10 @@
     <string name="notification_added">añadida</string>
     <string name="offers_channel_name">Ofertas</string>
     <string name="offers_channel_description">Ofertas de Lidl y Aldi en cosas que soléis comprar</string>
+    <string name="comedor_channel_name">Menú del comedor</string>
+    <string name="comedor_channel_description">Aviso cuando se publica el menú del comedor del mes</string>
+    <string name="comedor_notification_title">Menú del comedor de %1$s listo para revisar</string>
+    <string name="comedor_notification_text">Tócalo para revisarlo e importarlo.</string>
     <plurals name="notification_add_button">
         <item quantity="one">Añadir %d a la lista</item>
         <item quantity="other">Añadir %d a la lista</item>
