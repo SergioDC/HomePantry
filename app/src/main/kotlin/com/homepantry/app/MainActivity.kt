@@ -61,6 +61,8 @@ import com.homepantry.app.data.ItemsRepository
 import com.homepantry.app.data.MealEntriesRepository
 import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.MenuImportDraftStore
+import com.homepantry.app.data.ReceiptScanDraftStore
+import com.homepantry.app.data.receiptScanDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
@@ -76,6 +78,7 @@ import com.homepantry.app.data.initialOffersCheck
 import com.homepantry.app.data.isValidNotificationId
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.BottomNavBar
@@ -313,6 +316,21 @@ fun ListaDeLaCasaApp(
         }
     )
 
+    // Lectura de tickets y su borrador: a nivel de actividad, para que sobrevivan a salir de Gastos.
+    val receiptScanViewModel: ReceiptScanViewModel = viewModel(
+        key = "receiptScan-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return ReceiptScanViewModel(
+                        ReceiptScanDraftStore(receiptScanDraftFile(context.applicationContext.filesDir, code))
+                    ) as T
+                }
+            }
+        }
+    )
+
     val notificationsViewModel: NotificationsViewModel = viewModel(
         key = "notifications-$code",
         factory = remember(code) {
@@ -499,6 +517,7 @@ fun ListaDeLaCasaApp(
             composable("purchaseHistory") {
                 PurchaseHistoryScreen(
                     viewModel = viewModel,
+                    scanViewModel = receiptScanViewModel,
                     geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
                     onOpenTicket = { ticketKey ->

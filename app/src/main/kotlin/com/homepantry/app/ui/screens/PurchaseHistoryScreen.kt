@@ -2,6 +2,7 @@ package com.homepantry.app.ui.screens
 
 import android.Manifest
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,24 +73,21 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberPermissionState
 import com.homepantry.app.R
 import com.homepantry.app.data.GeminiApiKeyStore
-import com.homepantry.app.data.GeminiReceiptException
-import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.StoreSpend
 import com.homepantry.app.data.Ticket
 import com.homepantry.app.data.createReceiptCaptureUri
-import com.homepantry.app.data.detectReceiptDate
 import com.homepantry.app.data.lastMonthsSpend
 import com.homepantry.app.data.monthStart
 import com.homepantry.app.data.monthSummary
-import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.purchasesOfStore
-import com.homepantry.app.data.recognizeReceiptTextLines
-import com.homepantry.app.data.recognizeReceiptWithGemini
 import com.homepantry.app.data.spendByStore
 import com.homepantry.app.data.storeOverview
 import com.homepantry.app.data.storeShares
 import com.homepantry.app.data.ticketsByMonth
 import com.homepantry.app.ui.AppViewModel
+import com.homepantry.app.ui.ReceiptScanMessages
+import com.homepantry.app.ui.ReceiptScanViewModel
+import com.homepantry.app.ui.components.GeminiReadingExitDialog
 import com.homepantry.app.ui.components.ColorDot
 import com.homepantry.app.ui.components.DeleteTicketDialog
 import com.homepantry.app.ui.components.MonthHeader
@@ -128,6 +126,7 @@ private const val ALL_MONTHS = "all"
 @Composable
 fun PurchaseHistoryScreen(
     viewModel: AppViewModel,
+    scanViewModel: ReceiptScanViewModel,
     geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
     onOpenTicket: (String) -> Unit,
@@ -141,61 +140,30 @@ fun PurchaseHistoryScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
-    var reviewReceipt by remember { mutableStateOf<ParsedReceipt?>(null) }
-    var reviewPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var reviewNotice by remember { mutableStateOf<String?>(null) }
-    var processingOcr by remember { mutableStateOf(false) }
+    // La lectura y el borrador viven en el ViewModel: sobreviven a girar el móvil y a salir.
+    val processingOcr by scanViewModel.scanning.collectAsState()
+    val reviewDraft by scanViewModel.draft.collectAsState()
     var showScanDialog by remember { mutableStateOf(false) }
+    var confirmLeaveWhileReading by remember { mutableStateOf(false) }
 
     fun processReceiptUri(uri: Uri) {
-        processingOcr = true
-        scope.launch {
-            val apiKey = geminiApiKeyStore.getApiKey()
-            var parsed = ParsedReceipt(store = null, lines = emptyList())
-            var geminiFailureReason: String? = null
-            var usedClassicAfterGeminiFailure = false
-
-            if (apiKey != null) {
-                val model = geminiApiKeyStore.getModel()
-                val geminiResult = runCatching { recognizeReceiptWithGemini(context, uri, apiKey, model) }
-                val geminiReceipt = geminiResult.getOrNull()
-                if (geminiReceipt != null) {
-                    parsed = geminiReceipt
-                } else {
-                    val failure = geminiResult.exceptionOrNull()
-                    geminiFailureReason = (failure as? GeminiReceiptException)?.message ?: failure?.message ?: "error desconocido"
-                    usedClassicAfterGeminiFailure = true
-                }
-            }
-
-            var classicFailed = false
-            if (apiKey == null || usedClassicAfterGeminiFailure) {
-                val ocrResult = runCatching { recognizeReceiptTextLines(context, uri) }
-                classicFailed = ocrResult.isFailure
-                val textLines = ocrResult.getOrDefault(emptyList())
-                parsed = ParsedReceipt(
-                    store = null,
-                    lines = parseReceiptLines(textLines),
-                    date = detectReceiptDate(textLines, Date())
-                )
-            }
-
-            processingOcr = false
-
-            // Estos avisos se muestran dentro de la hoja de revisión, no como
-            // Snackbar: la hoja es modal y taparía (y haría caducar) el snackbar.
-            reviewNotice = when {
-                usedClassicAfterGeminiFailure ->
-                    resources.getString(R.string.purchase_history_gemini_fallback, geminiFailureReason)
-                classicFailed -> resources.getString(R.string.purchase_history_ocr_error)
-                parsed.lines.isEmpty() -> resources.getString(R.string.purchase_history_ocr_empty)
-                else -> null
-            }
-
-            reviewReceipt = parsed
-            reviewPhotoUri = uri
-        }
+        scanViewModel.scanReceipt(
+            context = context,
+            uri = uri,
+            apiKeyStore = geminiApiKeyStore,
+            messages = ReceiptScanMessages(
+                geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
+                ocrError = resources.getString(R.string.purchase_history_ocr_error),
+                ocrEmpty = resources.getString(R.string.purchase_history_ocr_empty)
+            )
+        )
     }
+
+    // Salir mientras se lee no pierde nada, pero se avisa de que la revisión espera aquí.
+    fun requestBack() {
+        if (processingOcr) confirmLeaveWhileReading = true else onBack()
+    }
+    BackHandler(enabled = processingOcr) { confirmLeaveWhileReading = true }
 
     val takePicture = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = pendingCaptureUri
@@ -245,7 +213,7 @@ fun PurchaseHistoryScreen(
             TopAppBar(
                 title = { Text(stringResource(R.string.purchase_history_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = ::requestBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
                     }
                 }
@@ -308,18 +276,23 @@ fun PurchaseHistoryScreen(
         )
     }
 
-    val receipt = reviewReceipt
-    if (receipt != null) {
+    reviewDraft?.let { draft ->
         ReceiptReviewSheet(
             viewModel = viewModel,
-            initialReceipt = receipt,
-            ticketPhotoUri = reviewPhotoUri,
-            notice = reviewNotice,
-            onDismiss = {
-                reviewReceipt = null
-                reviewPhotoUri = null
-                reviewNotice = null
-            }
+            draft = draft,
+            onDraftChange = scanViewModel::updateDraft,
+            onDiscard = scanViewModel::discardDraft,
+            onSaved = scanViewModel::discardDraft
+        )
+    }
+
+    if (confirmLeaveWhileReading) {
+        GeminiReadingExitDialog(
+            onExit = {
+                confirmLeaveWhileReading = false
+                onBack()
+            },
+            onDismiss = { confirmLeaveWhileReading = false }
         )
     }
 }
