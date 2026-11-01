@@ -18,3 +18,7 @@ tools/offers/node_modules/
 
 # Credenciales locales del script de ofertas (cuenta de servicio, API key, código de casa): nunca al repo
 docs/secrets/
+
+# Caché de la CLI de Firebase y restos de las sesiones de diseño (superpowers)
+.firebase/
+.superpowers/
