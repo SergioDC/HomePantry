@@ -67,7 +67,7 @@ internal fun mapNamerOutput(text: String): Map<String, ProductProposal> {
         if (rawName.isNullOrEmpty() || productName.isNullOrEmpty()) {
             null
         } else {
-            rawName to ProductProposal(productName, geminiPack(entry.packSize, entry.packUnit))
+            rawName to ProductProposal(productName, splitPackSize(rawName).pack ?: geminiPack(entry.packSize, entry.packUnit))
         }
     }.toMap()
 }

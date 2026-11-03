@@ -13,10 +13,10 @@ data class SplitName(val name: String, val pack: PackSize?)
 
 /**
  * Un tamaño suelto dentro del nombre ("300GR", "1,5 L", "33CL", "6X1L"). Los bordes impiden que
- * "4" en "PILAS AA 4" o una "L" de una palabra cuenten como tamaño.
+ * "4" en "PILAS AA 4" o una "L" de una palabra cuenten como tamaño, y que "1/2 KG" se lea como 2 kg.
  */
 private val PACK_SIZE = Regex(
-    """(?<![\p{L}\d])(?:(\d+)\s*[xX]\s*)?(\d+(?:[.,]\d+)?)\s*(kgs?|grs?|g|lt|l|cl|ml)(?![\p{L}\d])""",
+    """(?<![\p{L}\d/])(?:(\d+)\s*[xX]\s*)?(\d+(?:[.,]\d+)?)\s*(kgs?|grs?|g|lt|l|cl|ml)(?![\p{L}\d])""",
     RegexOption.IGNORE_CASE
 )
 

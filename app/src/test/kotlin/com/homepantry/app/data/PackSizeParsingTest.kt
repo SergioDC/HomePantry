@@ -54,4 +54,7 @@ class PackSizeParsingTest {
         assertEquals("1,5" to "L", packDisplay(PackSize(1.5, "L")))
         assertEquals("330" to "ML", packDisplay(PackSize(0.33, "L")))
     }
+
+    @Test fun `fraction before a unit is not read as a size`() =
+        assertNull(splitPackSize("PAN 1/2 KG").pack)
 }

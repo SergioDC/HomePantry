@@ -139,4 +139,17 @@ class ProductNormalizationLogicTest {
     @Test fun `namer broken json throws`() {
         assertThrows(GeminiResponseException::class.java) { mapNamerOutput("{\"products\":[") }
     }
+
+    @Test fun `rows are refreshed against current purchases before applying`() {
+        val rows = rowsFromProposals(
+            listOf(p("1", "PAN"), p("2", "PAN"), p("3", "LECHE")),
+            listOf("PAN", "LECHE"),
+            mapOf("PAN" to ProductProposal("Pan", null), "LECHE" to ProductProposal("Leche entera", null))
+        )
+        // La compra 2 se borró y la 3 ya se normalizó por otro lado.
+        val current = listOf(p("1", "PAN"), p("3", "LECHE", product = "Leche"))
+        val refreshed = refreshRows(rows, current)
+        assertEquals(listOf("PAN"), refreshed.map { it.rawName })
+        assertEquals(listOf("1"), refreshed.single().purchases.map { it.id })
+    }
 }

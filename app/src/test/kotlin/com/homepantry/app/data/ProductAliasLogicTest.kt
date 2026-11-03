@@ -56,4 +56,30 @@ class ProductAliasLogicTest {
 
     @Test fun `no alias for a name that is only a size`() =
         assertNull(aliasForCorrection("500G", ProductProposal("", null), ProductProposal("Harina", null)))
+
+    @Test fun `a name correction keeps the remembered pack`() {
+        val existing = ProductAlias(id = "k", productName = "Arándano", packKnown = true, packSize = 0.3, packUnit = "KG")
+        val merged = keepRememberedPack(ProductAlias(id = "k", productName = "Arándanos"), existing)
+        assertEquals("Arándanos", merged.productName)
+        assertTrue(merged.packKnown)
+        assertEquals(0.3, merged.packSize!!, 0.0)
+    }
+
+    @Test fun `an explicit pack correction replaces the remembered one`() {
+        val existing = ProductAlias(id = "k", productName = "Leche", packKnown = true, packSize = 1.0, packUnit = "L")
+        val merged = keepRememberedPack(ProductAlias(id = "k", productName = "Leche", packKnown = true), existing)
+        assertNull(merged.packSize)
+    }
+
+    @Test fun `editing an old line without touching the name keeps it unnormalized`() {
+        val old = Purchase(rawName = "ARANDANO 300GR", price = 2.5)
+        assertEquals("", editedProductName(old, "ARANDANO 300GR"))
+        assertEquals("Arándanos", editedProductName(old, "Arándanos"))
+        assertNull(aliasForEdit(old, old.copy(price = 3.0, packSize = 0.3, packUnit = "KG")))
+    }
+
+    @Test fun `editing a normalized line remembers the correction`() {
+        val line = Purchase(rawName = "ARAND. CULTIVADO", productName = "Arándano")
+        assertEquals("Arándanos", aliasForEdit(line, line.copy(productName = "Arándanos"))!!.productName)
+    }
 }

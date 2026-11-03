@@ -55,6 +55,7 @@ import com.homepantry.app.R
 import com.homepantry.app.data.PackSize
 import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.displayName
+import com.homepantry.app.data.editedProductName
 import com.homepantry.app.data.packDisplay
 import com.homepantry.app.data.toPackSize
 import com.homepantry.app.data.RECEIPT_UNITS
@@ -382,7 +383,7 @@ private fun EditPurchaseDialog(
                     val pack = if (unit == com.homepantry.app.data.Unit.UD.name) toPackSize(packText, packUnit) else null
                     onSave(
                         purchase.copy(
-                            productName = name.trim(),
+                            productName = editedProductName(purchase, name),
                             packSize = pack?.amount,
                             packUnit = pack?.unit,
                             quantity = quantity,

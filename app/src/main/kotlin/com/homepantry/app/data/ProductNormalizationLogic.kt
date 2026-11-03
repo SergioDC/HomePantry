@@ -140,3 +140,15 @@ fun mergePlan(
         }
     return updates to newAliases
 }
+
+/**
+ * Las filas se prepararon con las compras de entonces: antes de aplicar se quitan las compras
+ * borradas o ya normalizadas desde entonces (otro miembro, unir, editar), para no pisarlas ni
+ * fallar al actualizar un documento que ya no existe.
+ */
+fun refreshRows(rows: List<NormalizationRow>, purchases: List<Purchase>): List<NormalizationRow> {
+    val current = purchases.associateBy { it.id }
+    return rows.map { row ->
+        row.copy(purchases = row.purchases.mapNotNull { current[it.id] }.filter { it.productName.isBlank() })
+    }.filter { it.purchases.isNotEmpty() }
+}

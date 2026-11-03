@@ -12,6 +12,7 @@ import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.applyPlan
 import com.homepantry.app.data.nameProductsWithGemini
 import com.homepantry.app.data.pendingRawNames
+import com.homepantry.app.data.refreshRows
 import com.homepantry.app.data.rowsFromProposals
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,9 +90,13 @@ class ProductNormalizationViewModel : ViewModel() {
     }
 
     /** Guarda las filas marcadas con [save]; solo vacía la revisión si ha ido bien. */
-    fun apply(save: suspend (List<ProductFieldsUpdate>, List<ProductAlias>) -> Boolean, onDone: () -> Unit) {
+    fun apply(
+        currentPurchases: List<Purchase>,
+        save: suspend (List<ProductFieldsUpdate>, List<ProductAlias>) -> Boolean,
+        onDone: () -> Unit
+    ) {
         if (_applying.value || _loading.value) return
-        val (updates, aliases) = applyPlan(_rows.value)
+        val (updates, aliases) = applyPlan(refreshRows(_rows.value, currentPurchases))
         if (updates.isEmpty()) return
         _applying.value = true
         viewModelScope.launch {

@@ -157,7 +157,7 @@ fun ProductNormalizationScreen(
             }
             HorizontalDivider()
             Button(
-                onClick = { normalizationViewModel.apply(viewModel::applyProductUpdates, onBack) },
+                onClick = { normalizationViewModel.apply(state.purchases, viewModel::applyProductUpdates, onBack) },
                 enabled = !loading && !applying && rows.any { it.selected },
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) { Text(stringResource(R.string.normalize_apply)) }

@@ -160,8 +160,8 @@ internal fun mapGeminiOutputText(outputText: String, today: java.util.Date = jav
                 quantity = product.quantity?.takeIf { it > 0 } ?: 1.0,
                 unit = product.unit?.trim()?.uppercase()?.takeIf { it in RECEIPT_UNITS } ?: Unit.UD.name,
                 productName = product.productName?.trim().orEmpty(),
-                // Si Gemini no da el envase, el tamaño impreso en el nombre vale igual.
-                pack = geminiPack(product.packSize, product.packUnit) ?: splitPackSize(name).pack
+                // El tamaño impreso manda (Gemini a veces da el de una sola pieza de un multipack); si no hay, el de Gemini.
+                pack = splitPackSize(name).pack ?: geminiPack(product.packSize, product.packUnit)
             )
         }
     }

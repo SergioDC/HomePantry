@@ -9,6 +9,13 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GeminiReceiptRecognizerTest {
+    @Test fun `printed multipack size wins over gemini`() {
+        val line = mapGeminiOutputText(
+            """{"products":[{"name":"LECHE ENTERA 6X1L","price":6.0,"productName":"Leche entera","packSize":1,"packUnit":"L"}]}"""
+        ).lines.single()
+        assertEquals(PackSize(6.0, "L"), line.pack)
+    }
+
     @Test fun `maps product name and pack`() {
         val line = mapGeminiOutputText(
             """{"products":[{"name":"ARANDANO 300GR","price":2.5,"productName":"Arándanos","packSize":0.3,"packUnit":"KG"}]}"""

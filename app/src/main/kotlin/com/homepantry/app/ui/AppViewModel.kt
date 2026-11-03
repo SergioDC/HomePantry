@@ -16,7 +16,8 @@ import com.homepantry.app.data.ProductAlias
 import com.homepantry.app.data.ProductFieldsUpdate
 import com.homepantry.app.data.mergePlan
 import com.homepantry.app.data.ProductProposal
-import com.homepantry.app.data.aliasForCorrection
+import com.homepantry.app.data.aliasForEdit
+import com.homepantry.app.data.keepRememberedPack
 import com.homepantry.app.data.displayName
 import com.homepantry.app.data.productKey
 import com.homepantry.app.data.ProductAliasesRepository
@@ -184,7 +185,9 @@ class AppViewModel(
         if (aliases.isEmpty()) return
         viewModelScope.launch {
             try {
-                productAliasesRepository.saveAliases(aliases)
+                // Corregir solo el nombre no borra el envase que la casa ya recordaba.
+                val known = _state.value.productAliases
+                productAliasesRepository.saveAliases(aliases.map { keepRememberedPack(it, known[it.id]) })
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -377,10 +380,7 @@ class AppViewModel(
         runCatching { purchasesRepository.updatePurchase(normalized) }
             .onSuccess {
                 // Corregir el nombre o el envase de una compra también enseña a la casa para el próximo ticket.
-                if (previous != null) {
-                    aliasForCorrection(purchase.rawName, previous.proposal(), purchase.proposal())
-                        ?.let { saveAliases(listOf(it)) }
-                }
+                if (previous != null) aliasForEdit(previous, purchase)?.let { saveAliases(listOf(it)) }
             }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
     }
@@ -408,15 +408,6 @@ class AppViewModel(
         val current = _state.value
         val (updates, aliases) = mergePlan(current.purchases, normalizedNames, finalName, current.productAliases)
         viewModelScope.launch { applyProductUpdates(updates, aliases) }
-    }
-
-    private fun Purchase.proposal(): ProductProposal {
-        val size = packSize
-        val unit = packUnit
-        return ProductProposal(
-            displayName(),
-            if (size != null && size > 0 && unit != null) PackSize(size, unit) else null
-        )
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
