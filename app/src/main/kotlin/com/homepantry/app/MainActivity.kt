@@ -79,6 +79,7 @@ import com.homepantry.app.data.initialOffersCheck
 import com.homepantry.app.data.isValidNotificationId
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
+import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
@@ -100,6 +101,7 @@ import com.homepantry.app.ui.screens.MenuScreen
 import com.homepantry.app.ui.screens.NotificationDetailScreen
 import com.homepantry.app.ui.screens.NotificationsScreen
 import com.homepantry.app.ui.screens.PurchaseDetailScreen
+import com.homepantry.app.ui.screens.ProductNormalizationScreen
 import com.homepantry.app.ui.screens.PurchaseHistoryScreen
 import com.homepantry.app.ui.screens.PurchaseProductsScreen
 import com.homepantry.app.ui.screens.PurchaseTicketDetailScreen
@@ -318,6 +320,9 @@ fun ListaDeLaCasaApp(
         }
     )
 
+    // Normalización del histórico: a nivel de actividad, para no perder lo que propuso Gemini.
+    val productNormalizationViewModel: ProductNormalizationViewModel = viewModel(key = "productNormalization-$code")
+
     // Lectura de tickets y su borrador: a nivel de actividad, para que sobrevivan a salir de Gastos.
     val receiptScanViewModel: ReceiptScanViewModel = viewModel(
         key = "receiptScan-$code",
@@ -526,7 +531,16 @@ fun ListaDeLaCasaApp(
                         navController.navigate("purchaseTicket/${Uri.encode(ticketKey)}")
                     },
                     onOpenProducts = { navController.navigate("purchaseProducts") },
-                    onOpenStats = { navController.navigate("purchaseStats") }
+                    onOpenStats = { navController.navigate("purchaseStats") },
+                    onOpenNormalize = { navController.navigate("purchaseNormalize") }
+                )
+            }
+            composable("purchaseNormalize") {
+                ProductNormalizationScreen(
+                    viewModel = viewModel,
+                    normalizationViewModel = productNormalizationViewModel,
+                    geminiApiKeyStore = geminiApiKeyStore,
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable("purchaseProducts") {

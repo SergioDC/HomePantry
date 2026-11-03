@@ -13,6 +13,7 @@ import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.PackSize
 import com.homepantry.app.data.ProductAlias
+import com.homepantry.app.data.ProductFieldsUpdate
 import com.homepantry.app.data.ProductProposal
 import com.homepantry.app.data.aliasForCorrection
 import com.homepantry.app.data.displayName
@@ -381,6 +382,23 @@ class AppViewModel(
                 }
             }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /**
+     * Cambia en bloque el nombre genérico (y el envase) de muchas compras y guarda los alias que
+     * lo acompañan. @return false si no se pudieron escribir las compras (con el error publicado).
+     */
+    suspend fun applyProductUpdates(updates: List<ProductFieldsUpdate>, aliases: List<ProductAlias>): Boolean {
+        return try {
+            purchasesRepository.updateProductFields(updates)
+            saveAliases(aliases)
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(error = e.message)
+            false
+        }
     }
 
     private fun Purchase.proposal(): ProductProposal {

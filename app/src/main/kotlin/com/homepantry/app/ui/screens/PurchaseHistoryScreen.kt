@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.AlertDialog
@@ -131,7 +132,8 @@ fun PurchaseHistoryScreen(
     onBack: () -> Unit,
     onOpenTicket: (String) -> Unit,
     onOpenProducts: () -> Unit,
-    onOpenStats: () -> Unit
+    onOpenStats: () -> Unit,
+    onOpenNormalize: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -218,6 +220,14 @@ fun PurchaseHistoryScreen(
                 navigationIcon = {
                     IconButton(onClick = ::requestBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                },
+                actions = {
+                    // Solo mientras quedan compras antiguas sin nombre genérico.
+                    if (state.purchases.any { it.productName.isBlank() }) {
+                        IconButton(onClick = onOpenNormalize) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = stringResource(R.string.normalize_title))
+                        }
                     }
                 }
             )
