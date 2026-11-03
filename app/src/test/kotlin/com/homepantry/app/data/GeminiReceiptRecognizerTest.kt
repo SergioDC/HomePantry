@@ -9,6 +9,29 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class GeminiReceiptRecognizerTest {
+    @Test fun `maps product name and pack`() {
+        val line = mapGeminiOutputText(
+            """{"products":[{"name":"ARANDANO 300GR","price":2.5,"productName":"Arándanos","packSize":0.3,"packUnit":"KG"}]}"""
+        ).lines.single()
+        assertEquals("Arándanos", line.productName)
+        assertEquals(PackSize(0.3, "KG"), line.pack)
+    }
+
+    @Test fun `invalid pack is dropped`() {
+        val lines = mapGeminiOutputText(
+            """{"products":[{"name":"X","price":1.0,"productName":"X","packSize":0,"packUnit":"KG"},""" +
+                """{"name":"Y","price":1.0,"packSize":1,"packUnit":"UD"}]}"""
+        ).lines
+        assertNull(lines[0].pack)
+        assertNull(lines[1].pack)
+    }
+
+    @Test fun `missing pack falls back to the printed size`() {
+        val line = mapGeminiOutputText("""{"products":[{"name":"ARANDANO 300GR","price":2.5}]}""").lines.single()
+        assertEquals("", line.productName)
+        assertEquals(PackSize(0.3, "KG"), line.pack)
+    }
+
     @Test fun `maps a well-formed products JSON to parsed lines`() {
         val json = """{"products":[{"name":"TOMATE RAMA","price":1.5},{"name":"LECHE ENTERA","price":0.89}]}"""
         assertEquals(

@@ -40,7 +40,25 @@ class GeminiServerException(code: Int, detail: String?) : GeminiReceiptException
 
 private val geminiGson = Gson()
 
-private data class GeminiProduct(val name: String?, val price: Double?, val quantity: Double?, val unit: String?)
+private data class GeminiProduct(
+    val name: String?,
+    val price: Double?,
+    val quantity: Double?,
+    val unit: String?,
+    val productName: String? = null,
+    val packSize: Double? = null,
+    val packUnit: String? = null
+)
+
+/** Envase que devuelve Gemini, solo si es válido (> 0, en KG o L); null si no. */
+internal fun geminiPack(size: Double?, unit: String?): PackSize? {
+    val packUnit = unit?.trim()?.uppercase()
+    return if (size != null && size > 0 && (packUnit == Unit.KG.name || packUnit == Unit.L.name)) {
+        PackSize(size, packUnit)
+    } else {
+        null
+    }
+}
 private data class GeminiProductsPayload(val store: String?, val date: String?, val products: List<GeminiProduct>?)
 
 /**
@@ -140,7 +158,10 @@ internal fun mapGeminiOutputText(outputText: String, today: java.util.Date = jav
                 name = name,
                 price = price,
                 quantity = product.quantity?.takeIf { it > 0 } ?: 1.0,
-                unit = product.unit?.trim()?.uppercase()?.takeIf { it in RECEIPT_UNITS } ?: Unit.UD.name
+                unit = product.unit?.trim()?.uppercase()?.takeIf { it in RECEIPT_UNITS } ?: Unit.UD.name,
+                productName = product.productName?.trim().orEmpty(),
+                // Si Gemini no da el envase, el tamaño impreso en el nombre vale igual.
+                pack = geminiPack(product.packSize, product.packUnit) ?: splitPackSize(name).pack
             )
         }
     }
@@ -181,6 +202,13 @@ private val RECEIPT_PROMPT = """
       ("2 x 1,25" es quantity 2 y unit UD; "0,850 kg x 3,99 €/kg" es
       quantity 0.85 y unit KG; los líquidos por litros, unit L). Si el
       ticket no lo indica, quantity 1 y unit UD.
+    - productName: el nombre genérico del producto en español, tipo y
+      variedad, sin marca ni tamaño ni formato, con la primera letra en
+      mayúscula ("ARANDANO 300GR" → "Arándanos", "LECHE ENT. HACENDADO 1L"
+      → "Leche entera", "LECHE SEMI PASCUAL" → "Leche semidesnatada").
+    - packSize y packUnit: el peso o volumen de UNA unidad cuando el nombre
+      impreso lo indica, en KG o L ("300GR" → 0.3 KG, "1,5L" → 1.5 L,
+      "6X1L" → 6 L); omítelos si no aparece.
     Devuelve además store: el nombre del supermercado o cadena que aparece en
     la cabecera del ticket (por ejemplo "Mercadona" o "Lidl"), sin dirección
     ni CIF; omítelo si no se lee con claridad.
