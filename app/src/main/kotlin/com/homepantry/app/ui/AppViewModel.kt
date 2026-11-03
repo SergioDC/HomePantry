@@ -11,6 +11,8 @@ import com.homepantry.app.data.PROTECTED_ZONE_NAME
 import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
+import com.homepantry.app.data.ProductAlias
+import com.homepantry.app.data.ProductAliasesRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.StoreSection
@@ -44,7 +46,9 @@ data class UiState(
     val loading: Boolean = true,
     val error: String? = null,
     val members: List<Member> = emptyList(),
-    val purchases: List<Purchase> = emptyList()
+    val purchases: List<Purchase> = emptyList(),
+    /** Correcciones de nombre de producto de la casa, por id ([aliasKey] del nombre impreso). */
+    val productAliases: Map<String, ProductAlias> = emptyMap()
 ) {
     val progress: String get() = progressText(items)
 
@@ -88,6 +92,7 @@ class AppViewModel(
     private val zonesRepository: ZonesRepository,
     private val membersRepository: MembersRepository,
     private val purchasesRepository: PurchasesRepository,
+    private val productAliasesRepository: ProductAliasesRepository,
     val storageRepository: StorageRepository,
     private var userName: String,
     private val uid: String
@@ -152,6 +157,31 @@ class AppViewModel(
                 }
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message)
+            }
+        }
+        viewModelScope.launch {
+            // Sin alias la app funciona igual (solo no aplica correcciones): no se avisa del fallo.
+            runCatching {
+                productAliasesRepository.observeAliases().collect { aliases ->
+                    _state.value = _state.value.copy(productAliases = aliases.associateBy { it.id })
+                }
+            }
+        }
+    }
+
+    /**
+     * Guarda correcciones de nombre de producto. Un fallo no se muestra: las compras ya están
+     * guardadas y solo se pierde que la próxima vez se aplique sola la corrección.
+     */
+    fun saveAliases(aliases: List<ProductAlias>) {
+        if (aliases.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                productAliasesRepository.saveAliases(aliases)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Ver KDoc.
             }
         }
     }

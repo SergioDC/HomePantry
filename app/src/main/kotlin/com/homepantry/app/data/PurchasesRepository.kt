@@ -82,6 +82,31 @@ class PurchasesRepository(
         collection().document(purchase.id).set(purchase).await()
     }
 
+    /**
+     * Cambia solo los campos de producto de muchas compras (normalizar el histórico, unir
+     * productos), con `update` para no pisar otros cambios hechos a la vez.
+     */
+    suspend fun updateProductFields(updates: List<ProductFieldsUpdate>) {
+        updates.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { u ->
+                val document = collection().document(u.purchaseId)
+                if (u.setPack) {
+                    batch.update(
+                        document,
+                        "productName", u.productName,
+                        "normalizedName", u.normalizedName,
+                        "packSize", u.pack?.amount,
+                        "packUnit", u.pack?.unit
+                    )
+                } else {
+                    batch.update(document, "productName", u.productName, "normalizedName", u.normalizedName)
+                }
+            }
+            batch.commit().await()
+        }
+    }
+
     /** Actualiza una línea de compra ya guardada (edición desde el detalle del ticket). */
     suspend fun updatePurchase(purchase: Purchase) {
         collection().document(purchase.id).set(purchase).await()

@@ -66,6 +66,7 @@ import com.homepantry.app.data.receiptScanDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
+import com.homepantry.app.data.ProductAliasesRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.SplitExpensesRepository
 import com.homepantry.app.data.SplitMonthsRepository
@@ -269,6 +270,7 @@ fun ListaDeLaCasaApp(
                         zonesRepository = ZonesRepository(firestore, code),
                         membersRepository = MembersRepository(firestore, code),
                         purchasesRepository = PurchasesRepository(firestore, code),
+                        productAliasesRepository = ProductAliasesRepository(firestore, code),
                         storageRepository = StorageRepository(storage, code, context.applicationContext),
                         userName = name,
                         uid = uid
