@@ -215,13 +215,24 @@ fun PurchaseTicketDetailScreen(
                 items(ticket.purchases, key = { it.id }) { purchase ->
                     StripedCard(color = color, onClick = { purchasePendingEdit = purchase }) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                purchase.rawName,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    purchase.displayName(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                // El nombre impreso, para reconocer la línea en el papel del ticket.
+                                if (purchase.displayName() != purchase.rawName) {
+                                    Text(
+                                        purchase.rawName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                             Text(euros(purchase.price), style = MaterialTheme.typography.titleMedium)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
