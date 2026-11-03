@@ -41,6 +41,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
+import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.data.TopBy
 import com.homepantry.app.data.cheapestStores
 import com.homepantry.app.data.priceRises
@@ -159,7 +160,7 @@ fun PurchaseStatsScreen(
                         ) {
                             Text(rise.displayName, Modifier.weight(1f))
                             Text(
-                                "${money(rise.firstUnitPrice)} → ${money(rise.latestUnitPrice)} (+${(rise.changeFraction * 100).roundToInt()} %)",
+                                "${money(rise.firstUnitPrice)} → ${money(rise.latestUnitPrice)}/${unitSuffix(rise.unit)} (+${(rise.changeFraction * 100).roundToInt()} %)",
                                 color = MaterialTheme.colorScheme.error
                             )
                         }

@@ -147,7 +147,7 @@ fun topProducts(purchases: List<Purchase>, by: TopBy, limit: Int = 5): List<TopP
         .map { (name, group) ->
             TopProduct(
                 normalizedName = name,
-                displayName = group.maxBy { it.date }.rawName,
+                displayName = group.maxBy { it.date }.displayName(),
                 total = group.sumOf { it.price },
                 count = group.map { ticketKey(it) }.distinct().size
             )
@@ -162,16 +162,16 @@ fun topProducts(purchases: List<Purchase>, by: TopBy, limit: Int = 5): List<TopP
 
 /** Subida del precio unitario entre la primera y la última compra, por producto y unidad. */
 fun priceRises(purchases: List<Purchase>, limit: Int = 5): List<PriceRise> =
-    purchases.groupBy { it.normalizedName to it.unit }
+    purchases.groupBy { it.normalizedName to it.measure().unit }
         .mapNotNull { (key, group) ->
             if (group.size < 2) return@mapNotNull null
             val sorted = group.sortedBy { it.date }
-            val first = sorted.first().unitPrice()
-            val last = sorted.last().unitPrice()
+            val first = sorted.first().comparablePrice()
+            val last = sorted.last().comparablePrice()
             if (first <= 0.0 || last <= first) return@mapNotNull null
             PriceRise(
                 normalizedName = key.first,
-                displayName = sorted.last().rawName,
+                displayName = sorted.last().displayName(),
                 unit = key.second,
                 firstUnitPrice = first,
                 latestUnitPrice = last,
@@ -185,11 +185,11 @@ fun priceRises(purchases: List<Purchase>, limit: Int = 5): List<PriceRise> =
 /** Productos comprados en 2+ supermercados con la misma unidad: el más barato y cuánto se ahorra. */
 fun cheapestStores(purchases: List<Purchase>, limit: Int = 5): List<StoreComparison> =
     purchases.filter { storeKey(it.store).isNotEmpty() }
-        .groupBy { it.normalizedName to it.unit }
+        .groupBy { it.normalizedName to it.measure().unit }
         .mapNotNull { (key, group) ->
             val perStore = group.groupBy { storeKey(it.store) }
                 .map { (_, lines) ->
-                    lines.maxBy { it.date }.store!!.trim() to lines.map { it.unitPrice() }.average()
+                    lines.maxBy { it.date }.store!!.trim() to lines.map { it.comparablePrice() }.average()
                 }
             if (perStore.size < 2) return@mapNotNull null
             val cheapest = perStore.minBy { it.second }
@@ -197,7 +197,7 @@ fun cheapestStores(purchases: List<Purchase>, limit: Int = 5): List<StoreCompari
             if (dearest.second <= 0.0 || dearest.second <= cheapest.second) return@mapNotNull null
             StoreComparison(
                 normalizedName = key.first,
-                displayName = group.maxBy { it.date }.rawName,
+                displayName = group.maxBy { it.date }.displayName(),
                 unit = key.second,
                 cheapestStore = cheapest.first,
                 cheapestUnitPrice = cheapest.second,

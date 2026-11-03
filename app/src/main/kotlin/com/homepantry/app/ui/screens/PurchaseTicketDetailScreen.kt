@@ -56,7 +56,8 @@ import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.RECEIPT_UNITS
 import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.parseUserPrice
-import com.homepantry.app.data.unitPrice
+import com.homepantry.app.data.comparablePrice
+import com.homepantry.app.data.measure
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.ColorDot
@@ -227,8 +228,8 @@ fun PurchaseTicketDetailScreen(
                                     unitSuffix(purchase.unit),
                                     stringResource(
                                         R.string.purchase_history_unit_price,
-                                        purchase.unitPrice(),
-                                        unitSuffix(purchase.unit)
+                                        purchase.comparablePrice(),
+                                        unitSuffix(purchase.measure().unit)
                                     )
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,

@@ -25,5 +25,15 @@ data class Purchase(
     /** Supermercado de la compra, tal y como se muestra. Null = desconocido (compras antiguas). */
     val store: String? = null,
     /** Id del escaneo (ticket) al que pertenece la línea. Null en compras anteriores a los tickets. */
-    val ticketId: String? = null
+    val ticketId: String? = null,
+    /**
+     * Nombre genérico (tipo + variedad, sin marca ni tamaño: "Arándanos", "Leche entera"), que es
+     * lo que se muestra y por lo que se agrupa. Vacío en compras antiguas sin normalizar: entonces
+     * se usa `rawName`, como antes.
+     */
+    val productName: String = "",
+    /** Cantidad de `packUnit` en una unidad del envase (0.3 para 300 g). Solo cuenta con `unit` UD. */
+    val packSize: Double? = null,
+    /** "KG" o "L": unidad de `packSize`. */
+    val packUnit: String? = null
 )
