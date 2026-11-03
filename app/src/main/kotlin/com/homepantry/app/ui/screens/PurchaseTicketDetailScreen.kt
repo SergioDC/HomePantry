@@ -52,11 +52,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
+import com.homepantry.app.data.PackSize
 import com.homepantry.app.data.Purchase
+import com.homepantry.app.data.displayName
+import com.homepantry.app.data.editedProductName
+import com.homepantry.app.data.packDisplay
+import com.homepantry.app.data.toPackSize
 import com.homepantry.app.data.RECEIPT_UNITS
 import com.homepantry.app.data.formatQuantity
 import com.homepantry.app.data.parseUserPrice
-import com.homepantry.app.data.unitPrice
+import com.homepantry.app.data.comparablePrice
+import com.homepantry.app.data.measure
 import com.homepantry.app.data.unitSuffix
 import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.components.ColorDot
@@ -210,13 +216,24 @@ fun PurchaseTicketDetailScreen(
                 items(ticket.purchases, key = { it.id }) { purchase ->
                     StripedCard(color = color, onClick = { purchasePendingEdit = purchase }) {
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                purchase.rawName,
-                                style = MaterialTheme.typography.titleMedium,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    purchase.displayName(),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                // El nombre impreso, para reconocer la línea en el papel del ticket.
+                                if (purchase.displayName() != purchase.rawName) {
+                                    Text(
+                                        purchase.rawName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
                             Text(euros(purchase.price), style = MaterialTheme.typography.titleMedium)
                         }
                         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -227,8 +244,8 @@ fun PurchaseTicketDetailScreen(
                                     unitSuffix(purchase.unit),
                                     stringResource(
                                         R.string.purchase_history_unit_price,
-                                        purchase.unitPrice(),
-                                        unitSuffix(purchase.unit)
+                                        purchase.comparablePrice(),
+                                        unitSuffix(purchase.measure().unit)
                                     )
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
@@ -284,7 +301,7 @@ fun PurchaseTicketDetailScreen(
         EditPurchaseDialog(
             purchase = pendingEdit,
             onSave = { edited ->
-                viewModel.updatePurchase(edited)
+                viewModel.updatePurchase(edited, previous = pendingEdit)
                 purchasePendingEdit = null
             },
             onDismiss = { purchasePendingEdit = null }
@@ -299,7 +316,14 @@ private fun EditPurchaseDialog(
     onSave: (Purchase) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var name by remember(purchase) { mutableStateOf(purchase.rawName) }
+    var name by remember(purchase) { mutableStateOf(purchase.displayName()) }
+    val initialPack = remember(purchase) {
+        val size = purchase.packSize
+        val packUnitName = purchase.packUnit
+        if (size != null && size > 0 && packUnitName != null) packDisplay(PackSize(size, packUnitName)) else ("" to "G")
+    }
+    var packText by remember(purchase) { mutableStateOf(initialPack.first) }
+    var packUnit by remember(purchase) { mutableStateOf(initialPack.second) }
     var qtyText by remember(purchase) { mutableStateOf(formatQuantity(purchase.quantity)) }
     var unit by remember(purchase) { mutableStateOf(purchase.unit) }
     var priceText by remember(purchase) {
@@ -331,6 +355,17 @@ private fun EditPurchaseDialog(
                         modifier = Modifier.weight(1f).padding(start = 8.dp)
                     )
                 }
+                if (unit == com.homepantry.app.data.Unit.UD.name) {
+                    PackField(
+                        amountText = packText,
+                        unit = packUnit,
+                        onChange = { text, newUnit ->
+                            packText = text
+                            packUnit = newUnit
+                        },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                    )
+                }
                 OutlinedTextField(
                     value = priceText,
                     onValueChange = { priceText = it },
@@ -345,9 +380,12 @@ private fun EditPurchaseDialog(
             TextButton(
                 onClick = {
                     val quantity = qtyText.replace(",", ".").toDoubleOrNull()?.takeIf { it > 0 } ?: purchase.quantity
+                    val pack = if (unit == com.homepantry.app.data.Unit.UD.name) toPackSize(packText, packUnit) else null
                     onSave(
                         purchase.copy(
-                            rawName = name.trim(),
+                            productName = editedProductName(purchase, name),
+                            packSize = pack?.amount,
+                            packUnit = pack?.unit,
                             quantity = quantity,
                             unit = unit,
                             price = price ?: purchase.price

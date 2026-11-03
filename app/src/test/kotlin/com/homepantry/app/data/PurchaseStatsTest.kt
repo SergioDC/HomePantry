@@ -19,11 +19,33 @@ class PurchaseStatsTest {
         store: String? = null,
         ticket: String? = null,
         qty: Double = 1.0,
-        unit: String = "UD"
+        unit: String = "UD",
+        pack: Double? = null,
+        packUnit: String? = null
     ) = Purchase(
         rawName = name, normalizedName = name.lowercase(), price = price, date = date(day),
-        store = store, ticketId = ticket, quantity = qty, unit = unit
+        store = store, ticketId = ticket, quantity = qty, unit = unit, packSize = pack, packUnit = packUnit
     )
+
+    @Test fun `cheapest store compares packs of different size per kilo`() {
+        val purchases = listOf(
+            p("Arandano", 2.5, "2026-03-01", store = "Mercadona", pack = 0.3, packUnit = "KG"),
+            p("Arandano", 1.6, "2026-03-02", store = "Lidl", pack = 0.15, packUnit = "KG")
+        )
+        val c = cheapestStores(purchases).single()
+        assertEquals("Mercadona", c.cheapestStore)
+        assertEquals("KG", c.unit)
+        assertEquals(8.333, c.cheapestUnitPrice, 0.001)
+        assertEquals(10.667, c.dearestUnitPrice, 0.001)
+    }
+
+    @Test fun `price rises never mixes per kilo and per unit`() {
+        val purchases = listOf(
+            p("Arandano", 1.0, "2026-01-01"),
+            p("Arandano", 2.5, "2026-03-01", pack = 0.3, packUnit = "KG")
+        )
+        assertTrue(priceRises(purchases).isEmpty())
+    }
 
     @Test fun `empty purchases give zeros and empty lists`() {
         val none = emptyList<Purchase>()

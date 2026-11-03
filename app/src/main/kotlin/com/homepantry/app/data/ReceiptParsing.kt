@@ -11,7 +11,11 @@ data class ParsedReceiptLine(
     val name: String,
     val price: Double,
     val quantity: Double = 1.0,
-    val unit: String = Unit.UD.name
+    val unit: String = Unit.UD.name,
+    /** Nombre genérico propuesto (Gemini); vacío si no hay propuesta y se saca por reglas después. */
+    val productName: String = "",
+    /** Envase de una unidad, si se conoce. */
+    val pack: PackSize? = null
 )
 
 /** Resultado de leer un ticket: supermercado y fecha de compra (si se detectaron) y sus líneas. */

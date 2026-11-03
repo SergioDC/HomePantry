@@ -16,6 +16,24 @@ class PurchaseAggregationTest {
     private fun ticketLine(id: String, store: String, total: Double, time: String) =
         Purchase(rawName = "X", price = total, date = at(time), store = store, ticketId = id)
 
+    @Test fun `summary header uses the dominant comparable unit`() {
+        val purchases = listOf(
+            Purchase(rawName = "ARANDANO 300GR", normalizedName = "arandano", price = 2.5, date = date("2026-01-01"), packSize = 0.3, packUnit = "KG"),
+            Purchase(rawName = "ARANDANO 150GR", normalizedName = "arandano", price = 1.8, date = date("2026-02-01"), packSize = 0.15, packUnit = "KG"),
+            Purchase(rawName = "ARANDANO", normalizedName = "arandano", price = 2.0, date = date("2026-03-01"))
+        )
+        val summary = productSummaries(purchases, date("2026-03-10")).single()
+        assertEquals("KG", summary.latestUnit)
+        assertEquals(12.0, summary.latestUnitPrice, 0.001)
+    }
+
+    @Test fun `summary shows the generic name`() {
+        val purchases = listOf(
+            Purchase(rawName = "ARANDANO 300GR", productName = "Arándanos", normalizedName = "arandano", price = 2.5, date = date("2026-01-01"))
+        )
+        assertEquals("Arándanos", productSummaries(purchases, date("2026-03-10")).single().displayName)
+    }
+
     @Test fun `monthlySpend groups purchases by year-month regardless of product`() {
         val purchases = listOf(
             Purchase(rawName = "Tomate", normalizedName = "tomate", price = 1.5, date = date("2026-03-05")),
@@ -57,15 +75,15 @@ class PurchaseAggregationTest {
         assertEquals(listOf("caro", "barato"), summaries.map { it.normalizedName })
     }
 
-    @Test fun `unitPrice divides the line total by the quantity`() {
-        assertEquals(1.25, Purchase(price = 2.5, quantity = 2.0).unitPrice(), 0.001)
+    @Test fun `comparablePrice divides the line total by the quantity`() {
+        assertEquals(1.25, Purchase(price = 2.5, quantity = 2.0).comparablePrice(), 0.001)
         // 0,850 kg por 3,39 EUR -> 3,99 EUR/kg (redondeo del ticket)
-        assertEquals(3.99, Purchase(price = 3.39, quantity = 0.85, unit = "KG").unitPrice(), 0.01)
+        assertEquals(3.99, Purchase(price = 3.39, quantity = 0.85, unit = "KG").comparablePrice(), 0.01)
     }
 
-    @Test fun `unitPrice treats a non-positive quantity as one`() {
-        assertEquals(2.0, Purchase(price = 2.0, quantity = 0.0).unitPrice(), 0.001)
-        assertEquals(2.0, Purchase(price = 2.0, quantity = -3.0).unitPrice(), 0.001)
+    @Test fun `comparablePrice treats a non-positive quantity as one`() {
+        assertEquals(2.0, Purchase(price = 2.0, quantity = 0.0).comparablePrice(), 0.001)
+        assertEquals(2.0, Purchase(price = 2.0, quantity = -3.0).comparablePrice(), 0.001)
     }
 
     @Test fun `an old purchase without the new fields has unit price equal to its total`() {
@@ -73,7 +91,7 @@ class PurchaseAggregationTest {
         assertEquals(1.0, old.quantity, 0.001)
         assertEquals("UD", old.unit)
         assertEquals(null, old.store)
-        assertEquals(1.5, old.unitPrice(), 0.001)
+        assertEquals(1.5, old.comparablePrice(), 0.001)
     }
 
     @Test fun `productSummaries exposes the unit price and unit of the latest purchase`() {

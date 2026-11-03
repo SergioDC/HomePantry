@@ -50,7 +50,10 @@ val PRODUCTS_JSON_SCHEMA: Map<String, Any> = mapOf(
                     "name" to mapOf("type" to "string"),
                     "price" to mapOf("type" to "number"),
                     "quantity" to mapOf("type" to "number"),
-                    "unit" to mapOf("type" to "string", "enum" to RECEIPT_UNITS)
+                    "unit" to mapOf("type" to "string", "enum" to RECEIPT_UNITS),
+                    "productName" to mapOf("type" to "string"),
+                    "packSize" to mapOf("type" to "number"),
+                    "packUnit" to mapOf("type" to "string", "enum" to listOf(Unit.KG.name, Unit.L.name))
                 ),
                 "required" to listOf("name", "price")
             )

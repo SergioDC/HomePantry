@@ -2,6 +2,7 @@ package com.homepantry.app.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -110,6 +111,9 @@ fun StripedCard(
     color: Color,
     onClick: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    /** Con pulsación larga (modo selección), [selected] resalta la tarjeta. */
+    onLongClick: (() -> Unit)? = null,
+    selected: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val body: @Composable () -> Unit = {
@@ -118,7 +122,16 @@ fun StripedCard(
             Column(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 12.dp), content = content)
         }
     }
-    if (onClick != null) {
+    if (onLongClick != null) {
+        Card(
+            modifier = modifier.fillMaxWidth().combinedClickable(onClick = { onClick?.invoke() }, onLongClick = onLongClick),
+            colors = if (selected) {
+                CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            } else {
+                CardDefaults.cardColors()
+            }
+        ) { body() }
+    } else if (onClick != null) {
         Card(onClick = onClick, modifier = modifier.fillMaxWidth()) { body() }
     } else {
         Card(modifier = modifier.fillMaxWidth()) { body() }

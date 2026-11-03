@@ -13,7 +13,7 @@ data class ProductSummary(
     val displayName: String,
     val currentMonthTotal: Double,
     val allTimeTotal: Double,
-    /** Precio unitario y unidad de la compra más reciente del grupo. */
+    /** Precio comparable (€/kg, €/l o €/ud) de la compra más reciente en la unidad de comparación con más compras, y esa unidad. */
     val latestUnitPrice: Double,
     val latestUnit: String,
     val purchases: List<Purchase>
@@ -47,9 +47,6 @@ data class Ticket(
 data class MonthSection(val yearMonth: String, val total: Double, val tickets: List<Ticket>)
 
 private fun yearMonthOf(date: Date): String = SimpleDateFormat("yyyy-MM", Locale.US).format(date)
-
-/** Precio por unidad (ud, kg o l): total de la línea entre la cantidad; una cantidad no positiva cuenta como 1. */
-fun Purchase.unitPrice(): Double = price / (if (quantity > 0) quantity else 1.0)
 
 /** Clave para agrupar supermercados: "MERCADONA " y "Mercadona" son el mismo. Vacía = sin supermercado. */
 fun storeKey(store: String?): String = store?.trim()?.lowercase().orEmpty()
@@ -93,13 +90,20 @@ fun productSummaries(purchases: List<Purchase>, referenceDate: Date = Date()): L
         .map { (normalizedName, group) ->
             val sortedByDateDesc = group.sortedByDescending { it.date }
             val latest = sortedByDateDesc.first()
+            // La cabecera usa la unidad de comparación con más compras (en empate, la de la más
+            // reciente): unas pocas compras antiguas sin envase no tapan el precio por kilo.
+            val dominantUnit = sortedByDateDesc.groupBy { it.measure().unit }
+                .entries
+                .maxWith(compareBy({ it.value.size }, { it.value.first().date }))
+                .key
+            val latestInUnit = sortedByDateDesc.first { it.measure().unit == dominantUnit }
             ProductSummary(
                 normalizedName = normalizedName,
-                displayName = latest.rawName,
+                displayName = latest.displayName(),
                 currentMonthTotal = group.filter { yearMonthOf(it.date) == currentYearMonth }.sumOf { it.price },
                 allTimeTotal = group.sumOf { it.price },
-                latestUnitPrice = latest.unitPrice(),
-                latestUnit = latest.unit,
+                latestUnitPrice = latestInUnit.comparablePrice(),
+                latestUnit = dominantUnit,
                 purchases = sortedByDateDesc
             )
         }

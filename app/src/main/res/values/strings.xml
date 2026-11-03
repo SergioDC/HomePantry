@@ -149,6 +149,29 @@
     <string name="receipt_review_store">Supermercado</string>
     <string name="receipt_review_qty">Cantidad</string>
     <string name="receipt_review_unit">Unidad</string>
+    <string name="receipt_review_pack">Envase</string>
+    <string name="receipt_review_retry_gemini">Reintentar con IA</string>
+    <string name="ai_retry">Reintentar</string>
+    <string name="receipt_review_printed_name">En el ticket: %1$s</string>
+    <string name="normalize_title">Normalizar productos</string>
+    <string name="merge_products">Unir</string>
+    <string name="merge_products_title">Unir productos</string>
+    <string name="merge_products_name">Nombre del producto</string>
+    <string name="merge_products_cancel_cd">Cancelar la selección</string>
+    <plurals name="merge_products_selected">
+        <item quantity="one">%d seleccionado</item>
+        <item quantity="other">%d seleccionados</item>
+    </plurals>
+    <string name="normalize_needs_key">Hace falta una clave de Gemini para proponer los nombres. Añádela en Ajustes.</string>
+    <string name="normalize_apply">Aplicar</string>
+    <string name="normalize_retry">Reintentar</string>
+    <string name="normalize_empty">No quedan productos por normalizar.</string>
+    <string name="normalize_edit_title">Editar producto</string>
+    <string name="normalize_intro">Revisa los nombres que se van a poner. Desmarca lo que quieras dejar como está.</string>
+    <plurals name="normalize_purchase_count">
+        <item quantity="one">%d compra</item>
+        <item quantity="other">%d compras</item>
+    </plurals>
     <string name="receipt_review_delete_line_cd">Eliminar línea</string>
     <string name="receipt_review_add_line">+ Añadir línea</string>
     <string name="receipt_review_empty">No quedan líneas. Añade una manualmente o cierra sin guardar.</string>

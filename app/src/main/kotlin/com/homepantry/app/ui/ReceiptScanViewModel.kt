@@ -2,6 +2,7 @@ package com.homepantry.app.ui
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homepantry.app.data.GeminiApiKeyStore
@@ -12,6 +13,7 @@ import com.homepantry.app.data.detectReceiptDate
 import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.receiptScanDraft
 import com.homepantry.app.data.recognizeReceiptTextLines
+import com.homepantry.app.data.ProductAlias
 import com.homepantry.app.data.recognizeReceiptWithGemini
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -69,7 +71,13 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
      * clásico. El resultado queda como borrador para revisarlo. Ignora la llamada si ya hay una
      * lectura en marcha o un borrador sin cerrar.
      */
-    fun scanReceipt(context: Context, uri: Uri, apiKeyStore: GeminiApiKeyStore, messages: ReceiptScanMessages) {
+    fun scanReceipt(
+        context: Context,
+        uri: Uri,
+        apiKeyStore: GeminiApiKeyStore,
+        messages: ReceiptScanMessages,
+        aliases: Map<String, ProductAlias> = emptyMap()
+    ) {
         if (_scanning.value || _draft.value != null) return
         _scanning.value = true
         // Solo el contexto de la aplicación: el de la actividad no debe sobrevivir en el ViewModel.
@@ -114,11 +122,29 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
                     parsed.lines.isEmpty() -> messages.ocrEmpty
                     else -> null
                 }
-                _draft.value = receiptScanDraft(parsed, uri.toString(), notice)
+                _draft.value = receiptScanDraft(parsed, uri.toString(), notice, aliases, geminiFailed = geminiFailureReason != null)
             } finally {
                 _scanning.value = false
             }
         }
+    }
+
+    /**
+     * Vuelve a leer con Gemini la foto del borrador cuando la lectura falló (cuota, saturación, red):
+     * así no hace falta repetir la foto ni salir y volver a entrar. Lo leído y corregido con el OCR
+     * clásico se sustituye por la nueva lectura; si Gemini vuelve a fallar, queda otra vez el OCR.
+     */
+    fun retryWithGemini(
+        context: Context,
+        apiKeyStore: GeminiApiKeyStore,
+        messages: ReceiptScanMessages,
+        aliases: Map<String, ProductAlias> = emptyMap()
+    ) {
+        val current = _draft.value ?: return
+        val photo = current.photoUri ?: return
+        if (_scanning.value || _saving.value) return
+        _draft.value = null
+        scanReceipt(context, photo.toUri(), apiKeyStore, messages, aliases)
     }
 
     /** Cambios del usuario al revisar (supermercado, fecha, líneas). */
@@ -137,14 +163,14 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
      * reintentar. Corre aquí y no en la hoja: girar el móvil a mitad no deja el ticket a medias
      * ni lo vuelve a ofrecer ya guardado (lo que acabaría duplicándolo).
      */
-    fun saveDraft(save: suspend (ParsedReceipt, Uri?) -> Boolean) {
+    fun saveDraft(save: suspend (ParsedReceipt, Uri?, List<ProductAlias>) -> Boolean) {
         val draft = _draft.value ?: return
         if (_saving.value) return
         _saving.value = true
         _saveFailed.value = false
         viewModelScope.launch {
             try {
-                if (save(draft.toParsedReceipt(), draft.photoUri?.let(Uri::parse))) {
+                if (save(draft.toParsedReceipt(), draft.photoUri?.let(Uri::parse), draft.aliasesToSave())) {
                     _draft.value = null
                 } else {
                     _saveFailed.value = true

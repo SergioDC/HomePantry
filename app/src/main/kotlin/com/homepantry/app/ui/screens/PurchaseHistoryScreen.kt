@@ -29,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Insights
 import androidx.compose.material3.AlertDialog
@@ -131,7 +132,8 @@ fun PurchaseHistoryScreen(
     onBack: () -> Unit,
     onOpenTicket: (String) -> Unit,
     onOpenProducts: () -> Unit,
-    onOpenStats: () -> Unit
+    onOpenStats: () -> Unit,
+    onOpenNormalize: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     val context = LocalContext.current
@@ -148,16 +150,19 @@ fun PurchaseHistoryScreen(
     var showScanDialog by remember { mutableStateOf(false) }
     var confirmLeaveWhileReading by remember { mutableStateOf(false) }
 
+    fun scanMessages() = ReceiptScanMessages(
+        geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
+        ocrError = resources.getString(R.string.purchase_history_ocr_error),
+        ocrEmpty = resources.getString(R.string.purchase_history_ocr_empty)
+    )
+
     fun processReceiptUri(uri: Uri) {
         scanViewModel.scanReceipt(
             context = context,
             uri = uri,
             apiKeyStore = geminiApiKeyStore,
-            messages = ReceiptScanMessages(
-                geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
-                ocrError = resources.getString(R.string.purchase_history_ocr_error),
-                ocrEmpty = resources.getString(R.string.purchase_history_ocr_empty)
-            )
+            aliases = state.productAliases,
+            messages = scanMessages()
         )
     }
 
@@ -217,6 +222,14 @@ fun PurchaseHistoryScreen(
                 navigationIcon = {
                     IconButton(onClick = ::requestBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                },
+                actions = {
+                    // Solo mientras quedan compras antiguas sin nombre genérico.
+                    if (state.purchases.any { it.productName.isBlank() }) {
+                        IconButton(onClick = onOpenNormalize) {
+                            Icon(Icons.Filled.AutoFixHigh, contentDescription = stringResource(R.string.normalize_title))
+                        }
                     }
                 }
             )
@@ -286,7 +299,10 @@ fun PurchaseHistoryScreen(
             onDiscard = scanViewModel::discardDraft,
             saving = savingTicket,
             saveFailed = saveFailed,
-            onSave = { scanViewModel.saveDraft(viewModel::savePurchaseBatch) }
+            onSave = { scanViewModel.saveDraft(viewModel::savePurchaseBatch) },
+            onRetryGemini = {
+                scanViewModel.retryWithGemini(context, geminiApiKeyStore, scanMessages(), state.productAliases)
+            }
         )
     }
 

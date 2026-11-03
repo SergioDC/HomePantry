@@ -20,7 +20,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -168,11 +170,21 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
         if (uri != null) processImportPhoto(uri)
     }
 
+    val retryLabel = stringResource(R.string.ai_retry)
     LaunchedEffect(state.error) {
         val message = state.error
         if (message != null) {
-            snackbarHostState.showSnackbar(message)
+            // Si falló una lectura con IA, el aviso ofrece repetirla con la misma foto o el mismo PDF.
+            val canRetry = menuViewModel.aiRetry.value != null
+            val result = snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = if (canRetry) retryLabel else null,
+                duration = if (canRetry) SnackbarDuration.Long else SnackbarDuration.Short
+            )
             menuViewModel.clearError()
+            if (result == SnackbarResult.ActionPerformed) {
+                menuViewModel.retryLastAiRead(context, apiKeyStore, UserPrefs(context))
+            }
         }
     }
 

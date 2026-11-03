@@ -11,6 +11,16 @@ import com.homepantry.app.data.PROTECTED_ZONE_NAME
 import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
+import com.homepantry.app.data.PackSize
+import com.homepantry.app.data.ProductAlias
+import com.homepantry.app.data.ProductFieldsUpdate
+import com.homepantry.app.data.mergePlan
+import com.homepantry.app.data.ProductProposal
+import com.homepantry.app.data.aliasForEdit
+import com.homepantry.app.data.keepRememberedPack
+import com.homepantry.app.data.displayName
+import com.homepantry.app.data.productKey
+import com.homepantry.app.data.ProductAliasesRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
 import com.homepantry.app.data.StoreSection
@@ -44,7 +54,9 @@ data class UiState(
     val loading: Boolean = true,
     val error: String? = null,
     val members: List<Member> = emptyList(),
-    val purchases: List<Purchase> = emptyList()
+    val purchases: List<Purchase> = emptyList(),
+    /** Correcciones de nombre de producto de la casa, por id ([aliasKey] del nombre impreso). */
+    val productAliases: Map<String, ProductAlias> = emptyMap()
 ) {
     val progress: String get() = progressText(items)
 
@@ -88,6 +100,7 @@ class AppViewModel(
     private val zonesRepository: ZonesRepository,
     private val membersRepository: MembersRepository,
     private val purchasesRepository: PurchasesRepository,
+    private val productAliasesRepository: ProductAliasesRepository,
     val storageRepository: StorageRepository,
     private var userName: String,
     private val uid: String
@@ -152,6 +165,33 @@ class AppViewModel(
                 }
             }.onFailure { e ->
                 _state.value = _state.value.copy(error = e.message)
+            }
+        }
+        viewModelScope.launch {
+            // Sin alias la app funciona igual (solo no aplica correcciones): no se avisa del fallo.
+            runCatching {
+                productAliasesRepository.observeAliases().collect { aliases ->
+                    _state.value = _state.value.copy(productAliases = aliases.associateBy { it.id })
+                }
+            }
+        }
+    }
+
+    /**
+     * Guarda correcciones de nombre de producto. Un fallo no se muestra: las compras ya están
+     * guardadas y solo se pierde que la próxima vez se aplique sola la corrección.
+     */
+    fun saveAliases(aliases: List<ProductAlias>) {
+        if (aliases.isEmpty()) return
+        viewModelScope.launch {
+            try {
+                // Corregir solo el nombre no borra el envase que la casa ya recordaba.
+                val known = _state.value.productAliases
+                productAliasesRepository.saveAliases(aliases.map { keepRememberedPack(it, known[it.id]) })
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Ver KDoc.
             }
         }
     }
@@ -241,8 +281,17 @@ class AppViewModel(
      * local: pasados [SAVE_CONFIRM_TIMEOUT_MS] sin respuesta se da por guardado. La escritura sigue
      * en el scope del ViewModel aunque quien espera se cancele.
      */
-    suspend fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?): Boolean {
-        val saving = viewModelScope.async { writePurchaseBatch(receipt, ticketPhotoLocalUri) }
+    suspend fun savePurchaseBatch(
+        receipt: ParsedReceipt,
+        ticketPhotoLocalUri: android.net.Uri?,
+        aliases: List<ProductAlias> = emptyList()
+    ): Boolean {
+        val saving = viewModelScope.async {
+            writePurchaseBatch(receipt, ticketPhotoLocalUri).also { saved ->
+                // Las correcciones van después y aparte: si fallan, el ticket ya está guardado.
+                if (saved) saveAliases(aliases)
+            }
+        }
         return withTimeoutOrNull(SAVE_CONFIRM_TIMEOUT_MS) { saving.await() } ?: true
     }
 
@@ -257,7 +306,10 @@ class AppViewModel(
         val purchases = receipt.lines.map { line ->
             Purchase(
                 rawName = line.name,
-                normalizedName = normalizeProductName(line.name),
+                productName = line.productName,
+                normalizedName = productKey(line.productName, line.name),
+                packSize = line.pack?.amount,
+                packUnit = line.pack?.unit,
                 price = line.price,
                 quantity = line.quantity,
                 unit = line.unit,
@@ -323,10 +375,39 @@ class AppViewModel(
      * agrupación se recalcula del nombre, como al guardar el ticket: si no, corregir el nombre no
      * movía la compra a su producto en el historial ni en las estadísticas.
      */
-    fun updatePurchase(purchase: Purchase) = viewModelScope.launch {
-        val normalized = purchase.copy(normalizedName = normalizeProductName(purchase.rawName))
+    fun updatePurchase(purchase: Purchase, previous: Purchase? = null) = viewModelScope.launch {
+        val normalized = purchase.copy(normalizedName = productKey(purchase.productName, purchase.rawName))
         runCatching { purchasesRepository.updatePurchase(normalized) }
+            .onSuccess {
+                // Corregir el nombre o el envase de una compra también enseña a la casa para el próximo ticket.
+                if (previous != null) aliasForEdit(previous, purchase)?.let { saveAliases(listOf(it)) }
+            }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    /**
+     * Cambia en bloque el nombre genérico (y el envase) de muchas compras y guarda los alias que
+     * lo acompañan. @return false si no se pudieron escribir las compras (con el error publicado).
+     */
+    suspend fun applyProductUpdates(updates: List<ProductFieldsUpdate>, aliases: List<ProductAlias>): Boolean {
+        return try {
+            purchasesRepository.updateProductFields(updates)
+            saveAliases(aliases)
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(error = e.message)
+            false
+        }
+    }
+
+    /** Une a mano los productos [normalizedNames] bajo [finalName] (ver `mergePlan`). */
+    fun mergeProducts(normalizedNames: Set<String>, finalName: String) {
+        if (normalizedNames.size < 2 || finalName.isBlank()) return
+        val current = _state.value
+        val (updates, aliases) = mergePlan(current.purchases, normalizedNames, finalName, current.productAliases)
+        viewModelScope.launch { applyProductUpdates(updates, aliases) }
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
