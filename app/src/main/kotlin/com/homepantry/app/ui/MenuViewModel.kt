@@ -78,6 +78,16 @@ data class ComedorMessages(
 )
 
 /**
+ * Última lectura con IA que falló y se puede repetir tal cual desde el aviso (sin volver a hacer
+ * la foto ni salir y entrar). No se ofrece cuando reintentar no sirve: sin clave, menú de un mes
+ * pasado o una web del comedor que ha cambiado.
+ */
+sealed interface MenuAiRetry {
+    data class Photo(val uri: Uri, val defaultMonth: YearMonth, val noKeyMessage: String, val emptyMessage: String) : MenuAiRetry
+    data class Comedor(val today: LocalDate, val messages: ComedorMessages) : MenuAiRetry
+}
+
+/**
  * Estado y acciones del menú semanal, aparte de AppViewModel (que ya tiene cinco repositorios).
  * Los productos y zonas ya cargados los toma la UI del estado de AppViewModel.
  */
@@ -101,6 +111,19 @@ class MenuViewModel(
     // Gemini ni lo corregido se pierdan al cambiar de pestaña o rotar (el borrador va además a disco).
     private val _readingMenu = MutableStateFlow(false)
     val readingMenu: StateFlow<Boolean> = _readingMenu.asStateFlow()
+
+    private val _aiRetry = MutableStateFlow<MenuAiRetry?>(null)
+    /** Lectura con IA fallida que el aviso de error ofrece reintentar; null si no hay. */
+    val aiRetry: StateFlow<MenuAiRetry?> = _aiRetry.asStateFlow()
+
+    /** Repite la última lectura con IA que falló (ver [MenuAiRetry]). */
+    fun retryLastAiRead(context: Context, apiKeyStore: GeminiApiKeyStore, prefs: UserPrefs) {
+        when (val retry = _aiRetry.value) {
+            is MenuAiRetry.Photo -> readMenuPhoto(context, retry.uri, apiKeyStore, retry.defaultMonth, retry.noKeyMessage, retry.emptyMessage)
+            is MenuAiRetry.Comedor -> readComedorMenu(context, apiKeyStore, prefs, retry.today, retry.messages)
+            null -> Unit
+        }
+    }
     private val _importDraft = MutableStateFlow<MenuImportDraft?>(null)
     val importDraft: StateFlow<MenuImportDraft?> = _importDraft.asStateFlow()
 
@@ -313,6 +336,8 @@ class MenuViewModel(
     ) {
         if (_readingMenu.value) return
         _readingMenu.value = true
+        _aiRetry.value = null
+        val retry = MenuAiRetry.Photo(uri, defaultMonth, noKeyMessage, emptyMessage)
         // Solo el contexto de la aplicación: el de la actividad no debe sobrevivir en el ViewModel.
         val appContext = context.applicationContext
         viewModelScope.launch {
@@ -325,6 +350,7 @@ class MenuViewModel(
                 }
                 val menu = recognizeMenuWithGemini(appContext, uri, apiKey, apiKeyStore.getModel())
                 if (menu.days.isEmpty()) {
+                    _aiRetry.value = retry
                     error.value = emptyMessage
                 } else {
                     _importDraft.value = MenuImportDraft(menu.month, defaultMonth, "", menu.days)
@@ -332,6 +358,7 @@ class MenuViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                _aiRetry.value = retry
                 error.value = e.message ?: e.toString()
             } finally {
                 _readingMenu.value = false
@@ -355,6 +382,8 @@ class MenuViewModel(
         if (_readingMenu.value || _importDraft.value != null) return
         _readingMenu.value = true
         val appContext = context.applicationContext
+        _aiRetry.value = null
+        val retry = MenuAiRetry.Comedor(today, messages)
         viewModelScope.launch {
             try {
                 if (adoptSavedDraft()) return@launch
@@ -375,16 +404,21 @@ class MenuViewModel(
                 when {
                     // Null solo si se leyó un mes y es anterior al actual.
                     month == null -> error.value = messages.stale(menu.month ?: YearMonth.from(today))
-                    menu.days.isEmpty() -> error.value = messages.empty
+                    menu.days.isEmpty() -> {
+                        _aiRetry.value = retry
+                        error.value = messages.empty
+                    }
                     else -> _importDraft.value = MenuImportDraft(menu.month, month, ComedorConfig.PERSON, menu.days)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: ComedorMenuException.Network) {
+                _aiRetry.value = retry
                 error.value = messages.network
             } catch (e: ComedorMenuException) {
                 error.value = messages.changed
             } catch (e: Exception) {
+                _aiRetry.value = retry
                 error.value = e.message ?: e.toString()
             } finally {
                 _readingMenu.value = false
