@@ -12,6 +12,7 @@ import com.homepantry.app.data.detectReceiptDate
 import com.homepantry.app.data.parseReceiptLines
 import com.homepantry.app.data.receiptScanDraft
 import com.homepantry.app.data.recognizeReceiptTextLines
+import com.homepantry.app.data.ProductAlias
 import com.homepantry.app.data.recognizeReceiptWithGemini
 import java.util.Date
 import kotlinx.coroutines.CancellationException
@@ -69,7 +70,13 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
      * clásico. El resultado queda como borrador para revisarlo. Ignora la llamada si ya hay una
      * lectura en marcha o un borrador sin cerrar.
      */
-    fun scanReceipt(context: Context, uri: Uri, apiKeyStore: GeminiApiKeyStore, messages: ReceiptScanMessages) {
+    fun scanReceipt(
+        context: Context,
+        uri: Uri,
+        apiKeyStore: GeminiApiKeyStore,
+        messages: ReceiptScanMessages,
+        aliases: Map<String, ProductAlias> = emptyMap()
+    ) {
         if (_scanning.value || _draft.value != null) return
         _scanning.value = true
         // Solo el contexto de la aplicación: el de la actividad no debe sobrevivir en el ViewModel.
@@ -114,7 +121,7 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
                     parsed.lines.isEmpty() -> messages.ocrEmpty
                     else -> null
                 }
-                _draft.value = receiptScanDraft(parsed, uri.toString(), notice)
+                _draft.value = receiptScanDraft(parsed, uri.toString(), notice, aliases)
             } finally {
                 _scanning.value = false
             }

@@ -153,6 +153,7 @@ fun PurchaseHistoryScreen(
             context = context,
             uri = uri,
             apiKeyStore = geminiApiKeyStore,
+            aliases = state.productAliases,
             messages = ReceiptScanMessages(
                 geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
                 ocrError = resources.getString(R.string.purchase_history_ocr_error),
