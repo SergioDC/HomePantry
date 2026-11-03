@@ -57,4 +57,10 @@ class PackSizeParsingTest {
 
     @Test fun `fraction before a unit is not read as a size`() =
         assertNull(splitPackSize("PAN 1/2 KG").pack)
+
+    @Test fun `alias key avoids firestore reserved ids and huge names`() {
+        val reserved = aliasKey("__X__")!!
+        assertFalse(reserved.startsWith("__") && reserved.endsWith("__"))
+        assertNull(aliasKey("A".repeat(2000)))
+    }
 }

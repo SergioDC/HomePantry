@@ -153,6 +153,7 @@
     <string name="receipt_review_retry_gemini">Reintentar con IA</string>
     <string name="ai_retry">Reintentar</string>
     <string name="receipt_review_printed_name">En el ticket: %1$s</string>
+    <string name="receipt_review_printed_label">Nombre en el ticket</string>
     <string name="normalize_title">Normalizar productos</string>
     <string name="merge_products">Unir</string>
     <string name="merge_products_title">Unir productos</string>

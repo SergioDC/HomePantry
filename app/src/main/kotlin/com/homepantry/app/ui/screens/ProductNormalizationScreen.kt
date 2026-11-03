@@ -85,8 +85,11 @@ fun ProductNormalizationScreen(
         resources.getString(R.string.normalize_needs_key)
     )
 
-    // Al entrar se piden las propuestas que falten; si ya había filas (girar, volver) se conservan.
-    LaunchedEffect(Unit) { if (rows.isEmpty()) start() }
+    // Se piden las propuestas que falten en cuanto hay compras (al entrar pueden no haber cargado
+    // aún); si ya había filas (girar, volver) se conservan.
+    val purchasesLoaded = state.purchases.isNotEmpty()
+    LaunchedEffect(purchasesLoaded) { if (purchasesLoaded && rows.isEmpty()) start() }
+    LaunchedEffect(Unit) { normalizationViewModel.applied.collect { onBack() } }
 
     Scaffold(
         topBar = {
@@ -134,7 +137,7 @@ fun ProductNormalizationScreen(
                         }
                     }
                 }
-                if (loading) {
+                if (loading || !purchasesLoaded) {
                     item(key = "loading") {
                         Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
                             CircularProgressIndicator()
@@ -151,13 +154,13 @@ fun ProductNormalizationScreen(
                         }
                     }
                 }
-                if (!loading && error == null && rows.isEmpty()) {
+                if (purchasesLoaded && !loading && error == null && rows.isEmpty()) {
                     item(key = "empty") { Text(stringResource(R.string.normalize_empty)) }
                 }
             }
             HorizontalDivider()
             Button(
-                onClick = { normalizationViewModel.apply(state.purchases, viewModel::applyProductUpdates, onBack) },
+                onClick = { normalizationViewModel.apply(state.purchases, viewModel::applyProductUpdates) },
                 enabled = !loading && !applying && rows.any { it.selected },
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) { Text(stringResource(R.string.normalize_apply)) }

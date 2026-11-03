@@ -233,7 +233,7 @@ fun ReceiptReviewSheet(
                 itemsIndexed(lines) { index, line ->
                     StripedCard(color = storeColor, onClick = null) {
                         // Una línea añadida a mano no tiene nombre impreso: lo que se escribe vale para los dos.
-                        val manual = line.proposedProductName.isEmpty()
+                        val manual = line.manual
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
                                 value = line.productName,
@@ -305,7 +305,7 @@ fun ReceiptReviewSheet(
                 }
                 item(key = "addLine") {
                     OutlinedButton(
-                        onClick = { edit(edited.copy(lines = lines + ReceiptDraftLine("", "1", RECEIPT_UNITS.first(), ""))) },
+                        onClick = { edit(edited.copy(lines = lines + ReceiptDraftLine("", "1", RECEIPT_UNITS.first(), "", manual = true))) },
                         modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                     ) { Text(stringResource(R.string.receipt_review_add_line)) }
                 }
