@@ -2,6 +2,7 @@ package com.homepantry.app.ui
 
 import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homepantry.app.data.GeminiApiKeyStore
@@ -121,11 +122,29 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
                     parsed.lines.isEmpty() -> messages.ocrEmpty
                     else -> null
                 }
-                _draft.value = receiptScanDraft(parsed, uri.toString(), notice, aliases)
+                _draft.value = receiptScanDraft(parsed, uri.toString(), notice, aliases, geminiFailed = geminiFailureReason != null)
             } finally {
                 _scanning.value = false
             }
         }
+    }
+
+    /**
+     * Vuelve a leer con Gemini la foto del borrador cuando la lectura falló (cuota, saturación, red):
+     * así no hace falta repetir la foto ni salir y volver a entrar. Lo leído y corregido con el OCR
+     * clásico se sustituye por la nueva lectura; si Gemini vuelve a fallar, queda otra vez el OCR.
+     */
+    fun retryWithGemini(
+        context: Context,
+        apiKeyStore: GeminiApiKeyStore,
+        messages: ReceiptScanMessages,
+        aliases: Map<String, ProductAlias> = emptyMap()
+    ) {
+        val current = _draft.value ?: return
+        val photo = current.photoUri ?: return
+        if (_scanning.value || _saving.value) return
+        _draft.value = null
+        scanReceipt(context, photo.toUri(), apiKeyStore, messages, aliases)
     }
 
     /** Cambios del usuario al revisar (supermercado, fecha, líneas). */

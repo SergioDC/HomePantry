@@ -91,7 +91,9 @@ fun ReceiptReviewSheet(
     onDiscard: () -> Unit,
     saving: Boolean,
     saveFailed: Boolean,
-    onSave: () -> Unit
+    onSave: () -> Unit,
+    /** Vuelve a leer la foto con Gemini; null si no se ofrece. */
+    onRetryGemini: (() -> Unit)? = null
 ) {
     val state by viewModel.state.collectAsState()
     var edited by remember { mutableStateOf(draft) }
@@ -164,11 +166,17 @@ fun ReceiptReviewSheet(
                             shape = MaterialTheme.shapes.medium,
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         ) {
-                            Text(
-                                notice,
-                                style = MaterialTheme.typography.bodyMedium,
-                                modifier = Modifier.padding(12.dp)
-                            )
+                            Column(Modifier.padding(12.dp)) {
+                                Text(notice, style = MaterialTheme.typography.bodyMedium)
+                                // Reintentar con la misma foto: sin repetirla ni salir y volver a entrar.
+                                if (edited.geminiFailed && onRetryGemini != null) {
+                                    TextButton(
+                                        onClick = onRetryGemini,
+                                        enabled = !saving,
+                                        modifier = Modifier.align(Alignment.End)
+                                    ) { Text(stringResource(R.string.receipt_review_retry_gemini)) }
+                                }
+                            }
                         }
                     }
                 }

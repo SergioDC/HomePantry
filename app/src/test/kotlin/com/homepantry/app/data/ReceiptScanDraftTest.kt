@@ -120,4 +120,11 @@ class ReceiptScanDraftTest {
         assertEquals("G", line.packUnit)
         assertEquals("", line.packText)
     }
+
+    @Test fun `gemini failure is remembered in the draft for retrying`() {
+        val failed = receiptScanDraft(ParsedReceipt(null, emptyList()), "content://foto", "falló", geminiFailed = true)
+        assertEquals(true, failed.geminiFailed)
+        assertEquals(true, receiptScanDraftFromJson(receiptScanDraftToJson(failed))!!.geminiFailed)
+        assertEquals(false, receiptScanDraftFromJson("{\"lines\":[]}")!!.geminiFailed)
+    }
 }

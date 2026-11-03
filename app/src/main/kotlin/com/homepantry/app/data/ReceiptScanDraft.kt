@@ -59,7 +59,9 @@ data class ReceiptScanDraft(
     /** Foto del ticket (Uri en texto), que se sube al guardar. */
     val photoUri: String? = null,
     /** Aviso de cómo fue la lectura (Gemini falló, OCR vacío…), que se muestra en la revisión. */
-    val notice: String? = null
+    val notice: String? = null,
+    /** Gemini no pudo leer el ticket (se usó el OCR clásico): la revisión ofrece reintentarlo con la misma foto. */
+    val geminiFailed: Boolean = false
 ) {
     /** Lo que se guarda: sin líneas sin nombre ni precios ilegibles, y una cantidad ilegible cuenta como 1. */
     fun toParsedReceipt(): ParsedReceipt = ParsedReceipt(
@@ -97,7 +99,8 @@ fun receiptScanDraft(
     parsed: ParsedReceipt,
     photoUri: String?,
     notice: String?,
-    aliases: Map<String, ProductAlias> = emptyMap()
+    aliases: Map<String, ProductAlias> = emptyMap(),
+    geminiFailed: Boolean = false
 ): ReceiptScanDraft = ReceiptScanDraft(
     store = parsed.store.orEmpty(),
     dateMillis = parsed.date?.time,
@@ -124,7 +127,8 @@ fun receiptScanDraft(
         )
     },
     photoUri = photoUri,
-    notice = notice
+    notice = notice,
+    geminiFailed = geminiFailed
 )
 
 private val gson = Gson()

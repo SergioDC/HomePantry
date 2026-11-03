@@ -150,17 +150,19 @@ fun PurchaseHistoryScreen(
     var showScanDialog by remember { mutableStateOf(false) }
     var confirmLeaveWhileReading by remember { mutableStateOf(false) }
 
+    fun scanMessages() = ReceiptScanMessages(
+        geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
+        ocrError = resources.getString(R.string.purchase_history_ocr_error),
+        ocrEmpty = resources.getString(R.string.purchase_history_ocr_empty)
+    )
+
     fun processReceiptUri(uri: Uri) {
         scanViewModel.scanReceipt(
             context = context,
             uri = uri,
             apiKeyStore = geminiApiKeyStore,
             aliases = state.productAliases,
-            messages = ReceiptScanMessages(
-                geminiFallback = { reason -> resources.getString(R.string.purchase_history_gemini_fallback, reason) },
-                ocrError = resources.getString(R.string.purchase_history_ocr_error),
-                ocrEmpty = resources.getString(R.string.purchase_history_ocr_empty)
-            )
+            messages = scanMessages()
         )
     }
 
@@ -297,7 +299,10 @@ fun PurchaseHistoryScreen(
             onDiscard = scanViewModel::discardDraft,
             saving = savingTicket,
             saveFailed = saveFailed,
-            onSave = { scanViewModel.saveDraft(viewModel::savePurchaseBatch) }
+            onSave = { scanViewModel.saveDraft(viewModel::savePurchaseBatch) },
+            onRetryGemini = {
+                scanViewModel.retryWithGemini(context, geminiApiKeyStore, scanMessages(), state.productAliases)
+            }
         )
     }
 

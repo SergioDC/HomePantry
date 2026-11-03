@@ -150,6 +150,7 @@
     <string name="receipt_review_qty">Cantidad</string>
     <string name="receipt_review_unit">Unidad</string>
     <string name="receipt_review_pack">Envase</string>
+    <string name="receipt_review_retry_gemini">Reintentar con IA</string>
     <string name="receipt_review_printed_name">En el ticket: %1$s</string>
     <string name="normalize_title">Normalizar productos</string>
     <string name="merge_products">Unir</string>
