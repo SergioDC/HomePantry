@@ -144,14 +144,14 @@ class ReceiptScanViewModel(private val draftStore: ReceiptScanDraftStore) : View
      * reintentar. Corre aquí y no en la hoja: girar el móvil a mitad no deja el ticket a medias
      * ni lo vuelve a ofrecer ya guardado (lo que acabaría duplicándolo).
      */
-    fun saveDraft(save: suspend (ParsedReceipt, Uri?) -> Boolean) {
+    fun saveDraft(save: suspend (ParsedReceipt, Uri?, List<ProductAlias>) -> Boolean) {
         val draft = _draft.value ?: return
         if (_saving.value) return
         _saving.value = true
         _saveFailed.value = false
         viewModelScope.launch {
             try {
-                if (save(draft.toParsedReceipt(), draft.photoUri?.let(Uri::parse))) {
+                if (save(draft.toParsedReceipt(), draft.photoUri?.let(Uri::parse), draft.aliasesToSave())) {
                     _draft.value = null
                 } else {
                     _saveFailed.value = true

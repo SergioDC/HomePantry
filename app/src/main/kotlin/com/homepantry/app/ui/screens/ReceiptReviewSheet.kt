@@ -224,11 +224,24 @@ fun ReceiptReviewSheet(
                 }
                 itemsIndexed(lines) { index, line ->
                     StripedCard(color = storeColor, onClick = null) {
+                        // Una línea añadida a mano no tiene nombre impreso: lo que se escribe vale para los dos.
+                        val manual = line.proposedProductName.isEmpty()
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             OutlinedTextField(
-                                value = line.name,
-                                onValueChange = { newValue -> setLine(index, line.copy(name = newValue)) },
+                                value = line.productName,
+                                onValueChange = { newValue ->
+                                    setLine(
+                                        index,
+                                        if (manual) line.copy(productName = newValue, name = newValue)
+                                        else line.copy(productName = newValue)
+                                    )
+                                },
                                 label = { Text(stringResource(R.string.receipt_review_name)) },
+                                supportingText = if (!manual && line.name.isNotBlank()) {
+                                    { Text(stringResource(R.string.receipt_review_printed_name, line.name)) }
+                                } else {
+                                    null
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                             IconButton(onClick = { edit(edited.copy(lines = lines.filterIndexed { i, _ -> i != index })) }) {
@@ -260,6 +273,15 @@ fun ReceiptReviewSheet(
                                 label = { Text(stringResource(R.string.receipt_review_price)) },
                                 isError = line.hasInvalidPrice(),
                                 modifier = Modifier.weight(1f).padding(start = 8.dp)
+                            )
+                        }
+                        // Lo pesado ya va en kg o l; el envase solo sirve para lo que se compra por unidades.
+                        if (line.unit == com.homepantry.app.data.Unit.UD.name) {
+                            PackField(
+                                amountText = line.packText,
+                                unit = line.packUnit,
+                                onChange = { text, unit -> setLine(index, line.copy(packText = text, packUnit = unit)) },
+                                modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                             )
                         }
                     }

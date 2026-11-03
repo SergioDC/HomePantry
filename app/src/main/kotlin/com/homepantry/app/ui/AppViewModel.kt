@@ -11,7 +11,12 @@ import com.homepantry.app.data.PROTECTED_ZONE_NAME
 import com.homepantry.app.data.ParsedReceipt
 import com.homepantry.app.data.ProductSummary
 import com.homepantry.app.data.Purchase
+import com.homepantry.app.data.PackSize
 import com.homepantry.app.data.ProductAlias
+import com.homepantry.app.data.ProductProposal
+import com.homepantry.app.data.aliasForCorrection
+import com.homepantry.app.data.displayName
+import com.homepantry.app.data.productKey
 import com.homepantry.app.data.ProductAliasesRepository
 import com.homepantry.app.data.PurchasesRepository
 import com.homepantry.app.data.StorageRepository
@@ -271,8 +276,17 @@ class AppViewModel(
      * local: pasados [SAVE_CONFIRM_TIMEOUT_MS] sin respuesta se da por guardado. La escritura sigue
      * en el scope del ViewModel aunque quien espera se cancele.
      */
-    suspend fun savePurchaseBatch(receipt: ParsedReceipt, ticketPhotoLocalUri: android.net.Uri?): Boolean {
-        val saving = viewModelScope.async { writePurchaseBatch(receipt, ticketPhotoLocalUri) }
+    suspend fun savePurchaseBatch(
+        receipt: ParsedReceipt,
+        ticketPhotoLocalUri: android.net.Uri?,
+        aliases: List<ProductAlias> = emptyList()
+    ): Boolean {
+        val saving = viewModelScope.async {
+            writePurchaseBatch(receipt, ticketPhotoLocalUri).also { saved ->
+                // Las correcciones van después y aparte: si fallan, el ticket ya está guardado.
+                if (saved) saveAliases(aliases)
+            }
+        }
         return withTimeoutOrNull(SAVE_CONFIRM_TIMEOUT_MS) { saving.await() } ?: true
     }
 
@@ -287,7 +301,10 @@ class AppViewModel(
         val purchases = receipt.lines.map { line ->
             Purchase(
                 rawName = line.name,
-                normalizedName = normalizeProductName(line.name),
+                productName = line.productName,
+                normalizedName = productKey(line.productName, line.name),
+                packSize = line.pack?.amount,
+                packUnit = line.pack?.unit,
                 price = line.price,
                 quantity = line.quantity,
                 unit = line.unit,
@@ -353,10 +370,26 @@ class AppViewModel(
      * agrupación se recalcula del nombre, como al guardar el ticket: si no, corregir el nombre no
      * movía la compra a su producto en el historial ni en las estadísticas.
      */
-    fun updatePurchase(purchase: Purchase) = viewModelScope.launch {
-        val normalized = purchase.copy(normalizedName = normalizeProductName(purchase.rawName))
+    fun updatePurchase(purchase: Purchase, previous: Purchase? = null) = viewModelScope.launch {
+        val normalized = purchase.copy(normalizedName = productKey(purchase.productName, purchase.rawName))
         runCatching { purchasesRepository.updatePurchase(normalized) }
+            .onSuccess {
+                // Corregir el nombre o el envase de una compra también enseña a la casa para el próximo ticket.
+                if (previous != null) {
+                    aliasForCorrection(purchase.rawName, previous.proposal(), purchase.proposal())
+                        ?.let { saveAliases(listOf(it)) }
+                }
+            }
             .onFailure { e -> _state.value = _state.value.copy(error = e.message) }
+    }
+
+    private fun Purchase.proposal(): ProductProposal {
+        val size = packSize
+        val unit = packUnit
+        return ProductProposal(
+            displayName(),
+            if (size != null && size > 0 && unit != null) PackSize(size, unit) else null
+        )
     }
 
     /** Suma cantidad a un producto pendiente ya existente en vez de duplicarlo (cierre de huecos §3). */
