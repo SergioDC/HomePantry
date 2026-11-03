@@ -98,3 +98,45 @@ fun applyPlan(rows: List<NormalizationRow>): Pair<List<ProductFieldsUpdate>, Lis
         .mapNotNull { aliasForCorrection(it.rawName, ProductProposal("", null), it.final) }
     return updates to aliases
 }
+
+/** Nombre que se propone al unir: el más reciente del producto con más compras. */
+fun defaultMergeName(purchases: List<Purchase>, normalizedNames: Set<String>): String =
+    purchases.filter { it.normalizedName in normalizedNames }
+        .groupBy { it.normalizedName }
+        .maxByOrNull { (_, group) -> group.size }
+        ?.value
+        ?.maxBy { it.date }
+        ?.displayName()
+        .orEmpty()
+
+/**
+ * Unir a mano: todas las compras de [normalizedNames] pasan a [finalName], sin tocar su envase, y
+ * cada nombre impreso implicado deja un alias para que los tickets futuros entren ya unidos. Se
+ * conserva el envase que ya recordase un alias anterior.
+ */
+fun mergePlan(
+    purchases: List<Purchase>,
+    normalizedNames: Set<String>,
+    finalName: String,
+    aliases: Map<String, ProductAlias>
+): Pair<List<ProductFieldsUpdate>, List<ProductAlias>> {
+    val name = finalName.trim()
+    val merged = purchases.filter { it.normalizedName in normalizedNames }
+    val updates = merged.map {
+        ProductFieldsUpdate(it.id, name, productKey(name, it.rawName), pack = null, setPack = false)
+    }
+    val newAliases = merged.mapNotNull { purchase -> aliasKey(purchase.rawName)?.let { it to purchase.rawName.trim() } }
+        .distinctBy { it.first }
+        .map { (key, rawName) ->
+            val previous = aliases[key]
+            ProductAlias(
+                id = key,
+                rawName = rawName,
+                productName = name,
+                packKnown = previous?.packKnown ?: false,
+                packSize = previous?.packSize,
+                packUnit = previous?.packUnit
+            )
+        }
+    return updates to newAliases
+}

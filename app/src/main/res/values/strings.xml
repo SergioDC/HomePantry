@@ -152,6 +152,14 @@
     <string name="receipt_review_pack">Envase</string>
     <string name="receipt_review_printed_name">En el ticket: %1$s</string>
     <string name="normalize_title">Normalizar productos</string>
+    <string name="merge_products">Unir</string>
+    <string name="merge_products_title">Unir productos</string>
+    <string name="merge_products_name">Nombre del producto</string>
+    <string name="merge_products_cancel_cd">Cancelar la selección</string>
+    <plurals name="merge_products_selected">
+        <item quantity="one">%d seleccionado</item>
+        <item quantity="other">%d seleccionados</item>
+    </plurals>
     <string name="normalize_needs_key">Hace falta una clave de Gemini para proponer los nombres. Añádela en Ajustes.</string>
     <string name="normalize_apply">Aplicar</string>
     <string name="normalize_retry">Reintentar</string>

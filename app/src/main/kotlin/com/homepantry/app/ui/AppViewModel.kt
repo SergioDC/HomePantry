@@ -14,6 +14,7 @@ import com.homepantry.app.data.Purchase
 import com.homepantry.app.data.PackSize
 import com.homepantry.app.data.ProductAlias
 import com.homepantry.app.data.ProductFieldsUpdate
+import com.homepantry.app.data.mergePlan
 import com.homepantry.app.data.ProductProposal
 import com.homepantry.app.data.aliasForCorrection
 import com.homepantry.app.data.displayName
@@ -399,6 +400,14 @@ class AppViewModel(
             _state.value = _state.value.copy(error = e.message)
             false
         }
+    }
+
+    /** Une a mano los productos [normalizedNames] bajo [finalName] (ver `mergePlan`). */
+    fun mergeProducts(normalizedNames: Set<String>, finalName: String) {
+        if (normalizedNames.size < 2 || finalName.isBlank()) return
+        val current = _state.value
+        val (updates, aliases) = mergePlan(current.purchases, normalizedNames, finalName, current.productAliases)
+        viewModelScope.launch { applyProductUpdates(updates, aliases) }
     }
 
     private fun Purchase.proposal(): ProductProposal {

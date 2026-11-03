@@ -81,6 +81,51 @@ class ProductNormalizationLogicTest {
         assertEquals(listOf("ARAND. CULTIVADO", "ARANDANO 300GR", "PAN"), sortedForReview(rows).map { it.rawName })
     }
 
+    private fun bought(id: String, raw: String, key: String, product: String = "", time: Long = 0, pack: Double? = null) =
+        Purchase(
+            id = id, rawName = raw, productName = product, normalizedName = key, date = Date(time),
+            price = 1.0, packSize = pack, packUnit = pack?.let { "KG" }
+        )
+
+    @Test fun `merge renames every purchase and keeps packs`() {
+        val purchases = listOf(
+            bought("1", "ARANDANO 300GR", "arandano 300gr", pack = 0.3),
+            bought("2", "ARANDANO 300GR", "arandano 300gr", pack = 0.3),
+            bought("3", "ARAND. CULTIVADO", "arand. cultivado"),
+            bought("4", "PAN", "pan")
+        )
+        val (updates, aliases) = mergePlan(purchases, setOf("arandano 300gr", "arand. cultivado"), "Arándanos", emptyMap())
+        assertEquals(listOf("1", "2", "3"), updates.map { it.purchaseId })
+        assertTrue(updates.all { !it.setPack && it.productName == "Arándanos" && it.normalizedName == "arandano" })
+        assertEquals(setOf(aliasKey("ARANDANO 300GR"), aliasKey("ARAND. CULTIVADO")), aliases.map { it.id }.toSet())
+    }
+
+    @Test fun `merge keeps existing alias pack`() {
+        val key = aliasKey("LECHE ENT. HACENDADO")!!
+        val existing = ProductAlias(id = key, productName = "Leche", packKnown = true, packSize = 1.0, packUnit = "L")
+        val (_, aliases) = mergePlan(
+            listOf(bought("1", "LECHE ENT. HACENDADO", "leche")),
+            setOf("leche"),
+            "Leche entera",
+            mapOf(key to existing)
+        )
+        val alias = aliases.single()
+        assertEquals("Leche entera", alias.productName)
+        assertTrue(alias.packKnown)
+        assertEquals(1.0, alias.packSize!!, 0.0)
+        assertEquals("L", alias.packUnit)
+    }
+
+    @Test fun `default name is the most bought product`() {
+        val purchases = listOf(
+            bought("1", "ARANDANO", "a", product = "Arándanos", time = 1),
+            bought("2", "ARANDANO", "a", product = "Arándanos", time = 2),
+            bought("3", "ARANDANO", "a", product = "Arándanos", time = 3),
+            bought("4", "ARAND", "b", product = "Arándano", time = 9)
+        )
+        assertEquals("Arándanos", defaultMergeName(purchases, setOf("a", "b")))
+    }
+
     @Test fun `namer output ignores bad entries`() {
         val proposals = mapNamerOutput(
             """{"products":[{"rawName":"A","productName":"Aa","packSize":1,"packUnit":"UD"},""" +
