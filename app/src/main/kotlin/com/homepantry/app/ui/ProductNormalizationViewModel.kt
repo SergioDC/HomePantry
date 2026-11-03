@@ -15,7 +15,10 @@ import com.homepantry.app.data.pendingRawNames
 import com.homepantry.app.data.refreshRows
 import com.homepantry.app.data.rowsFromProposals
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -38,6 +41,13 @@ class ProductNormalizationViewModel : ViewModel() {
 
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
+
+    /**
+     * Aviso de "aplicado" para que la pantalla vuelva atrás. Sin réplica: si el usuario ya ha salido
+     * cuando termina, nadie lo recoge y no se cierra otra pantalla por error.
+     */
+    private val _applied = MutableSharedFlow<kotlin.Unit>(extraBufferCapacity = 1)
+    val applied: SharedFlow<kotlin.Unit> = _applied.asSharedFlow()
 
     /**
      * Prepara las filas de lo que falta por normalizar: las que resuelve un alias, al momento, y
@@ -89,11 +99,10 @@ class ProductNormalizationViewModel : ViewModel() {
         _rows.value = _rows.value.map { if (it.key == key) it.copy(selected = !it.selected) else it }
     }
 
-    /** Guarda las filas marcadas con [save]; solo vacía la revisión si ha ido bien. */
+    /** Guarda las filas marcadas con [save]; solo vacía la revisión (y avisa en [applied]) si ha ido bien. */
     fun apply(
         currentPurchases: List<Purchase>,
-        save: suspend (List<ProductFieldsUpdate>, List<ProductAlias>) -> Boolean,
-        onDone: () -> Unit
+        save: suspend (List<ProductFieldsUpdate>, List<ProductAlias>) -> Boolean
     ) {
         if (_applying.value || _loading.value) return
         val (updates, aliases) = applyPlan(refreshRows(_rows.value, currentPurchases))
@@ -103,7 +112,7 @@ class ProductNormalizationViewModel : ViewModel() {
             try {
                 if (save(updates, aliases)) {
                     _rows.value = emptyList()
-                    onDone()
+                    _applied.tryEmit(kotlin.Unit)
                 }
             } finally {
                 _applying.value = false

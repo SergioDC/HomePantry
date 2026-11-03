@@ -127,4 +127,14 @@ class ReceiptScanDraftTest {
         assertEquals(true, receiptScanDraftFromJson(receiptScanDraftToJson(failed))!!.geminiFailed)
         assertEquals(false, receiptScanDraftFromJson("{\"lines\":[]}")!!.geminiFailed)
     }
+
+    @Test fun `a scanned line whose name is only a size is not a manual line`() {
+        val line = receiptScanDraft(ParsedReceipt(null, listOf(ParsedReceiptLine("500G", 1.0))), null, null).lines.single()
+        assertEquals(false, line.manual)
+    }
+
+    @Test fun `manual lines do not create aliases`() {
+        val draft = ReceiptScanDraft(lines = listOf(ReceiptDraftLine("Pan", "1", Unit.UD.name, "1,00", productName = "Pan", manual = true)))
+        assertEquals(emptyList<ProductAlias>(), draft.aliasesToSave())
+    }
 }

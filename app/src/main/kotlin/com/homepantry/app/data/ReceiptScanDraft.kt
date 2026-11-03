@@ -22,7 +22,9 @@ data class ReceiptDraftLine(
     /** Lo que se propuso al leer (Gemini, reglas y alias), para saber qué corrigió el usuario. */
     val proposedProductName: String = "",
     val proposedPackText: String = "",
-    val proposedPackUnit: String = "G"
+    val proposedPackUnit: String = "G",
+    /** Línea añadida a mano en la revisión: no tiene nombre impreso, así que el campo Producto también lo rellena. */
+    val manual: Boolean = false
 ) {
     /** Las líneas sin nombre se descartan al guardar; las que tienen nombre necesitan un precio válido. */
     fun hasInvalidPrice(): Boolean = name.isNotBlank() && parseUserPrice(priceText) == null
@@ -85,7 +87,7 @@ data class ReceiptScanDraft(
 
     /** Correcciones de nombre o envase hechas en la revisión, una por nombre impreso (gana la última). */
     fun aliasesToSave(): List<ProductAlias> =
-        lines.filter { it.name.isNotBlank() && !it.hasInvalidPrice() }
+        lines.filter { !it.manual && it.name.isNotBlank() && !it.hasInvalidPrice() }
             .mapNotNull { aliasForCorrection(it.name.trim(), it.proposedProposal(), it.finalProposal()) }
             .associateBy { it.id }
             .values
@@ -153,7 +155,8 @@ fun receiptScanDraftFromJson(json: String): ReceiptScanDraft? = try {
                     packUnit = line.packUnit ?: "G",
                     proposedProductName = line.proposedProductName ?: "",
                     proposedPackText = line.proposedPackText ?: "",
-                    proposedPackUnit = line.proposedPackUnit ?: "G"
+                    proposedPackUnit = line.proposedPackUnit ?: "G",
+                    manual = line.manual
                 )
             }
         )

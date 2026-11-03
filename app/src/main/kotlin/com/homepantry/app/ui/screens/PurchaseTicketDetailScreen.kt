@@ -317,6 +317,7 @@ private fun EditPurchaseDialog(
     onDismiss: () -> Unit
 ) {
     var name by remember(purchase) { mutableStateOf(purchase.displayName()) }
+    var rawName by remember(purchase) { mutableStateOf(purchase.rawName) }
     val initialPack = remember(purchase) {
         val size = purchase.packSize
         val packUnitName = purchase.packUnit
@@ -341,6 +342,14 @@ private fun EditPurchaseDialog(
                     label = { Text(stringResource(R.string.receipt_review_name)) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
+                )
+                // El nombre impreso se puede corregir (una errata del OCR), aparte del genérico.
+                OutlinedTextField(
+                    value = rawName,
+                    onValueChange = { rawName = it },
+                    label = { Text(stringResource(R.string.receipt_review_printed_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                 )
                 Row(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
                     OutlinedTextField(
@@ -383,6 +392,7 @@ private fun EditPurchaseDialog(
                     val pack = if (unit == com.homepantry.app.data.Unit.UD.name) toPackSize(packText, packUnit) else null
                     onSave(
                         purchase.copy(
+                            rawName = rawName.trim(),
                             productName = editedProductName(purchase, name),
                             packSize = pack?.amount,
                             packUnit = pack?.unit,
@@ -392,7 +402,7 @@ private fun EditPurchaseDialog(
                         )
                     )
                 },
-                enabled = name.isNotBlank() && price != null
+                enabled = name.isNotBlank() && rawName.isNotBlank() && price != null
             ) { Text(stringResource(R.string.add_item_save_edit)) }
         },
         dismissButton = {

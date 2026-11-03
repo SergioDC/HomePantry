@@ -47,11 +47,19 @@ fun splitPackSize(rawName: String): SplitName {
  * Clave del alias de un nombre impreso: sin el tamaño (un alias sirve para todos los tamaños) y
  * normalizada. "/" y "." no valen en un id de documento de Firestore. Null si no queda nombre.
  */
-fun aliasKey(rawName: String): String? =
-    normalizeProductName(splitPackSize(rawName).name)
+fun aliasKey(rawName: String): String? {
+    val key = normalizeProductName(splitPackSize(rawName).name)
         .replace('/', '_')
         .replace('.', '_')
-        .takeIf { it.isNotBlank() }
+    return when {
+        key.isBlank() -> null
+        // Firestore admite ids de hasta 1500 bytes; un nombre así no es un producto real.
+        key.toByteArray(Charsets.UTF_8).size > 1500 -> null
+        // Los ids con forma "__x__" están reservados por Firestore.
+        key.startsWith("__") && key.endsWith("__") -> "k$key"
+        else -> key
+    }
+}
 
 /** Envase que escribe el usuario: cantidad (admite coma) en G, KG, ML o L. Null si no es > 0. */
 fun toPackSize(amountText: String, displayUnit: String): PackSize? {
