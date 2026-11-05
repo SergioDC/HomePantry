@@ -93,5 +93,21 @@ fun groupRecipes(recipes: List<Recipe>): List<RecipeGroup> {
     return groups.map { (key, list) -> RecipeGroup(key.first, key.second, list) }
 }
 
+/**
+ * Enlace listo para abrir, o null si no es web. Los enlaces los escribe cualquier miembro de la
+ * casa, así que solo se abren http y https: un `intent:` o `file:` podría lanzar otras apps.
+ * Sin esquema se supone https («www.receta.com»).
+ */
+fun safeRecipeUrl(url: String): String? {
+    val trimmed = url.trim()
+    if (trimmed.isEmpty() || trimmed.any { it.isWhitespace() }) return null
+    val scheme = Regex("^([a-zA-Z][a-zA-Z0-9+.-]*):").find(trimmed)?.groupValues?.get(1)?.lowercase(Locale.ROOT)
+    return when {
+        scheme == null -> "https://$trimmed"
+        (scheme == "http" || scheme == "https") && trimmed.startsWith("$scheme://", ignoreCase = true) -> trimmed
+        else -> null
+    }
+}
+
 /** Nulo si el texto queda vacío tras recortarlo: los campos opcionales no guardan "". */
 fun String.trimToNull(): String? = trim().ifEmpty { null }

@@ -94,6 +94,18 @@ class RecipeLogicTest {
     }
 
     @Test
+    fun `solo se abren enlaces web`() {
+        assertEquals("https://www.receta.com/pisto", safeRecipeUrl(" www.receta.com/pisto "))
+        assertEquals("http://receta.com", safeRecipeUrl("http://receta.com"))
+        assertEquals("HTTPS://receta.com", safeRecipeUrl("HTTPS://receta.com"))
+        assertNull(safeRecipeUrl("intent://scan/#Intent;scheme=zxing;end"))
+        assertNull(safeRecipeUrl("javascript:alert(1)"))
+        assertNull(safeRecipeUrl("file:///sdcard/x"))
+        assertNull(safeRecipeUrl("https:receta.com"))
+        assertNull(safeRecipeUrl("   "))
+    }
+
+    @Test
     fun `la subseccion va junto a la seccion en el titulo del grupo`() {
         val groups = groupRecipes(listOf(recipe("A", section = "Bases calientes").copy(subsection = "Base de Tomate")))
         assertEquals("Bases calientes · Base de Tomate", groups.single().section)

@@ -54,6 +54,7 @@ import com.homepantry.app.R
 import com.homepantry.app.data.Recipe
 import com.homepantry.app.data.RecipeSource
 import com.homepantry.app.data.groupRecipes
+import com.homepantry.app.data.safeRecipeUrl
 import com.homepantry.app.data.searchRecipes
 import com.homepantry.app.ui.RecipesUiState
 import com.homepantry.app.ui.RecipesViewModel
@@ -185,7 +186,7 @@ fun RecipeSourceScreen(
                     }
                 },
                 actions = {
-                    source?.url?.let { url ->
+                    source?.url?.let(::safeRecipeUrl)?.let { url ->
                         IconButton(onClick = { openLink(uriHandler, url) }) {
                             Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(R.string.recipes_open_link_cd))
                         }
@@ -397,7 +398,7 @@ private fun RecipeRow(recipe: Recipe, subtitle: String?, onClick: () -> Unit) {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        recipe.url?.let { url ->
+        recipe.url?.let(::safeRecipeUrl)?.let { url ->
             IconButton(onClick = { openLink(uriHandler, url) }) {
                 Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(R.string.recipes_open_link_cd))
             }
@@ -412,8 +413,8 @@ private fun EmptyMessage(text: String) {
     }
 }
 
-/** Abre el enlace; sin esquema se le pone https:// y, si no hay app que lo abra, no pasa nada. */
+/** Abre solo enlaces web (ver [safeRecipeUrl]); si no hay app que lo abra, no pasa nada. */
 private fun openLink(uriHandler: androidx.compose.ui.platform.UriHandler, url: String) {
-    val full = if (url.contains("://")) url else "https://$url"
-    runCatching { uriHandler.openUri(full) }
+    val safe = safeRecipeUrl(url) ?: return
+    runCatching { uriHandler.openUri(safe) }
 }
