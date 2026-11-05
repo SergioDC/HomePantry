@@ -82,6 +82,13 @@ import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
+import com.homepantry.app.ui.RecipesViewModel
+import com.homepantry.app.ui.screens.RecipeSourceScreen
+import com.homepantry.app.ui.screens.RecipesScreen
+import com.homepantry.app.data.FUTURLIFE_ASSET
+import com.homepantry.app.data.FUTURLIFE_SOURCE_ID
+import com.homepantry.app.data.RecipesRepository
+import com.homepantry.app.data.parseRecipeSeed
 import com.homepantry.app.ui.components.BottomNavBar
 import com.homepantry.app.ui.components.BottomNavItem
 import com.homepantry.app.ui.screens.AddItemSheet
@@ -355,10 +362,31 @@ fun ListaDeLaCasaApp(
         }
     )
 
-    LaunchedEffect(viewModel, menuViewModel, notificationsViewModel, name) {
+    val recipesViewModel: RecipesViewModel = viewModel(
+        key = "recipes-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    val assets = context.applicationContext.assets
+                    return RecipesViewModel(
+                        repository = RecipesRepository(firestore, code),
+                        loadSeeds = {
+                            val json = assets.open(FUTURLIFE_ASSET).bufferedReader().use { it.readText() }
+                            listOf(parseRecipeSeed(json, FUTURLIFE_SOURCE_ID))
+                        },
+                        userName = name
+                    ) as T
+                }
+            }
+        }
+    )
+
+    LaunchedEffect(viewModel, menuViewModel, notificationsViewModel, recipesViewModel, name) {
         viewModel.updateUserName(name)
         menuViewModel.updateUserName(name)
         notificationsViewModel.updateUserName(name)
+        recipesViewModel.updateUserName(name)
     }
     val notificationsState by notificationsViewModel.state.collectAsState()
 
@@ -449,6 +477,7 @@ fun ListaDeLaCasaApp(
                     onOpenSettings = { navController.navigate("manageZones") },
                     onOpenStorage = { navController.navigate("zonesDashboard") },
                     onOpenMenu = { navController.navigate("menu") },
+                    onOpenRecipes = { navController.navigate("recipes") },
                     onOpenSpending = { navController.navigate("purchaseHistory") },
                     onOpenSplit = { navController.navigate("splitMonths") },
                     unreadNotifications = notificationsState.unreadCount,
@@ -577,6 +606,21 @@ fun ListaDeLaCasaApp(
                 PurchaseTicketDetailScreen(
                     viewModel = viewModel,
                     ticketKey = Uri.decode(encodedKey),
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("recipes") {
+                RecipesScreen(
+                    viewModel = recipesViewModel,
+                    onBack = { navController.popBackStack() },
+                    onOpenSource = { sourceId -> navController.navigate("recipeSource/$sourceId") }
+                )
+            }
+            composable("recipeSource/{sourceId}") { backStackEntry ->
+                val sourceId = backStackEntry.arguments?.getString("sourceId") ?: return@composable
+                RecipeSourceScreen(
+                    viewModel = recipesViewModel,
+                    sourceId = sourceId,
                     onBack = { navController.popBackStack() }
                 )
             }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Inventory2
@@ -42,7 +43,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Pantalla de inicio: separa las áreas de la app (Almacén, Menú, Gastos y Reparto) en tarjetas
+ * Pantalla de inicio: separa las áreas de la app (Almacén, Menú, Recetas, Gastos y Reparto) en tarjetas
  * con un resumen de cada una. Solo lee datos que los ViewModels ya tienen cargados.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +55,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onOpenStorage: () -> Unit,
     onOpenMenu: () -> Unit,
+    onOpenRecipes: () -> Unit,
     onOpenSpending: () -> Unit,
     onOpenSplit: () -> Unit,
     unreadNotifications: Int,
@@ -121,6 +123,13 @@ fun HomeScreen(
                 title = stringResource(R.string.home_menu_title),
                 summary = stringResource(R.string.home_menu_summary),
                 onClick = onOpenMenu
+            )
+            HomeCard(
+                icon = Icons.AutoMirrored.Filled.MenuBook,
+                color = StoreColors[4],
+                title = stringResource(R.string.home_recipes_title),
+                summary = stringResource(R.string.home_recipes_summary),
+                onClick = onOpenRecipes
             )
             HomeCard(
                 icon = Icons.Filled.Receipt,
