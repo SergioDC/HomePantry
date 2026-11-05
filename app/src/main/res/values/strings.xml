@@ -590,6 +590,7 @@
     <string name="recipes_source_create">Nueva entrada</string>
     <string name="recipes_source_edit">Editar entrada</string>
     <string name="recipes_source_delete">Borrar entrada</string>
+    <string name="recipes_source_view">Ver recetas</string>
     <string name="recipes_source_name">Nombre</string>
     <string name="recipes_source_url">Enlace (opcional)</string>
     <string name="recipes_open_link_cd">Abrir enlace</string>

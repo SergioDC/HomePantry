@@ -109,5 +109,24 @@ fun safeRecipeUrl(url: String): String? {
     }
 }
 
+/**
+ * Si tocar la tarjeta de una entrada abre su web en vez de entrar: tiene un enlace que se puede
+ * abrir y ninguna receta, así que dentro no habría nada que ver.
+ */
+fun recipeSourceOpensLink(source: RecipeSource, recipeCount: Int): Boolean =
+    recipeCount == 0 && source.url?.let(::safeRecipeUrl) != null
+
+/**
+ * Busca entradas por nombre con la misma regla que [searchRecipes]: una entrada que es solo un
+ * enlace no tiene recetas, y sin esto no se podría encontrar.
+ */
+fun searchRecipeSources(sources: List<RecipeSource>, query: String): List<RecipeSource> {
+    val words = normalizeRecipeText(query).split(Regex("[^a-z0-9]+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return emptyList()
+    return sources
+        .filter { source -> normalizeRecipeText(source.name).let { name -> words.all { it in name } } }
+        .sortedBy { normalizeRecipeText(it.name) }
+}
+
 /** Nulo si el texto queda vacío tras recortarlo: los campos opcionales no guardan "". */
 fun String.trimToNull(): String? = trim().ifEmpty { null }

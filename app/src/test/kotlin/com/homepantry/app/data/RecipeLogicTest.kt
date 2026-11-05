@@ -2,6 +2,7 @@ package com.homepantry.app.data
 
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -109,5 +110,27 @@ class RecipeLogicTest {
     fun `la subseccion va junto a la seccion en el titulo del grupo`() {
         val groups = groupRecipes(listOf(recipe("A", section = "Bases calientes").copy(subsection = "Base de Tomate")))
         assertEquals("Bases calientes · Base de Tomate", groups.single().section)
+    }
+
+    @Test
+    fun `tocar la entrada abre la web solo si tiene enlace valido y ninguna receta`() {
+        val web = RecipeSource(id = "w", name = "Pisto", url = "www.receta.com/pisto")
+        assertTrue(recipeSourceOpensLink(web, recipeCount = 0))
+        assertFalse(recipeSourceOpensLink(web, recipeCount = 3))
+        assertFalse(recipeSourceOpensLink(web.copy(url = null), recipeCount = 0))
+        assertFalse(recipeSourceOpensLink(web.copy(url = "file:///sdcard/x"), recipeCount = 0))
+    }
+
+    @Test
+    fun `la busqueda de entradas ignora tildes y mayusculas y exige todas las palabras`() {
+        val sources = listOf(
+            RecipeSource(id = "b", name = "Pisto de mi madre"),
+            RecipeSource(id = "a", name = "Blog de Cocína")
+        )
+        assertEquals(listOf("a"), searchRecipeSources(sources, "COCINA").map { it.id })
+        assertEquals(listOf("a", "b"), searchRecipeSources(sources, "de").map { it.id })
+        assertEquals(listOf("b"), searchRecipeSources(sources, "madre pisto").map { it.id })
+        assertTrue(searchRecipeSources(sources, "pisto blog").isEmpty())
+        assertTrue(searchRecipeSources(sources, "   ").isEmpty())
     }
 }

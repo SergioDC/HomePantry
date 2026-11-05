@@ -54,7 +54,9 @@ import com.homepantry.app.R
 import com.homepantry.app.data.Recipe
 import com.homepantry.app.data.RecipeSource
 import com.homepantry.app.data.groupRecipes
+import com.homepantry.app.data.recipeSourceOpensLink
 import com.homepantry.app.data.safeRecipeUrl
+import com.homepantry.app.data.searchRecipeSources
 import com.homepantry.app.data.searchRecipes
 import com.homepantry.app.ui.RecipesUiState
 import com.homepantry.app.ui.RecipesViewModel
@@ -62,7 +64,8 @@ import com.homepantry.app.ui.components.NocturneFab
 
 /**
  * Área Recetas: buscador sobre todas las entradas y, sin búsqueda, la lista de entradas.
- * Tocar una receta abre su ficha para apuntar «Dónde está».
+ * Tocar una receta abre su ficha para apuntar «Dónde está»; tocar una entrada que es solo un
+ * enlace abre la web, y las demás entran a sus recetas.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +79,8 @@ fun RecipesScreen(
     var query by rememberSaveable { mutableStateOf("") }
     var showCreate by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf<Recipe?>(null) }
+    var editingSource by remember { mutableStateOf<RecipeSource?>(null) }
+    var deletingSource by remember { mutableStateOf<RecipeSource?>(null) }
 
     LaunchedEffect(Unit) { viewModel.start() }
     RecipesErrorEffect(state, viewModel, snackbarHostState)
@@ -104,14 +109,27 @@ fun RecipesScreen(
                 !state.loaded -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-                query.isNotBlank() -> SearchResults(state, query, onOpen = { editing = it })
+                query.isNotBlank() -> SearchResults(
+                    state = state,
+                    query = query,
+                    onOpen = { editing = it },
+                    onEnterSource = { onOpenSource(it.id) },
+                    onEditSource = { editingSource = it },
+                    onDeleteSource = { deletingSource = it }
+                )
                 state.sources.isEmpty() -> EmptyMessage(stringResource(R.string.recipes_sources_empty))
                 else -> LazyColumn(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(state.sortedSources, key = { it.id }) { source ->
-                        SourceCard(source, state.recipesOf(source.id), onClick = { onOpenSource(source.id) })
+                        SourceCard(
+                            source = source,
+                            recipes = state.recipesOf(source.id),
+                            onEnter = { onOpenSource(source.id) },
+                            onEdit = { editingSource = source },
+                            onDelete = { deletingSource = source }
+                        )
                     }
                 }
             }
@@ -128,18 +146,59 @@ fun RecipesScreen(
             }
         )
     }
+    editingSource?.let { source ->
+        RecipeSourceFormSheet(
+            initial = source,
+            onDismiss = { editingSource = null },
+            onSave = { name, type, url ->
+                viewModel.updateSource(source.id, name, type, url)
+                editingSource = null
+            }
+        )
+    }
+    deletingSource?.let { source ->
+        val count = state.recipesOf(source.id).size
+        RecipeDeleteDialog(
+            title = stringResource(R.string.recipes_source_delete),
+            message = pluralStringResource(R.plurals.recipes_source_delete_message, count, count, source.name),
+            onDismiss = { deletingSource = null },
+            onConfirm = {
+                deletingSource = null
+                viewModel.deleteSource(source.id)
+            }
+        )
+    }
     editing?.let { recipe -> RecipeEditor(recipe, viewModel, onClose = { editing = null }) }
 }
 
 @Composable
-private fun SearchResults(state: RecipesUiState, query: String, onOpen: (Recipe) -> Unit) {
+private fun SearchResults(
+    state: RecipesUiState,
+    query: String,
+    onOpen: (Recipe) -> Unit,
+    onEnterSource: (RecipeSource) -> Unit,
+    onEditSource: (RecipeSource) -> Unit,
+    onDeleteSource: (RecipeSource) -> Unit
+) {
+    val sources = remember(state.sources, query) { searchRecipeSources(state.sources, query) }
     val results = remember(state.recipes, query) { searchRecipes(state.recipes, query) }
     val sourceNames = remember(state.sources) { state.sources.associate { it.id to it.name } }
-    if (results.isEmpty()) {
+    if (sources.isEmpty() && results.isEmpty()) {
         EmptyMessage(stringResource(R.string.recipes_search_empty, query.trim()))
         return
     }
     LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+        // Prefijo en la clave: entradas y recetas son colecciones distintas y sus ids podrían coincidir.
+        items(sources, key = { "source-${it.id}" }) { source ->
+            SourceCard(
+                source = source,
+                recipes = state.recipesOf(source.id),
+                onEnter = { onEnterSource(source) },
+                onEdit = { onEditSource(source) },
+                onDelete = { onDeleteSource(source) },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
         items(results, key = { it.id }) { recipe ->
             val origin = listOfNotNull(sourceNames[recipe.sourceId], recipe.book, recipe.section)
                 .distinct()
@@ -335,22 +394,76 @@ private fun RecipeSearchField(query: String, onQueryChange: (String) -> Unit) {
     )
 }
 
+/**
+ * Tarjeta de una entrada. Si es solo un enlace, tocarla abre la web (ver [recipeSourceOpensLink]);
+ * si no, entra a sus recetas. Editar y borrar van en el menú para no tener que entrar.
+ */
 @Composable
-private fun SourceCard(source: RecipeSource, recipes: List<Recipe>, onClick: () -> Unit) {
+private fun SourceCard(
+    source: RecipeSource,
+    recipes: List<Recipe>,
+    onEnter: () -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val uriHandler = LocalUriHandler.current
+    var menuOpen by remember { mutableStateOf(false) }
     val located = recipes.count { !it.location.isNullOrBlank() }
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+    val link = source.url?.let(::safeRecipeUrl)
+    val opensLink = recipeSourceOpensLink(source, recipes.size)
+    Card(
+        onClick = { if (opensLink && link != null) openLink(uriHandler, link) else onEnter() },
+        modifier = modifier.fillMaxWidth()
+    ) {
+        Row(
+            Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             Column(Modifier.weight(1f)) {
                 Text(source.name, style = MaterialTheme.typography.titleMedium)
+                val typeLabel = recipeSourceTypeLabel(source.type)
                 Text(
-                    text = recipeSourceTypeLabel(source.type) + " · " +
-                        pluralStringResource(R.plurals.recipes_source_count, recipes.size, recipes.size, located),
+                    text = if (opensLink) {
+                        typeLabel
+                    } else {
+                        typeLabel + " · " +
+                            pluralStringResource(R.plurals.recipes_source_count, recipes.size, recipes.size, located)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            if (link != null) {
+                IconButton(onClick = { openLink(uriHandler, link) }) {
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = stringResource(R.string.recipes_open_link_cd))
+                }
+            }
+            Box {
+                IconButton(onClick = { menuOpen = true }) {
+                    Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.recipes_more_cd))
+                }
+                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                    if (opensLink) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.recipes_source_view)) },
+                            onClick = { menuOpen = false; onEnter() }
+                        )
+                    }
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.recipes_source_edit)) },
+                        onClick = { menuOpen = false; onEdit() }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.recipes_source_delete), color = MaterialTheme.colorScheme.error) },
+                        onClick = { menuOpen = false; onDelete() }
+                    )
+                }
+            }
+            if (!opensLink) {
+                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
+            }
         }
     }
 }
