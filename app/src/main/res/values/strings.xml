@@ -578,4 +578,47 @@
         <item quantity="one">%d producto añadido</item>
         <item quantity="other">%d productos añadidos</item>
     </plurals>
+
+    <!-- Recetas -->
+    <string name="home_recipes_title">Recetas</string>
+    <string name="home_recipes_summary">Dónde está cada receta</string>
+    <string name="recipes_title">Recetas</string>
+    <string name="recipes_search_hint">Buscar receta</string>
+    <string name="recipes_search_clear_cd">Borrar búsqueda</string>
+    <string name="recipes_search_empty">Ninguna receta coincide con «%1$s»</string>
+    <string name="recipes_sources_empty">Aún no hay entradas. Crea una para un libro, un artículo o una web.</string>
+    <string name="recipes_source_create">Nueva entrada</string>
+    <string name="recipes_source_edit">Editar entrada</string>
+    <string name="recipes_source_delete">Borrar entrada</string>
+    <string name="recipes_source_name">Nombre</string>
+    <string name="recipes_source_url">Enlace (opcional)</string>
+    <string name="recipes_open_link_cd">Abrir enlace</string>
+    <string name="recipes_type_book">Libro</string>
+    <string name="recipes_type_article">Artículo</string>
+    <string name="recipes_type_web">Web</string>
+    <string name="recipes_type_other">Otro</string>
+    <plurals name="recipes_source_count">
+        <item quantity="one">%1$d receta · %2$d localizada</item>
+        <item quantity="other">%1$d recetas · %2$d localizadas</item>
+    </plurals>
+    <plurals name="recipes_source_delete_message">
+        <item quantity="one">Se borrará «%2$s» y su receta para toda la casa.</item>
+        <item quantity="other">Se borrará «%2$s» y sus %1$d recetas para toda la casa.</item>
+    </plurals>
+    <string name="recipes_source_empty">Esta entrada aún no tiene recetas.</string>
+    <string name="recipes_recipe_create">Nueva receta</string>
+    <string name="recipes_recipe_edit">Receta</string>
+    <string name="recipes_recipe_name">Nombre de la receta</string>
+    <string name="recipes_recipe_location">Dónde está</string>
+    <string name="recipes_recipe_location_hint">Ej.: Futurlibro 2, pág. 45</string>
+    <string name="recipes_recipe_book">Libro (opcional)</string>
+    <string name="recipes_recipe_section">Sección (opcional)</string>
+    <string name="recipes_recipe_url">Enlace (opcional)</string>
+    <string name="recipes_recipe_delete">Borrar receta</string>
+    <string name="recipes_recipe_delete_message">Se borrará «%1$s» para toda la casa.</string>
+    <string name="recipes_no_location">Sin ubicar</string>
+    <string name="recipes_save">Guardar</string>
+    <string name="recipes_cancel">Cancelar</string>
+    <string name="recipes_delete">Borrar</string>
+    <string name="recipes_more_cd">Más opciones</string>
 </resources>
