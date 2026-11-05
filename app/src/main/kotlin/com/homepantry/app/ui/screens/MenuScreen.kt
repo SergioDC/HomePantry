@@ -14,8 +14,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
@@ -27,6 +32,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -66,13 +72,13 @@ import kotlinx.coroutines.launch
 private data class AssignScope(val label: String, val from: LocalDate, val to: LocalDate, val announce: Boolean)
 
 /**
- * Pestaña «Menú»: calendario (semana/mes) y lista de platos. Aquí viven el día abierto, el
- * diálogo de duplicar, la importación del menú desde una foto y el Snackbar de errores y avisos;
- * el detalle está en cada componente.
+ * Área «Menú» (se abre desde Home, sin barra inferior): calendario (semana/mes) y lista de
+ * platos. Aquí viven el día abierto, el diálogo de duplicar, la importación del menú desde una
+ * foto y el Snackbar de errores y avisos; el detalle está en cada componente.
  */
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
+fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel, onBack: () -> Unit) {
     val state by menuViewModel.state.collectAsState()
     val appState by appViewModel.state.collectAsState()
     val context = LocalContext.current
@@ -188,7 +194,20 @@ fun MenuScreen(menuViewModel: MenuViewModel, appViewModel: AppViewModel) {
         }
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }) { padding ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.nav_menu)) },
+                navigationIcon = {
+                    // Con Gemini leyendo, la flecha avisa igual que el atrás del sistema.
+                    IconButton(onClick = { if (importing) confirmLeaveWhileReading = true else onBack() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.zones_back_cd))
+                    }
+                }
+            )
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
+    ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             Column(Modifier.fillMaxSize()) {
                 TabRow(selectedTabIndex = selectedTab) {

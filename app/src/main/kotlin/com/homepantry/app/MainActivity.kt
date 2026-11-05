@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Inventory2
-import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.Button
@@ -185,7 +184,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "menu", "search")
+private val BOTTOM_NAV_ROUTES = setOf("mainList", "zonesDashboard", "search")
 
 @Composable
 fun ListaDeLaCasaApp(
@@ -419,7 +418,6 @@ fun ListaDeLaCasaApp(
                         BottomNavItem("home", stringResource(R.string.nav_inicio), Icons.Filled.Home),
                         BottomNavItem("zonesDashboard", stringResource(R.string.nav_almacen), Icons.Filled.Inventory2),
                         BottomNavItem("mainList", stringResource(R.string.nav_lista), Icons.Filled.ShoppingCart, badgeCount = pendingCount),
-                        BottomNavItem("menu", stringResource(R.string.nav_menu), Icons.Filled.RestaurantMenu),
                         BottomNavItem("search", stringResource(R.string.nav_buscar), Icons.Filled.Search)
                     ),
                     selectedRoute = selectedRoute ?: "zonesDashboard",
@@ -450,6 +448,7 @@ fun ListaDeLaCasaApp(
                     userName = name,
                     onOpenSettings = { navController.navigate("manageZones") },
                     onOpenStorage = { navController.navigate("zonesDashboard") },
+                    onOpenMenu = { navController.navigate("menu") },
                     onOpenSpending = { navController.navigate("purchaseHistory") },
                     onOpenSplit = { navController.navigate("splitMonths") },
                     unreadNotifications = notificationsState.unreadCount,
@@ -484,7 +483,11 @@ fun ListaDeLaCasaApp(
                 )
             }
             composable("menu") {
-                MenuScreen(menuViewModel = menuViewModel, appViewModel = viewModel)
+                MenuScreen(
+                    menuViewModel = menuViewModel,
+                    appViewModel = viewModel,
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("zonesDashboard") {
                 ZonesDashboardScreen(

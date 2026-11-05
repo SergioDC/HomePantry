@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.RestaurantMenu
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -41,7 +42,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Pantalla de inicio: separa las tres áreas de la app (Almacén, Gastos y Reparto) en tarjetas
+ * Pantalla de inicio: separa las áreas de la app (Almacén, Menú, Gastos y Reparto) en tarjetas
  * con un resumen de cada una. Solo lee datos que los ViewModels ya tienen cargados.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +53,7 @@ fun HomeScreen(
     userName: String,
     onOpenSettings: () -> Unit,
     onOpenStorage: () -> Unit,
+    onOpenMenu: () -> Unit,
     onOpenSpending: () -> Unit,
     onOpenSplit: () -> Unit,
     unreadNotifications: Int,
@@ -112,6 +114,13 @@ fun HomeScreen(
                 summary = if (pending == 0) stringResource(R.string.home_almacen_none)
                 else pluralStringResource(R.plurals.home_almacen_pending, pending, pending),
                 onClick = onOpenStorage
+            )
+            HomeCard(
+                icon = Icons.Filled.RestaurantMenu,
+                color = StoreColors[3],
+                title = stringResource(R.string.home_menu_title),
+                summary = stringResource(R.string.home_menu_summary),
+                onClick = onOpenMenu
             )
             HomeCard(
                 icon = Icons.Filled.Receipt,

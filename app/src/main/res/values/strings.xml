@@ -414,6 +414,8 @@
     <!-- Home (spec 2026-10-22) -->
     <string name="nav_inicio">Inicio</string>
     <string name="home_almacen_title">Almacén</string>
+    <string name="home_menu_title">Menú</string>
+    <string name="home_menu_summary">Comidas de la semana</string>
     <string name="home_gastos_title">Gastos</string>
     <string name="home_reparto_title">SNcount</string>
     <plurals name="home_almacen_pending">
