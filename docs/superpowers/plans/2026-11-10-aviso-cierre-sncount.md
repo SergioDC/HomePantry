@@ -28,20 +28,24 @@ Ficheros Android tocados: `SplitMonth.kt`, `SplitMonthsRepository.kt`, `SplitLin
 
 ## Task 2: Firebase
 
-- [ ] Google Cloud Console → crear la cuenta de servicio `snhome-notifier` con los roles **Cloud Datastore User** y **Firebase Cloud Messaging API Admin**. Descargar la clave JSON.
-- [ ] Firebase Console → Configuración del proyecto → Cloud Messaging: comprobar que la API de FCM (V1) está habilitada.
-- [ ] No hace falta tocar `firestore.rules`: `pushTokens` y los campos nuevos de `splitMonths` quedan dentro de la regla de la casa.
+- [x] Google Cloud Console → crear la cuenta de servicio `snhome-notifier` con los roles **Cloud Datastore User** y **Firebase Cloud Messaging API Admin**. Descargar la clave JSON.
+- [x] Firebase Console → Configuración del proyecto → Cloud Messaging: comprobar que la API de FCM (V1) está habilitada.
+- [x] No hace falta tocar `firestore.rules`: `pushTokens` y los campos nuevos de `splitMonths` quedan dentro de la regla de la casa.
+
+> **2026-11-10:** cuenta `snhome-notifier` creada con los dos roles. La API de FCM (V1) ya estaba habilitada. La clave está solo en el NAS y en local, fuera del repo.
 
 ## Task 3: desplegar el notificador en el DS224+
 
 Pasos detallados en `tools/notifier/README.md`.
 
-- [ ] Instalar Container Manager.
-- [ ] Copiar `tools/notifier` a `/volume1/docker/snhome-notifier` (sin `node_modules`).
-- [ ] Crear `secrets/sa.json` (`chown` al usuario de `PUID`, `chmod 400`) y `.env` desde `.env.example`.
-- [ ] Prueba en seco: `sudo docker compose run --rm snhome-notifier node src/index.mjs --once --dry-run`.
-- [ ] Levantar el proyecto y comprobar `notificador en marcha` en los registros.
-- [ ] Mirar la RAM real del contenedor en Container Manager (esperado: 60–90 MB).
+- [x] Instalar Container Manager.
+- [x] Copiar `tools/notifier` a `/volume1/docker/snhome-notifier` (sin `node_modules`).
+- [x] Crear `secrets/sa.json` (`chown` al usuario de `PUID`, `chmod 400`) y `.env` desde `.env.example`.
+- [x] Prueba en seco: `sudo docker compose run --rm snhome-notifier node src/index.mjs --once --dry-run`.
+- [x] Levantar el proyecto y comprobar `notificador en marcha` en los registros.
+- [x] Mirar la RAM real del contenedor en Container Manager (esperado: 60–90 MB).
+
+> **2026-11-10:** Container Manager ya estaba instalado. Código copiado del commit `23701b7`, `secrets/sa.json` con `chown 1026:100` y `chmod 400`, y `.env` con `PUID=1026` y `PGID=100`. Sin SSH: se hizo con una tarea temporal de root en el Programador de tareas de DSM, ya borrada. La prueba en seco terminó sin errores (`--once terminado (dry-run)`). El contenedor está levantado, sale `notificador en marcha` en los registros y gasta 49 MiB de RAM según `docker stats` (límite 256 MiB), por debajo de lo esperado. `npm ci` avisa de 8 vulnerabilidades moderadas en dependencias.
 
 ## Task 4: probar en los móviles (APK release)
 
