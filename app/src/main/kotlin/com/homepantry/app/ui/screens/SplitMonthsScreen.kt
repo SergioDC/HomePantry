@@ -1,5 +1,7 @@
 package com.homepantry.app.ui.screens
 
+import android.Manifest
+import android.os.Build
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +45,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
+import com.google.accompanist.permissions.shouldShowRationale
 import com.homepantry.app.R
 import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.ui.SplitUiState
@@ -61,7 +67,7 @@ import kotlinx.coroutines.launch
  * Lista de grupos de SNcount, el más reciente arriba, con alta y el menú de cada uno. Los
  * archivados no salen aquí: quedan detrás de la fila «SNcounts archivados» del final.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalPermissionsApi::class)
 @Composable
 fun SplitMonthsScreen(
     viewModel: SplitViewModel,
@@ -74,6 +80,17 @@ fun SplitMonthsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showCreate by remember { mutableStateOf(false) }
+
+    // Permiso para los push de cierre y de fin de mes; se pide aquí, como en Avisos, para que se
+    // entienda para qué es. Si se deniega, la tarjeta sigue mostrando «Cerrado por X».
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        val permission = rememberPermissionState(Manifest.permission.POST_NOTIFICATIONS)
+        LaunchedEffect(Unit) {
+            if (!permission.status.isGranted && !permission.status.shouldShowRationale) {
+                permission.launchPermissionRequest()
+            }
+        }
+    }
 
     LaunchedEffect(state.error) {
         val message = state.error
@@ -216,10 +233,17 @@ private fun SplitMonthList(
     ) {
         items(months, key = { it.id }) { month ->
             val names = month.memberIds.map { splitMemberName(state, it) }
+            // Respaldo del push de cierre: quien no lo recibió lo ve aquí al abrir la lista.
+            val closedLabel = if (month.closed) {
+                stringResource(R.string.split_closed_by, splitMemberName(state, month.closedBy))
+            } else {
+                null
+            }
             SplitMonthCard(
                 month = month,
                 color = colors[month.id] ?: MaterialTheme.colorScheme.primary,
                 participants = names.joinToString(", "),
+                closedLabel = closedLabel,
                 onClick = { onOpenMonth(month.id) }
             ) {
                 SplitMonthMenu(
@@ -264,6 +288,7 @@ private fun SplitMonthCard(
     month: SplitMonth,
     color: Color,
     participants: String,
+    closedLabel: String?,
     onClick: () -> Unit,
     menu: @Composable () -> Unit
 ) {
@@ -273,8 +298,9 @@ private fun SplitMonthCard(
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text(month.name, style = MaterialTheme.typography.titleMedium)
                 val count = pluralStringResource(R.plurals.split_participants_count, month.memberIds.size, month.memberIds.size)
+                val kind = if (month.activity) "${stringResource(R.string.split_kind_activity)} · $count" else count
                 Text(
-                    if (month.activity) "${stringResource(R.string.split_kind_activity)} · $count" else count,
+                    if (closedLabel != null) "$kind · $closedLabel" else kind,
                     style = MaterialTheme.typography.labelMedium,
                     color = color,
                     modifier = Modifier.padding(top = 2.dp)

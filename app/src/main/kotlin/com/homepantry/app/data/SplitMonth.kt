@@ -30,5 +30,22 @@ data class SplitMonth(
     /** true = archivado: no sale en la lista principal, pero se puede abrir y editar igual. */
     val archived: Boolean = false,
     @ServerTimestamp
-    val createdAt: Date? = null
+    val createdAt: Date? = null,
+    /** true = cerrado («mes ajustado»). No bloquea la edición ni archiva. */
+    val closed: Boolean = false,
+    /** Uid de quien lo cerró; vacío si está abierto. */
+    val closedBy: String = "",
+    /**
+     * Momento del cierre. Sin @ServerTimestamp a propósito: [SplitMonthsRepository.createMonth]
+     * escribe el objeto entero y la anotación pondría la fecha de creación. Se escribe con
+     * `FieldValue.serverTimestamp()` al cerrar.
+     */
+    val closedAt: Date? = null,
+    /**
+     * Lo rellena el notificador del NAS (tools/notifier) al avisar del cierre. La app lo pone a
+     * null al cerrar: la consulta del NAS no encuentra documentos sin el campo.
+     */
+    val notifiedAt: Date? = null,
+    /** Lo rellena el NAS al enviar el recordatorio de fin de mes; uno por grupo. */
+    val reminderSentAt: Date? = null
 )

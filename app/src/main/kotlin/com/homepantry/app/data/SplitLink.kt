@@ -35,10 +35,13 @@ fun splitMonthIdFromLink(link: String?): String? {
     val id = path.removePrefix(SPLIT_LINK_PREFIX).removeSuffix("/")
     // El path llega decodificado: un "#" o "?" dentro del id rompería la ruta de navegación.
     // Los ids automáticos de Firestore son alfanuméricos.
-    return id.takeIf { SPLIT_ID_REGEX.matches(it) }
+    return id.takeIf(::isValidSplitMonthId)
 }
 
 private val SPLIT_ID_REGEX = Regex("^[A-Za-z0-9]{1,64}$")
+
+/** Id de grupo apto para una ruta de navegación (también lo usan las notificaciones push). */
+fun isValidSplitMonthId(id: String): Boolean = SPLIT_ID_REGEX.matches(id)
 
 /** Abre el menú de compartir de Android con [text] (el aviso y el enlace del grupo). */
 fun shareSplitMonth(context: Context, text: String, chooserTitle: String) {

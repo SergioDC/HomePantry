@@ -5,6 +5,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Unarchive
@@ -25,15 +27,16 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.homepantry.app.R
+import com.homepantry.app.cancelSplitPushNotification
 import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.data.shareSplitMonth
 import com.homepantry.app.data.splitShareUrl
 import com.homepantry.app.ui.SplitViewModel
 
 /**
- * Botón ⋮ de un grupo con Editar, Compartir, Archivar/Desarchivar y Eliminar. Es el mismo en la
- * pantalla del grupo y en las tarjetas de las listas; compartir, archivar y la confirmación de
- * borrado van aquí para no repetirlos en cada pantalla.
+ * Botón ⋮ de un grupo con Editar, Compartir, Cerrar/Reabrir, Archivar/Desarchivar y Eliminar. Es
+ * el mismo en la pantalla del grupo y en las tarjetas de las listas; compartir, cerrar, archivar y
+ * las confirmaciones van aquí para no repetirlas en cada pantalla.
  *
  * [onMessage] lo pinta la pantalla con su propio snackbar: al archivar desde una lista, la tarjeta
  * (y con ella este menú) desaparece al momento y no podría mostrar nada.
@@ -49,8 +52,11 @@ fun SplitMonthMenu(
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmClose by remember { mutableStateOf(false) }
     val shareText = stringResource(R.string.split_share_text, month.name, splitShareUrl(month.id))
     val chooserTitle = stringResource(R.string.split_share_chooser)
+    val closedMessage = stringResource(R.string.split_closed_done)
+    val reopenedMessage = stringResource(R.string.split_reopened_done)
     val archiveMessage = stringResource(if (month.archived) R.string.split_unarchived_done else R.string.split_archived_done)
 
     Box {
@@ -67,6 +73,18 @@ fun SplitMonthMenu(
                 shareSplitMonth(context, shareText, chooserTitle)
             }
             MenuItem(
+                if (month.closed) R.string.split_month_reopen else R.string.split_month_close_action,
+                if (month.closed) Icons.Filled.LockOpen else Icons.Filled.Lock
+            ) {
+                open = false
+                if (month.closed) {
+                    viewModel.setClosed(month.id, false)
+                    onMessage(reopenedMessage)
+                } else {
+                    confirmClose = true
+                }
+            }
+            MenuItem(
                 if (month.archived) R.string.split_month_unarchive else R.string.split_month_archive,
                 if (month.archived) Icons.Filled.Unarchive else Icons.Filled.Archive
             ) {
@@ -79,6 +97,29 @@ fun SplitMonthMenu(
                 confirmDelete = true
             }
         }
+    }
+
+    // Cerrar manda un push a los demás participantes, así que se confirma.
+    if (confirmClose) {
+        AlertDialog(
+            onDismissRequest = { confirmClose = false },
+            title = { Text(stringResource(R.string.split_month_close_title, month.name)) },
+            text = { Text(stringResource(R.string.split_month_close_message)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmClose = false
+                    viewModel.setClosed(month.id, true)
+                    // El recordatorio de este mes, si seguía en la bandeja, ya no hace falta.
+                    cancelSplitPushNotification(context, month.id)
+                    onMessage(closedMessage)
+                }) {
+                    Text(stringResource(R.string.split_month_close_confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmClose = false }) { Text(stringResource(R.string.split_cancel)) }
+            }
+        )
     }
 
     if (confirmDelete) {

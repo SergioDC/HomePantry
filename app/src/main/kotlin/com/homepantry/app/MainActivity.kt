@@ -397,6 +397,10 @@ fun ListaDeLaCasaApp(
         // Igual con el menú del comedor (de 3 días antes de fin de mes al día 5).
         ensureComedorChannel(context)
         scheduleComedorCheck(context, initialComedorCheck(ZonedDateTime.now()), replace = false)
+        // Push de SNcount: canal y token de este móvil para el notificador del NAS. Va al final
+        // porque espera a la red; si falla se reintenta en el próximo arranque.
+        ensureSncountChannel(context)
+        savePushToken(context.applicationContext)
     }
 
     val state by viewModel.state.collectAsState()

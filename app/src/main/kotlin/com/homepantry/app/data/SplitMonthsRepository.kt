@@ -40,6 +40,26 @@ class SplitMonthsRepository(
     }
 
     /**
+     * Cierra o reabre el grupo. Al cerrar, `notifiedAt` va a null explícitamente para que el
+     * notificador del NAS (consulta `closed == true` y `notifiedAt == null`) avise a los demás;
+     * así, reabrir y volver a cerrar avisa otra vez. `reminderSentAt` no se toca: un recordatorio
+     * por grupo.
+     */
+    suspend fun setClosed(monthId: String, closed: Boolean, uid: String) {
+        val fields: Map<String, Any?> = if (closed) {
+            mapOf(
+                "closed" to true,
+                "closedBy" to uid,
+                "closedAt" to FieldValue.serverTimestamp(),
+                "notifiedAt" to null
+            )
+        } else {
+            mapOf("closed" to false, "closedBy" to "", "closedAt" to null)
+        }
+        collection().document(monthId).update(fields).await()
+    }
+
+    /**
      * Guarda lo que se cambia desde «Editar SNcount». Los miembros nuevos van con `arrayUnion`
      * para no pisar a otro miembro que añada a alguien a la vez; nunca se quita a nadie.
      */

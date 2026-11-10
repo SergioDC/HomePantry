@@ -88,6 +88,8 @@ dependencies {
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-storage")
+    // Push de SNcount: los envía el notificador del NAS (tools/notifier)
+    implementation("com.google.firebase:firebase-messaging")
 
     // Cámara + escaneo de código de barras y OCR (ML Kit sin empaquetar: el modelo
     // lo descarga Google Play Services, el APK no lleva ~17 MB de librerías nativas)

@@ -4,7 +4,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <!-- Notificación semanal de ofertas (OffersCheckJobService); se pide en la pantalla de Avisos -->
+    <!-- Notificaciones de ofertas, comedor y SNcount; se pide en Avisos y en la lista de SNcount -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Para que la comprobación semanal (JobScheduler, setPersisted) sobreviva a un reinicio -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
@@ -47,6 +47,15 @@
             android:name=".OffersCheckJobService"
             android:exported="false"
             android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!-- Push de SNcount (cierre y recordatorio) que envía el notificador del NAS, tools/notifier -->
+        <service
+            android:name=".PushMessagingService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
 
         <!-- Comprobación a final de mes del menú del comedor -->
         <service

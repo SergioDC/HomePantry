@@ -180,6 +180,11 @@ class SplitViewModel(
         monthsRepository.setArchived(monthId, archived)
     }
 
+    /** Cerrar avisa por push a los demás participantes (lo envía el NAS, ver tools/notifier). */
+    fun setClosed(monthId: String, closed: Boolean) = launchCatching {
+        monthsRepository.setClosed(monthId, closed, currentUid)
+    }
+
     fun editMonth(monthId: String, name: String, monthKey: String, emoji: String, addedMemberIds: List<String>) =
         launchCatching {
             monthsRepository.updateMonth(monthId, name.trim(), monthKey, emoji, addedMemberIds.distinct())
