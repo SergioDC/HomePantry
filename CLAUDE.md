@@ -22,7 +22,7 @@ En Git Bash, desde la raíz del repo. Hacen falta `local.properties` con `sdk.di
 ./gradlew lintDebug                     # informe en app/build/reports/lint-results-debug.txt
 ```
 
-Verificación completa que usan los planes antes de cerrar una tarea: `./gradlew --no-daemon clean testDebugUnitTest assembleDebug lintDebug assembleRelease`. Debe acabar con 0 fallos de test, 0 errores de lint y un `app-release.apk` de unos 4,5 MB. Después se prueba el APK **release** en el S25, porque es el que pasa por R8.
+Verificación completa que usan los planes antes de cerrar una tarea: `./gradlew --no-daemon clean testDebugUnitTest assembleDebug lintDebug assembleRelease`. Debe acabar con 0 fallos de test, 0 errores de lint y un `app-release.apk` de unos 5,5 MB. Después se prueba el APK **release** en el S25, porque es el que pasa por R8.
 
 Las reglas de `firestore.rules` y `storage.rules` se despliegan con la CLI de Firebase (`firebase.json` / `.firebaserc`).
 

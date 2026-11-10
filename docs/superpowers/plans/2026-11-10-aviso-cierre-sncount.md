@@ -15,14 +15,16 @@ Ficheros Android tocados: `SplitMonth.kt`, `SplitMonthsRepository.kt`, `SplitLin
 
 ## Task 1: compilar y verificar la app
 
-- [ ] `git pull` en `main`.
-- [ ] `./gradlew --no-daemon clean testDebugUnitTest assembleDebug lintDebug assembleRelease`: 0 fallos de test y 0 errores de lint.
-- [ ] Puntos a revisar si falla la compilación:
+- [x] `git pull` en `main`.
+- [x] `./gradlew --no-daemon clean testDebugUnitTest assembleDebug lintDebug assembleRelease`: 0 fallos de test y 0 errores de lint.
+- [x] Puntos a revisar si falla la compilación:
   - `SplitMonthsRepository.setClosed`: `update(Map<String, Any?>)` con valores null.
   - `PushMessagingService.kt`: imports de `firebase-messaging` y `NotificationManagerCompat.notify` (lint `MissingPermission`).
   - `SplitMonthsScreen.kt`: permiso con accompanist, igual que `NotificationsScreen`.
-- [ ] Tamaño de `app-release.apk`: unos 4,5 MB más lo que añada `firebase-messaging`. Anotar el nuevo tamaño en `CLAUDE.md` si cambia.
-- [ ] Commit `fix:` con lo que haya hecho falta corregir.
+- [x] Tamaño de `app-release.apk`: unos 4,5 MB más lo que añada `firebase-messaging`. Anotar el nuevo tamaño en `CLAUDE.md` si cambia.
+- [x] Commit `fix:` con lo que haya hecho falta corregir.
+
+> **2026-11-10:** compilado sin correcciones. 480 tests en verde, 0 errores de lint (solo avisos de versiones y un `UseKtx` en `PushMessagingService.kt:109`) y `app-release.apk` de 5,45 MB.
 
 ## Task 2: Firebase
 
