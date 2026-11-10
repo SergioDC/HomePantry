@@ -13,8 +13,13 @@
 # Firebase config con datos del proyecto del usuario: no se sube al repo público
 app/google-services.json
 
-# Script de avisos de ofertas
+# Script de avisos de ofertas y notificador del NAS
 tools/offers/node_modules/
+tools/notifier/node_modules/
+
+# Credenciales del notificador del NAS (cuenta de servicio y código de casa): nunca al repo
+tools/notifier/secrets/
+tools/notifier/.env
 
 # Credenciales locales del script de ofertas (cuenta de servicio, API key, código de casa): nunca al repo
 docs/secrets/

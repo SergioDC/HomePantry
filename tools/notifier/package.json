@@ -1,0 +1,16 @@
+{
+  "name": "homepantry-notifier",
+  "private": true,
+  "description": "Notificador de SNcount para el NAS: avisa por push del cierre de un mes y recuerda cerrarlo a fin de mes.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/index.mjs",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0"
+  }
+}

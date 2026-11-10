@@ -1,0 +1,23 @@
+# Proyecto de Container Manager (DSM 7.2+). Ver README.md de esta carpeta.
+services:
+  snhome-notifier:
+    build: .
+    image: snhome-notifier:latest
+    container_name: snhome-notifier
+    restart: unless-stopped
+    # Usuario de DSM sin privilegios que puede leer el JSON de la cuenta de servicio (ver README).
+    user: "${PUID:-1026}:${PGID:-100}"
+    read_only: true
+    environment:
+      TZ: Europe/Madrid
+      HOUSEHOLD_CODE: ${HOUSEHOLD_CODE:?Falta HOUSEHOLD_CODE en .env}
+      FIREBASE_SERVICE_ACCOUNT_FILE: /secrets/sa.json
+    volumes:
+      - ./secrets/sa.json:/secrets/sa.json:ro
+    # Consume 60-90 MB. Sin `cpus`: el kernel de DSM no soporta CFS y el contenedor no arrancaría.
+    mem_limit: 256m
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
