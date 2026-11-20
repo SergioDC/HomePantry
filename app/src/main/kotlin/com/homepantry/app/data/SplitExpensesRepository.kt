@@ -36,6 +36,15 @@ class SplitExpensesRepository(
         collection(monthId).add(expense).await()
     }
 
+    /** Varios gastos de golpe (importación de cargos), en batches de 500, el límite de Firestore. */
+    suspend fun addAll(monthId: String, expenses: List<SplitExpense>) {
+        expenses.chunked(500).forEach { chunk ->
+            val batch = firestore.batch()
+            chunk.forEach { batch.set(collection(monthId).document(), it) }
+            batch.commit().await()
+        }
+    }
+
     /**
      * Solo los campos editables, con `update` y no `set` del objeto entero: así no se pisa
      * `createdAt` ni lo que otro miembro haya cambiado a la vez en un campo que aquí no se toca.

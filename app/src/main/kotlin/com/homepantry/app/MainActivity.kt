@@ -62,6 +62,8 @@ import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.MenuImportDraftStore
 import com.homepantry.app.data.ReceiptScanDraftStore
 import com.homepantry.app.data.receiptScanDraftFile
+import com.homepantry.app.data.CardImportDraftStore
+import com.homepantry.app.data.cardImportDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
@@ -80,6 +82,7 @@ import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
+import com.homepantry.app.ui.CardImportViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.RecipesViewModel
@@ -325,6 +328,22 @@ fun ListaDeLaCasaApp(
             }
         }
     )
+
+    // Importación de cargos de tarjeta a SNcount: a nivel de actividad, como la lectura de tickets.
+    val cardImportViewModel: CardImportViewModel = viewModel(
+        key = "cardImport-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return CardImportViewModel(
+                        CardImportDraftStore(cardImportDraftFile(context.applicationContext.filesDir, code))
+                    ) as T
+                }
+            }
+        }
+    )
+    val splitExpensesRepository = remember(code) { SplitExpensesRepository(firestore, code) }
 
     // Normalización del histórico: a nivel de actividad, para no perder lo que propuso Gemini.
     val productNormalizationViewModel: ProductNormalizationViewModel = viewModel(key = "productNormalization-$code")
