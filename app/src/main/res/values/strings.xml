@@ -638,4 +638,29 @@
     <string name="recipes_cancel">Cancelar</string>
     <string name="recipes_delete">Borrar</string>
     <string name="recipes_more_cd">Más opciones</string>
+    <string name="split_import_cd">Importar de capturas del banco</string>
+    <string name="split_import_title">Importar cargos</string>
+    <plurals name="split_import_reading">
+        <item quantity="one">Leyendo %d captura…</item>
+        <item quantity="other">Leyendo %d capturas…</item>
+    </plurals>
+    <plurals name="split_import_add">
+        <item quantity="one">Añadir %d gasto</item>
+        <item quantity="other">Añadir %d gastos</item>
+    </plurals>
+    <string name="split_import_payer">Pagado por</string>
+    <string name="split_import_hint">Desmarca los cargos personales. Se reparten a partes iguales entre todo el grupo; luego puedes cambiar cualquiera.</string>
+    <string name="split_import_empty">No se ha encontrado ningún cargo en las capturas.</string>
+    <string name="split_import_flag_duplicate">Posible duplicado</string>
+    <string name="split_import_flag_out_of_month">Fuera de este mes</string>
+    <string name="split_import_flag_no_date">Sin fecha: tócalo para ponerla</string>
+    <string name="split_import_retry">Reintentar</string>
+    <string name="split_import_discard">Descartar</string>
+    <string name="split_import_discard_title">¿Descartar los cargos leídos?</string>
+    <string name="split_import_discard_keep">Seguir revisando</string>
+    <string name="split_import_no_key">Para importar cargos hace falta tu clave de Gemini. Añádela en Ajustes, en «Interpretación de tickets con IA».</string>
+    <string name="split_import_edit_title">Editar cargo</string>
+    <string name="split_import_concept">Concepto</string>
+    <string name="split_import_amount">Importe (€)</string>
+    <string name="split_import_pick_date">Elegir fecha</string>
 </resources>

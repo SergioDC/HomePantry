@@ -100,6 +100,7 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.CardImportScreen
 import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
 import com.homepantry.app.ui.screens.SplitMonthEditScreen
@@ -680,11 +681,38 @@ fun ListaDeLaCasaApp(
                     viewModel = splitViewModel,
                     monthId = monthId,
                     onEditMonth = { navController.navigate("splitMonthEdit/$monthId") },
+                    isImportPending = { cardImportViewModel.pendingMonthId() != null },
+                    onOpenImport = {
+                        cardImportViewModel.pendingMonthId()?.let { navController.navigate("splitImport/$it") }
+                    },
+                    onImport = { uris ->
+                        val splitState = splitViewModel.state.value
+                        val month = splitState.months.firstOrNull { it.id == monthId }
+                        if (month != null) {
+                            cardImportViewModel.read(
+                                context, uris, month, splitState.expenses, splitViewModel.currentUid,
+                                geminiApiKeyStore, context.getString(R.string.split_import_no_key)
+                            )
+                            navController.navigate("splitImport/$monthId")
+                        }
+                    },
                     onOpenExpense = { expenseId ->
                         navController.navigate(
                             if (expenseId == null) "splitExpense/$monthId" else "splitExpense/$monthId?expenseId=$expenseId"
                         )
                     },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("splitImport/{monthId}") { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                CardImportScreen(
+                    importViewModel = cardImportViewModel,
+                    splitViewModel = splitViewModel,
+                    monthId = monthId,
+                    apiKeyStore = geminiApiKeyStore,
+                    saveExpenses = { id, expenses -> splitExpensesRepository.addAll(id, expenses) },
                     onBack = { navController.popBackStack() }
                 )
             }

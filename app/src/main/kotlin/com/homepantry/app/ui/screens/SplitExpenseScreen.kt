@@ -514,7 +514,7 @@ private fun DateRow(text: String, onClick: () -> Unit) {
 /** Calendario limitado a los días de [monthKey] (o sin límite si es null). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SplitDatePickerDialog(
+internal fun SplitDatePickerDialog(
     initial: Date,
     monthKey: String?,
     onConfirm: (Date) -> Unit,

@@ -65,11 +65,6 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
         }
     }
 
-    /** Hay una lectura en marcha, un borrador o un fallo pendiente de otro grupo distinto de [monthId]. */
-    fun busyWithOtherMonth(monthId: String): String? =
-        _draft.value?.monthId?.takeIf { it != monthId }
-            ?: _failedMonthId.value?.takeIf { it != monthId }
-
     /**
      * Lee [uris] con Gemini y deja el resultado como borrador. Ignora la llamada si ya hay una
      * lectura en marcha o un borrador sin cerrar.
@@ -110,6 +105,15 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
             }
         }
     }
+
+    /** Capturas de la lectura en marcha (o de la última fallida), para el texto de «Leyendo N capturas». */
+    fun pendingImageCount(): Int = failedUris.size
+
+    /**
+     * Grupo con una importación que retomar (lectura en marcha, fallo o borrador), o null. Solo hay
+     * una a la vez: el borrador es un único fichero por casa.
+     */
+    fun pendingMonthId(): String? = _draft.value?.monthId ?: _failedMonthId.value
 
     /** Vuelve a leer las capturas de la última lectura fallida. */
     fun retry(
