@@ -7,6 +7,7 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.exifinterface.media.ExifInterface
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.Text
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.Dispatchers
@@ -33,15 +34,28 @@ internal const val MAX_OCR_SIDE = 2000
  * contrario que `InputImage.fromFilePath`), leemos el tag EXIF por separado
  * y se lo pasamos a ML Kit como `rotationDegrees`.
  */
-suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<String> {
+suspend fun recognizeReceiptTextLines(context: Context, imageUri: Uri): List<String> =
+    recognizeText(context, imageUri).textBlocks.flatMap { block -> block.lines.map { line -> line.text } }
+
+/**
+ * Como [recognizeReceiptTextLines] pero con la caja de cada línea, para poder agrupar en filas
+ * ([groupOcrRows]) lo que ML Kit devuelve en columnas. Las líneas sin caja se omiten.
+ */
+suspend fun recognizeOcrLines(context: Context, imageUri: Uri): List<OcrLine> =
+    recognizeText(context, imageUri).textBlocks.flatMap { block ->
+        block.lines.mapNotNull { line ->
+            line.boundingBox?.let { box -> OcrLine(line.text, box.top, box.bottom, box.left) }
+        }
+    }
+
+private suspend fun recognizeText(context: Context, imageUri: Uri): Text {
     // Leer y decodificar la foto es bloqueante; quien llama está en el hilo principal (la pantalla).
     val (bitmap, rotationDegrees) = withContext(Dispatchers.IO) { decodeForOcr(context, imageUri) }
 
     return try {
         val image = InputImage.fromBitmap(bitmap, rotationDegrees)
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
-        val result = recognizer.process(image).await()
-        result.textBlocks.flatMap { block -> block.lines.map { line -> line.text } }
+        recognizer.process(image).await()
     } finally {
         bitmap.recycle()
     }

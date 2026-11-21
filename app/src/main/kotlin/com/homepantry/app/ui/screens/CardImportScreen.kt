@@ -19,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -33,6 +34,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,13 +46,16 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
 import com.homepantry.app.data.CardImportRow
+import com.homepantry.app.data.CardReadMode
 import com.homepantry.app.data.CardRowFlag
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.SplitExpense
@@ -70,6 +77,7 @@ import com.homepantry.app.ui.components.centsText
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.launch
 
 /**
  * Revisión de los cargos leídos de las capturas del banco: todos marcados salvo los que
@@ -100,6 +108,10 @@ fun CardImportScreen(
     val ownDraft = draft?.takeIf { it.monthId == monthId }
 
     var showExitWhileReading by remember { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val copiedMessage = stringResource(R.string.split_import_text_copied)
     var showDiscard by remember { mutableStateOf(false) }
     var editingIndex by rememberSaveable { mutableStateOf<Int?>(null) }
 
@@ -134,6 +146,7 @@ fun CardImportScreen(
     BackHandler(onBack = back)
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -148,6 +161,28 @@ fun CardImportScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
+                        }
+                    }
+                },
+                actions = {
+                    // El texto del OCR sirve para ajustar el lector de Kutxabank sin pasar las capturas.
+                    val ocrText = ownDraft?.ocrText.orEmpty()
+                    if (ocrText.isNotEmpty()) {
+                        var menuOpen by remember { mutableStateOf(false) }
+                        Box {
+                            IconButton(onClick = { menuOpen = true }) {
+                                Icon(Icons.Filled.MoreVert, contentDescription = stringResource(R.string.split_import_more_cd))
+                            }
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.split_import_copy_text)) },
+                                    onClick = {
+                                        menuOpen = false
+                                        clipboardManager.setText(AnnotatedString(ocrText))
+                                        scope.launch { snackbarHostState.showSnackbar(copiedMessage) }
+                                    }
+                                )
+                            }
                         }
                     }
                 },
@@ -230,7 +265,9 @@ fun CardImportScreen(
                         }
                         if (ownDraft.rows.isEmpty()) {
                             Text(
-                                stringResource(R.string.split_import_empty),
+                                stringResource(
+                                    if (ownDraft.readMode == CardReadMode.OCR_ONLY) R.string.split_import_empty_ocr else R.string.split_import_empty
+                                ),
                                 textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
                             )

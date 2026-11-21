@@ -663,4 +663,18 @@
     <string name="split_import_concept">Concepto</string>
     <string name="split_import_amount">Importe (€)</string>
     <string name="split_import_pick_date">Elegir fecha</string>
+    <string name="split_read_mode_title">Leer capturas con…</string>
+    <string name="split_read_mode_gemini">Gemini (imagen)</string>
+    <string name="split_read_mode_gemini_detail">Más preciso. Las capturas salen del móvil.</string>
+    <string name="split_read_mode_ocr_gemini">OCR + Gemini (texto)</string>
+    <string name="split_read_mode_ocr_gemini_detail">Solo sale del móvil el texto leído.</string>
+    <string name="split_read_mode_ocr">Solo OCR</string>
+    <string name="split_read_mode_ocr_detail">No sale nada del móvil. Solo Kutxabank.</string>
+    <string name="split_read_mode_needs_key">Necesita clave de Gemini</string>
+    <string name="split_read_mode_pick">Elegir capturas</string>
+    <string name="split_read_mode_cancel">Cancelar</string>
+    <string name="split_import_more_cd">Más opciones</string>
+    <string name="split_import_copy_text">Copiar texto leído</string>
+    <string name="split_import_text_copied">Texto copiado</string>
+    <string name="split_import_empty_ocr">No se ha encontrado ningún cargo. Puedes copiar el texto leído desde ⋮.</string>
 </resources>

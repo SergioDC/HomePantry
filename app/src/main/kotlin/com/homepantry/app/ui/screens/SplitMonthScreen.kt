@@ -46,6 +46,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.homepantry.app.R
+import com.homepantry.app.data.CardReadMode
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.components.SplitIcon
 import com.homepantry.app.ui.components.SplitMonthMenu
@@ -67,8 +68,12 @@ fun SplitMonthScreen(
     /** Hay una importación de cargos de este grupo que retomar (lectura, fallo o borrador). */
     isImportPending: () -> Boolean,
     onOpenImport: () -> Unit,
-    /** Capturas elegidas para importar; quien llama lanza la lectura y abre la revisión. */
-    onImport: (List<Uri>) -> Unit,
+    /** Capturas elegidas para importar y cómo leerlas; quien llama lanza la lectura y abre la revisión. */
+    onImport: (List<Uri>, CardReadMode) -> Unit,
+    /** Hay clave de Gemini: sin ella solo se puede elegir «Solo OCR». */
+    hasApiKey: Boolean,
+    /** Último modo usado en este móvil, para marcarlo al abrir el diálogo. */
+    initialReadMode: CardReadMode?,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -76,9 +81,24 @@ fun SplitMonthScreen(
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val reimbursementTitle = stringResource(R.string.split_reimbursement_title)
+    // El modo se elige antes del selector de imágenes y se guarda aquí hasta que vuelvan las capturas.
+    var showReadMode by rememberSaveable { mutableStateOf(false) }
+    var pendingReadMode by rememberSaveable { mutableStateOf(CardReadMode.GEMINI_IMAGE) }
     val pickScreenshots = rememberLauncherForActivityResult(
         ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_IMPORT_SCREENSHOTS)
-    ) { uris -> if (uris.isNotEmpty()) onImport(uris) }
+    ) { uris -> if (uris.isNotEmpty()) onImport(uris, pendingReadMode) }
+    if (showReadMode) {
+        CardReadModeDialog(
+            initialMode = initialReadMode,
+            hasApiKey = hasApiKey,
+            onConfirm = { mode ->
+                showReadMode = false
+                pendingReadMode = mode
+                pickScreenshots.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+            },
+            onDismiss = { showReadMode = false }
+        )
+    }
 
     // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
     // abierto en las pantallas de gasto y de editar que se apilan encima.
@@ -126,7 +146,7 @@ fun SplitMonthScreen(
                             if (isImportPending()) {
                                 onOpenImport()
                             } else {
-                                pickScreenshots.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                                showReadMode = true
                             }
                         }) {
                             Icon(Icons.Filled.Receipt, contentDescription = stringResource(R.string.split_import_cd))
