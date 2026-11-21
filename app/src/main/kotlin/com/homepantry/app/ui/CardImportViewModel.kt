@@ -14,6 +14,7 @@ import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.data.cardImportDraft
 import com.homepantry.app.data.groupOcrRows
 import com.homepantry.app.data.needsApiKey
+import com.homepantry.app.data.ocrRowsHaveText
 import com.homepantry.app.data.ocrRowsText
 import com.homepantry.app.data.parseBankMovements
 import com.homepantry.app.data.recognizeCardChargesFromText
@@ -122,6 +123,9 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
                         ocrText = ocrRowsText(rows)
                         if (mode == CardReadMode.OCR_ONLY) {
                             parseBankMovements(rows, Date())
+                        } else if (!ocrRowsHaveText(rows)) {
+                            // Sin texto, Gemini solo recibiría las cabeceras y podría inventar movimientos.
+                            emptyList()
                         } else {
                             recognizeCardChargesFromText(ocrText, apiKey!!, apiKeyStore.getModel(), month)
                         }

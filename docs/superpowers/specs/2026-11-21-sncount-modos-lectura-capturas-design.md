@@ -40,7 +40,8 @@ No hay capturas de ejemplo de Kutxabank. El lector de «Solo OCR» se escribe co
 
 **Solo OCR.** Función pura `parseBankMovements(rows, today): List<CardMovement>` en `data/` (fichero nuevo, con tests), sin dependencias de Android:
 - Importe: `[-−+]?` + número con miles con punto y decimales con coma (`1.234,56`) + `€` opcional. Una fila con importe es un movimiento.
-- Cargo o ingreso: signo menos → cargo; signo más → ingreso. Si en todas las capturas no hay ningún importe con signo menos, se toman todos como cargos (la revisión deja desmarcar).
+- Cargo o ingreso: solo un «+» explícito marca un ingreso; con «-» (o cualquier guion) o sin signo es un cargo. Si el OCR se come un signo, es mejor ver el cargo en la revisión y desmarcarlo que perderlo sin enterarse.
+- Cabeceras de fecha con día de la semana («Viernes, 20 de noviembre», «Hoy, 21 nov») también fijan la fecha. Una fila sin importe solo titula el importe siguiente si tiene al menos 3 letras.
 - Fecha: una fila que solo es fecha («Hoy», «Ayer», `20/11`, `20/11/2026`, `20 nov`, `20 de noviembre`) fija la fecha de los movimientos que la siguen; una fecha dentro de la fila del movimiento manda sobre la cabecera. El año que falta se deduce para que la fecha no sea futura respecto a hoy.
 - Concepto: el resto de la fila sin importe ni fecha; si queda vacío, la fila anterior que no sea fecha ni importe (concepto en una línea y importe en la siguiente). Si sigue vacío, se descarta (no hay con qué titularlo).
 - Filas de saldo («Saldo», «Disponible») se ignoran.

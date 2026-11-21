@@ -37,7 +37,8 @@ fun ocrRowsText(screenshots: List<List<String>>): String =
     }
 
 // Importe español: miles con punto y dos decimales con coma; el signo y el € son opcionales.
-private val AMOUNT = Regex("""(?<![\d.,])([-−+])?\s?(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(?!\d)\s?€?""")
+// Cualquier guion cuenta como menos: el OCR lee a menudo el signo como guion largo.
+private val AMOUNT = Regex("""(?<![\d.,])([-−–—‐‑+])?\s?(\d{1,3}(?:\.\d{3})+|\d+),(\d{2})(?!\d)\s?€?""")
 private val RELATIVE_DAY = Regex("""(?i)\b(hoy|ayer)\b""")
 private val NUMERIC_DATE = Regex("""(?<![\d.,/])(\d{1,2})/(\d{1,2})(?:/(\d{4}|\d{2}))?(?![\d/])""")
 private val MONTHS = listOf(
@@ -105,15 +106,27 @@ private fun findDate(text: String, today: Date): Pair<Date, String>? {
     return null
 }
 
+private val WEEKDAY = Regex(
+    """(?i)\b(lunes|martes|miercoles|miércoles|jueves|viernes|sabado|sábado|domingo|lun|mar|mie|mié|jue|vie|sab|sáb|dom)\b\.?"""
+)
+
+/** Lo que queda de una fila con fecha sin el día de la semana ni la puntuación suelta («Viernes, 20 nov»). */
+private fun isOnlyDateLeftover(rest: String): Boolean =
+    listOf(WEEKDAY, RELATIVE_DAY, NUMERIC_DATE, NAMED_DATE).fold(rest) { text, regex -> regex.replace(text, " ") }
+        .replace(Regex("""[\s,.;:·-]+"""), "").isEmpty()
+
+/** Una fila sin importe vale como concepto del importe siguiente si tiene al menos 3 letras (no una hora o un código). */
+private fun looksLikeTitle(text: String): Boolean = text.count { it.isLetter() } >= 3
+
 private fun cleanTitle(text: String): String = text.replace("€", " ").replace(Regex("\\s+"), " ").trim()
 
-private class RawMovement(val title: String, val cents: Long, val minus: Boolean, val date: Date?)
+private class RawMovement(val title: String, val cents: Long, val plus: Boolean, val date: Date?)
 
 /**
  * Movimientos de las filas del OCR de capturas de la app de Kutxabank, sin IA. Una fila con
  * importe es un movimiento (si tiene dos, el primero: el segundo suele ser el saldo); una fila que
- * solo es una fecha fija la de los movimientos que la siguen dentro de la misma captura. Si
- * ningún importe lleva signo menos, todos se toman como cargos; si alguno lo lleva, solo esos.
+ * solo es una fecha (con o sin día de la semana) fija la de los movimientos que la siguen dentro
+ * de la misma captura. Solo un «+» explícito marca un ingreso; el resto son cargos.
  */
 fun parseBankMovements(screenshots: List<List<String>>, today: Date): List<CardMovement> {
     val raw = mutableListOf<RawMovement>()
@@ -130,11 +143,11 @@ fun parseBankMovements(screenshots: List<List<String>>, today: Date): List<CardM
             val found = findDate(withoutAmounts, today)
             val rest = cleanTitle(found?.second ?: withoutAmounts)
             if (amount == null) {
-                if (found != null && rest.isEmpty()) {
+                if (found != null && isOnlyDateLeftover(rest)) {
                     currentDate = found.first
                     pendingTitle = null
                 } else {
-                    pendingTitle = rest.ifEmpty { null }
+                    pendingTitle = rest.takeIf { looksLikeTitle(it) }
                 }
                 continue
             }
@@ -144,9 +157,14 @@ fun parseBankMovements(screenshots: List<List<String>>, today: Date): List<CardM
             val (sign, whole, decimals) = amount.destructured
             val cents = whole.replace(".", "").toLong() * 100 + decimals.toLong()
             if (cents <= 0) continue
-            raw.add(RawMovement(title, cents, sign == "-" || sign == "−", found?.first ?: currentDate))
+            raw.add(RawMovement(title, cents, sign == "+", found?.first ?: currentDate))
         }
     }
-    val anyMinus = raw.any { it.minus }
-    return raw.map { CardMovement(it.title, it.cents, it.date, charge = !anyMinus || it.minus) }
+    // Solo un «+» explícito marca un ingreso. Un importe sin signo sale como cargo aunque otros
+    // lleven «-»: si el OCR se come el signo, es mejor verlo en la revisión y desmarcarlo que
+    // perder el cargo sin enterarse.
+    return raw.map { CardMovement(it.title, it.cents, it.date, charge = !it.plus) }
 }
+
+/** Si el OCR ha leído algo en alguna captura: sin texto no tiene sentido pagar una llamada a Gemini. */
+fun ocrRowsHaveText(screenshots: List<List<String>>): Boolean = screenshots.any { rows -> rows.any { it.isNotBlank() } }

@@ -110,4 +110,36 @@ class BankMovementsParsingTest {
             ocrRowsText(listOf(listOf("Hoy", "LIDL  -1,00 €"), listOf("DIA  -2,00 €")))
         )
     }
+
+    @Test
+    fun `cabecera con dia de la semana fija la fecha`() {
+        assertEquals(day(2026, 11, 20), parse("Viernes, 20 de noviembre", "LIDL  -1,00 €").single().date)
+        val movement = parse("Hoy, 21 nov", "DIA  -2,00 €").single()
+        assertEquals(day(2026, 11, 21), movement.date)
+        assertEquals("DIA", movement.title)
+    }
+
+    @Test
+    fun `un guion largo cuenta como menos`() {
+        val movements = parse("Hoy", "LIDL  -1,00 €", "CEPSA  –40,00 €", "DIA  —2,00 €")
+        assertEquals(listOf(true, true, true), movements.map { it.charge })
+    }
+
+    @Test
+    fun `sin signo con otros en menos sigue siendo cargo`() {
+        val movements = parse("Hoy", "LIDL  -1,00 €", "CEPSA  40,00 €", "Bizum  +5,00 €")
+        assertEquals(listOf(true, true, false), movements.map { it.charge })
+    }
+
+    @Test
+    fun `una fila de ruido no titula un importe suelto`() {
+        assertEquals(emptyList<CardMovement>(), parse("Hoy", "14:32", "-5,00 €"))
+        assertEquals(emptyList<CardMovement>(), parse("Hoy", "A1", "-5,00 €"))
+    }
+
+    @Test
+    fun `capturas sin texto`() {
+        assertTrue(!ocrRowsHaveText(listOf(emptyList(), emptyList())))
+        assertTrue(ocrRowsHaveText(listOf(emptyList(), listOf("LIDL  -1,00 €"))))
+    }
 }
