@@ -1,5 +1,9 @@
 package com.homepantry.app.ui.screens
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -11,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -59,6 +64,11 @@ fun SplitMonthScreen(
     monthId: String,
     onOpenExpense: (expenseId: String?) -> Unit,
     onEditMonth: () -> Unit,
+    /** Hay una importación de cargos de este grupo que retomar (lectura, fallo o borrador). */
+    isImportPending: () -> Boolean,
+    onOpenImport: () -> Unit,
+    /** Capturas elegidas para importar; quien llama lanza la lectura y abre la revisión. */
+    onImport: (List<Uri>) -> Unit,
     onBack: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
@@ -66,6 +76,9 @@ fun SplitMonthScreen(
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableIntStateOf(0) }
     val reimbursementTitle = stringResource(R.string.split_reimbursement_title)
+    val pickScreenshots = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickMultipleVisualMedia(maxItems = MAX_IMPORT_SCREENSHOTS)
+    ) { uris -> if (uris.isNotEmpty()) onImport(uris) }
 
     // El mes lo abre la ruta con RetainSplitMonth, ligado a la entrada de navegación: así sigue
     // abierto en las pantallas de gasto y de editar que se apilan encima.
@@ -108,6 +121,16 @@ fun SplitMonthScreen(
                 },
                 actions = {
                     if (month != null) {
+                        IconButton(onClick = {
+                            // Si ya hay una importación a medias de este grupo se retoma en vez de empezar otra.
+                            if (isImportPending()) {
+                                onOpenImport()
+                            } else {
+                                pickScreenshots.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                            }
+                        }) {
+                            Icon(Icons.Filled.Receipt, contentDescription = stringResource(R.string.split_import_cd))
+                        }
                         SplitMonthMenu(
                             month = month,
                             viewModel = viewModel,
@@ -201,3 +224,5 @@ private fun SplitTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Un
     }
 }
 
+/** Capturas por importación: más imágenes alargan mucho la lectura de Gemini y gastan cuota. */
+private const val MAX_IMPORT_SCREENSHOTS = 10

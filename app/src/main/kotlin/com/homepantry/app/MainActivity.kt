@@ -62,6 +62,8 @@ import com.homepantry.app.data.MembersRepository
 import com.homepantry.app.data.MenuImportDraftStore
 import com.homepantry.app.data.ReceiptScanDraftStore
 import com.homepantry.app.data.receiptScanDraftFile
+import com.homepantry.app.data.CardImportDraftStore
+import com.homepantry.app.data.cardImportDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
 import com.homepantry.app.data.PeopleRepository
@@ -80,6 +82,7 @@ import com.homepantry.app.ui.AppViewModel
 import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
+import com.homepantry.app.ui.CardImportViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.RecipesViewModel
@@ -97,6 +100,7 @@ import com.homepantry.app.ui.screens.EditNameDialog
 import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
+import com.homepantry.app.ui.screens.CardImportScreen
 import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
 import com.homepantry.app.ui.screens.SplitMonthEditScreen
@@ -325,6 +329,22 @@ fun ListaDeLaCasaApp(
             }
         }
     )
+
+    // Importación de cargos de tarjeta a SNcount: a nivel de actividad, como la lectura de tickets.
+    val cardImportViewModel: CardImportViewModel = viewModel(
+        key = "cardImport-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return CardImportViewModel(
+                        CardImportDraftStore(cardImportDraftFile(context.applicationContext.filesDir, code))
+                    ) as T
+                }
+            }
+        }
+    )
+    val splitExpensesRepository = remember(code) { SplitExpensesRepository(firestore, code) }
 
     // Normalización del histórico: a nivel de actividad, para no perder lo que propuso Gemini.
     val productNormalizationViewModel: ProductNormalizationViewModel = viewModel(key = "productNormalization-$code")
@@ -657,15 +677,43 @@ fun ListaDeLaCasaApp(
             composable("splitMonth/{monthId}") { backStackEntry ->
                 val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
                 RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                val noKeyMessage = stringResource(R.string.split_import_no_key)
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
                     onEditMonth = { navController.navigate("splitMonthEdit/$monthId") },
+                    isImportPending = { cardImportViewModel.pendingMonthId() != null },
+                    onOpenImport = {
+                        cardImportViewModel.pendingMonthId()?.let { navController.navigate("splitImport/$it") }
+                    },
+                    onImport = { uris ->
+                        val splitState = splitViewModel.state.value
+                        val month = splitState.months.firstOrNull { it.id == monthId }
+                        if (month != null) {
+                            cardImportViewModel.read(
+                                context, uris, month, splitState.expenses, splitViewModel.currentUid,
+                                geminiApiKeyStore, noKeyMessage
+                            )
+                            navController.navigate("splitImport/$monthId")
+                        }
+                    },
                     onOpenExpense = { expenseId ->
                         navController.navigate(
                             if (expenseId == null) "splitExpense/$monthId" else "splitExpense/$monthId?expenseId=$expenseId"
                         )
                     },
+                    onBack = { navController.popBackStack() }
+                )
+            }
+            composable("splitImport/{monthId}") { backStackEntry ->
+                val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
+                RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                CardImportScreen(
+                    importViewModel = cardImportViewModel,
+                    splitViewModel = splitViewModel,
+                    monthId = monthId,
+                    apiKeyStore = geminiApiKeyStore,
+                    saveExpenses = { id, expenses -> splitExpensesRepository.addAll(id, expenses) },
                     onBack = { navController.popBackStack() }
                 )
             }
