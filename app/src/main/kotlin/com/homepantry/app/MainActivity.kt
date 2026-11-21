@@ -85,6 +85,7 @@ import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.CardImportViewModel
+import com.homepantry.app.ui.PanelIdleHost
 import com.homepantry.app.ui.PanelViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
@@ -104,6 +105,7 @@ import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.CardImportScreen
+import com.homepantry.app.ui.screens.PanelRestockScreen
 import com.homepantry.app.ui.screens.PanelScreen
 import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
@@ -509,6 +511,16 @@ fun ListaDeLaCasaApp(
         }
     ) { padding ->
         val startPanel = panelMode ?: return@Scaffold
+        PanelIdleHost(
+            panelMode = startPanel,
+            currentRoute = currentRoute,
+            onReturnToPanel = {
+                navController.navigate("panel") {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        ) {
         NavHost(
             navController = navController,
             startDestination = if (startPanel) "panel" else "home",
@@ -522,6 +534,9 @@ fun ListaDeLaCasaApp(
                     onExitPanel = { navController.navigate("home") { launchSingleTop = true } },
                     onConfigureWeather = { navController.navigate("manageZones") }
                 )
+            }
+            composable("panelRestock") {
+                PanelRestockScreen(appViewModel = viewModel, onBack = { navController.popBackStack() })
             }
             composable("home") {
                 HomeScreen(
@@ -772,6 +787,7 @@ fun ListaDeLaCasaApp(
                     onBack = { navController.popBackStack() }
                 )
             }
+        }
         }
     }
 

@@ -679,6 +679,12 @@
     </plurals>
     <string name="panel_list_empty">No falta nada</string>
     <string name="panel_restock_button">Se ha acabado…</string>
+    <string name="panel_restock_title">Se ha acabado…</string>
+    <string name="panel_restock_new">Nuevo</string>
+    <string name="panel_restock_search">Buscar en lo que hay en casa</string>
+    <string name="panel_restock_empty">No hay nada en casa con ese nombre. Usa «Nuevo» para apuntarlo.</string>
+    <string name="panel_restock_no_zone">Sin zona</string>
+    <string name="panel_restock_in_list_cd">En la lista</string>
     <string name="panel_settings_title">Panel de cocina</string>
     <string name="panel_settings_mode">Modo panel de cocina</string>
     <string name="panel_settings_mode_detail">La app arranca en el panel. Para salir, mantén pulsada la fecha.</string>
