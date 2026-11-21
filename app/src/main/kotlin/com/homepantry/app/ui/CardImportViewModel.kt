@@ -7,10 +7,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.homepantry.app.data.CardImportDraft
 import com.homepantry.app.data.CardImportDraftStore
+import com.homepantry.app.data.CardReadMode
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.SplitExpense
 import com.homepantry.app.data.SplitMonth
 import com.homepantry.app.data.cardImportDraft
+import com.homepantry.app.data.groupOcrRows
+import com.homepantry.app.data.needsApiKey
+import com.homepantry.app.data.ocrRowsText
+import com.homepantry.app.data.parseBankMovements
+import com.homepantry.app.data.recognizeCardChargesFromText
+import com.homepantry.app.data.recognizeOcrLines
 import com.homepantry.app.data.recognizeCardChargesWithGemini
 import com.homepantry.app.data.toExpenses
 import kotlinx.coroutines.CancellationException
@@ -21,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import java.util.Date
 
 /**
  * Lectura de capturas de cargos de tarjeta para SNcount y su borrador de revisión. Como
@@ -54,6 +62,7 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
     private val _failedMonthId = MutableStateFlow<String?>(null)
     val failedMonthId: StateFlow<String?> = _failedMonthId.asStateFlow()
     private var failedUris: List<Uri> = emptyList()
+    private var failedMode: CardReadMode = CardReadMode.GEMINI_IMAGE
 
     init {
         viewModelScope.launch {
@@ -75,8 +84,9 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
     }
 
     /**
-     * Lee [uris] con Gemini y deja el resultado como borrador. Ignora la llamada si ya hay una
-     * lectura en marcha o un borrador sin cerrar.
+     * Lee [uris] según [mode] y deja el resultado como borrador, aunque no haya ningún cargo (así
+     * se puede copiar el texto leído). Ignora la llamada si ya hay una lectura en marcha o un
+     * borrador sin cerrar.
      */
     fun read(
         context: Context,
@@ -85,24 +95,41 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
         existing: List<SplitExpense>,
         currentUid: String,
         apiKeyStore: GeminiApiKeyStore,
-        noKeyMessage: String
+        noKeyMessage: String,
+        mode: CardReadMode
     ) {
         if (_reading.value || _draft.value != null || uris.isEmpty()) return
         _reading.value = true
         _error.value = null
         failedUris = uris
+        failedMode = mode
         _failedMonthId.value = month.id
         // Solo el contexto de la aplicación: el de la actividad no debe sobrevivir en el ViewModel.
         val appContext = context.applicationContext
         viewModelScope.launch {
             try {
-                val apiKey = apiKeyStore.getApiKey()
-                if (apiKey == null) {
+                val apiKey = if (mode.needsApiKey) apiKeyStore.getApiKey() else null
+                if (mode.needsApiKey && apiKey == null) {
                     _error.value = noKeyMessage
                     return@launch
                 }
-                val movements = recognizeCardChargesWithGemini(appContext, uris, apiKey, apiKeyStore.getModel(), month)
-                _draft.value = cardImportDraft(movements, month, existing, currentUid, uris.map { it.toString() })
+                var ocrText = ""
+                val movements = when (mode) {
+                    CardReadMode.GEMINI_IMAGE ->
+                        recognizeCardChargesWithGemini(appContext, uris, apiKey!!, apiKeyStore.getModel(), month)
+                    CardReadMode.OCR_GEMINI_TEXT, CardReadMode.OCR_ONLY -> {
+                        val rows = uris.map { groupOcrRows(recognizeOcrLines(appContext, it)) }
+                        ocrText = ocrRowsText(rows)
+                        if (mode == CardReadMode.OCR_ONLY) {
+                            parseBankMovements(rows, Date())
+                        } else {
+                            recognizeCardChargesFromText(ocrText, apiKey!!, apiKeyStore.getModel(), month)
+                        }
+                    }
+                }
+                _draft.value = cardImportDraft(
+                    movements, month, existing, currentUid, uris.map { it.toString() }, ocrText, mode
+                )
                 _failedMonthId.value = null
                 failedUris = emptyList()
             } catch (e: CancellationException) {
@@ -124,7 +151,7 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
      */
     fun pendingMonthId(): String? = _draft.value?.monthId ?: _failedMonthId.value
 
-    /** Vuelve a leer las capturas de la última lectura fallida. */
+    /** Vuelve a leer, con el mismo modo, las capturas de la última lectura fallida. */
     fun retry(
         context: Context,
         month: SplitMonth,
@@ -133,9 +160,10 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
         apiKeyStore: GeminiApiKeyStore,
         noKeyMessage: String
     ) {
+        val mode = if (failedUris.isNotEmpty()) failedMode else _draft.value?.readMode ?: CardReadMode.GEMINI_IMAGE
         val uris = failedUris.ifEmpty { _draft.value?.imageUris?.map { it.toUri() }.orEmpty() }
         if (uris.isEmpty()) return
-        read(context, uris, month, existing, currentUid, apiKeyStore, noKeyMessage)
+        read(context, uris, month, existing, currentUid, apiKeyStore, noKeyMessage, mode)
     }
 
     /** Cambios del usuario al revisar (casillas, pagador, filas editadas). */

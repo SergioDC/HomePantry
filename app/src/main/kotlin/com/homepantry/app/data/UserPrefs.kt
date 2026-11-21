@@ -21,6 +21,7 @@ class UserPrefs(private val context: Context) {
     // Lista separada por comas: los ids de Firestore no llevan comas y así el orden se conserva.
     private val notifiedOfferIdsKey = stringPreferencesKey("notified_offer_ids")
     private val comedorFingerprintKey = stringPreferencesKey("comedor_pdf_fingerprint")
+    private val cardReadModeKey = stringPreferencesKey("card_read_mode")
 
     val householdCode: Flow<String?> = context.dataStore.data.map { it[householdCodeKey] }
     val userName: Flow<String?> = context.dataStore.data.map { it[userNameKey] }
@@ -51,6 +52,15 @@ class UserPrefs(private val context: Context) {
 
     suspend fun saveComedorFingerprint(value: String) {
         context.dataStore.edit { it[comedorFingerprintKey] = value }
+    }
+
+    /** Último modo con el que se leyeron capturas del banco en este móvil; null si nunca o desconocido. */
+    val cardReadMode: Flow<CardReadMode?> = context.dataStore.data.map { prefs ->
+        prefs[cardReadModeKey]?.let { name -> CardReadMode.entries.firstOrNull { it.name == name } }
+    }
+
+    suspend fun saveCardReadMode(mode: CardReadMode) {
+        context.dataStore.edit { it[cardReadModeKey] = mode.name }
     }
 
     /** Borra el código de casa guardado -- MainActivity reacciona mostrando JoinHouseholdScreen. */

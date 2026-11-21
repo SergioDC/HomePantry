@@ -63,6 +63,7 @@ import com.homepantry.app.data.MenuImportDraftStore
 import com.homepantry.app.data.ReceiptScanDraftStore
 import com.homepantry.app.data.receiptScanDraftFile
 import com.homepantry.app.data.CardImportDraftStore
+import com.homepantry.app.data.CardReadMode
 import com.homepantry.app.data.cardImportDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
@@ -692,7 +693,7 @@ fun ListaDeLaCasaApp(
                         if (month != null) {
                             cardImportViewModel.read(
                                 context, uris, month, splitState.expenses, splitViewModel.currentUid,
-                                geminiApiKeyStore, noKeyMessage
+                                geminiApiKeyStore, noKeyMessage, CardReadMode.GEMINI_IMAGE
                             )
                             navController.navigate("splitImport/$monthId")
                         }

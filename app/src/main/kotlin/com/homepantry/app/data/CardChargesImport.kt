@@ -20,6 +20,18 @@ import kotlin.math.roundToLong
 /** Un movimiento leído de las capturas. [charge] = false es un ingreso o una devolución. */
 data class CardMovement(val title: String, val amountCents: Long, val date: Date?, val charge: Boolean)
 
+/** Cómo se leen las capturas: cuánto sale del móvil (spec 2026-11-21-sncount-modos-lectura-capturas). */
+enum class CardReadMode {
+    /** Las capturas van a Gemini. */
+    GEMINI_IMAGE,
+    /** El OCR del móvil saca el texto y solo ese texto va a Gemini. */
+    OCR_GEMINI_TEXT,
+    /** Todo en el móvil: OCR y [parseBankMovements]. */
+    OCR_ONLY
+}
+
+val CardReadMode.needsApiKey: Boolean get() = this != CardReadMode.OCR_ONLY
+
 /** Por qué un cargo sale desmarcado en la revisión. */
 enum class CardRowFlag { NONE, DUPLICATE, OUT_OF_MONTH, NO_DATE }
 
@@ -49,7 +61,11 @@ data class CardImportDraft(
     val payerId: String = "",
     val rows: List<CardImportRow> = emptyList(),
     /** Capturas leídas, para poder reintentar la lectura. */
-    val imageUris: List<String> = emptyList()
+    val imageUris: List<String> = emptyList(),
+    /** Filas del OCR (modos con OCR), para copiarlas y ajustar el lector; vacío con Gemini (imagen). */
+    val ocrText: String = "",
+    /** Modo con el que se leyó, para que reintentar use el mismo. */
+    val readMode: CardReadMode = CardReadMode.GEMINI_IMAGE
 )
 
 private data class GeminiCardMovement(val title: String?, val amount: Double?, val date: String?, val charge: Boolean?)
@@ -101,7 +117,9 @@ fun cardImportDraft(
     month: SplitMonth,
     existing: List<SplitExpense>,
     currentUid: String,
-    imageUris: List<String>
+    imageUris: List<String>,
+    ocrText: String = "",
+    readMode: CardReadMode = CardReadMode.GEMINI_IMAGE
 ): CardImportDraft {
     // Un gasto ya existente con el mismo importe el mismo día cuenta como duplicado aunque el
     // concepto difiera: lo metido a mano no suele llevar el texto del banco.
@@ -129,7 +147,9 @@ fun cardImportDraft(
         monthId = month.id,
         payerId = currentUid.takeIf { it in month.memberIds } ?: month.memberIds.firstOrNull().orEmpty(),
         rows = rows,
-        imageUris = imageUris
+        imageUris = imageUris,
+        ocrText = ocrText,
+        readMode = readMode
     )
 }
 
@@ -157,6 +177,9 @@ fun cardImportDraftFromJson(json: String): CardImportDraft? = try {
             monthId = draft.monthId ?: "",
             payerId = draft.payerId ?: "",
             imageUris = (draft.imageUris ?: emptyList()).filterNotNull(),
+            ocrText = draft.ocrText ?: "",
+            // Gson deja null un modo que no existe (o que falta en un borrador antiguo).
+            readMode = draft.readMode ?: CardReadMode.GEMINI_IMAGE,
             rows = (draft.rows ?: emptyList()).filterNotNull().map { row ->
                 CardImportRow(
                     title = row.title ?: "",
@@ -194,8 +217,8 @@ val CARD_MOVEMENTS_JSON_SCHEMA: Map<String, Any> = mapOf(
     "required" to listOf("movements")
 )
 
-private fun cardChargesPrompt(month: SplitMonth, today: Date): String = """
-    Eres un asistente que lee capturas de pantalla de la lista de movimientos de la app de un
+private fun cardChargesPrompt(month: SplitMonth, today: Date, fromText: Boolean = false): String = """
+    Eres un asistente que lee ${if (fromText) "el texto, sacado con OCR y con una fila de la pantalla por línea, de " else ""}capturas de pantalla de la lista de movimientos de la app de un
     banco español (cargos de tarjeta). Puede haber varias capturas de la misma lista: devuelve
     una entrada por movimiento entre todas ellas y, si una misma fila aparece en dos capturas,
     devuélvela una sola vez. Para cada movimiento:
@@ -208,6 +231,28 @@ private fun cardChargesPrompt(month: SplitMonth, today: Date): String = """
     Hoy es ${dayKey(today)}.
     Ignora saldos, totales, cabeceras y cualquier cosa que no sea un movimiento.
 """.trimIndent()
+
+private fun cardChargesTextPrompt(month: SplitMonth, today: Date): String =
+    cardChargesPrompt(month, today, fromText = true) + "\nLas líneas «--- Captura N ---» separan una captura de la siguiente. El texto es este:"
+
+/**
+ * Como [recognizeCardChargesWithGemini] pero solo con el texto del OCR: las imágenes no salen
+ * del móvil. Misma respuesta y mismo esquema.
+ */
+suspend fun recognizeCardChargesFromText(
+    ocrText: String,
+    apiKey: String,
+    model: String,
+    month: SplitMonth,
+    today: Date = Date()
+): List<CardMovement> {
+    val request = GeminiInteractionRequest(
+        model = model,
+        input = listOf(GeminiInputPart(type = "text", text = cardChargesTextPrompt(month, today) + "\n" + ocrText)),
+        responseFormat = GeminiResponseFormat(schema = CARD_MOVEMENTS_JSON_SCHEMA)
+    )
+    return mapCardMovementsOutput(extractOutputText(callGemini(apiKey, request)), today)
+}
 
 /** Manda las capturas a Gemini en una sola petición y devuelve los movimientos leídos. */
 suspend fun recognizeCardChargesWithGemini(

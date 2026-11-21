@@ -189,4 +189,46 @@ class CardChargesImportTest {
         val row = cardImportDraftFromJson(json)!!.rows.single()
         assertTrue(row.id.isNotBlank())
     }
+
+    @Test
+    fun `json con ocrText y modo ida y vuelta`() {
+        val draft = CardImportDraft(
+            monthId = "m1", payerId = "a",
+            rows = listOf(CardImportRow("LIDL", "8,10", 1000L, true, id = "r1")),
+            ocrText = "--- Captura 1 ---\nLIDL  -8,10 €",
+            readMode = CardReadMode.OCR_ONLY
+        )
+        assertEquals(draft, cardImportDraftFromJson(cardImportDraftToJson(draft)))
+    }
+
+    @Test
+    fun `borrador antiguo sin modo`() {
+        val json = """{"monthId":"m1","payerId":"a","rows":[]}"""
+        val draft = cardImportDraftFromJson(json)!!
+        assertEquals("", draft.ocrText)
+        assertEquals(CardReadMode.GEMINI_IMAGE, draft.readMode)
+    }
+
+    @Test
+    fun `modo desconocido en el json`() {
+        val json = """{"monthId":"m1","payerId":"a","rows":[],"readMode":"OTRO"}"""
+        assertEquals(CardReadMode.GEMINI_IMAGE, cardImportDraftFromJson(json)!!.readMode)
+    }
+
+    @Test
+    fun `cardImportDraft guarda ocrText y modo`() {
+        val draft = cardImportDraft(
+            listOf(charge("A", 100, day(2026, 11, 2))), month, emptyList(), "a", emptyList(),
+            ocrText = "texto", readMode = CardReadMode.OCR_GEMINI_TEXT
+        )
+        assertEquals("texto", draft.ocrText)
+        assertEquals(CardReadMode.OCR_GEMINI_TEXT, draft.readMode)
+    }
+
+    @Test
+    fun `solo el OCR no necesita clave`() {
+        assertTrue(CardReadMode.GEMINI_IMAGE.needsApiKey)
+        assertTrue(CardReadMode.OCR_GEMINI_TEXT.needsApiKey)
+        assertFalse(CardReadMode.OCR_ONLY.needsApiKey)
+    }
 }
