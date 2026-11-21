@@ -62,6 +62,7 @@ import com.homepantry.app.R
 import com.homepantry.app.data.GEMINI_MODEL_OPTIONS
 import com.homepantry.app.data.GeminiApiKeyStore
 import com.homepantry.app.data.UserPrefs
+import com.homepantry.app.data.WeatherPlace
 import com.homepantry.app.data.validateGeminiApiKey
 import com.homepantry.app.ui.AppViewModel
 import kotlinx.coroutines.launch
@@ -82,9 +83,14 @@ fun ManageZonesScreen(
     userPrefs: UserPrefs,
     geminiApiKeyStore: GeminiApiKeyStore,
     onBack: () -> Unit,
-    onEditName: () -> Unit
+    onEditName: () -> Unit,
+    /** Buscador de pueblos para el tiempo del panel de cocina (Open-Meteo). */
+    searchPlaces: suspend (String) -> List<WeatherPlace>
 ) {
     val state by viewModel.state.collectAsState()
+    val panelMode by userPrefs.panelMode.collectAsState(initial = false)
+    val weatherPlace by userPrefs.weatherPlace.collectAsState(initial = null)
+    var showPlaceDialog by remember { mutableStateOf(false) }
     var showLeaveConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val clipboardManager = LocalClipboardManager.current
@@ -113,6 +119,16 @@ fun ManageZonesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) { Snackbar(it) } }
     ) { padding ->
+        if (showPlaceDialog) {
+            WeatherPlaceDialog(
+                search = searchPlaces,
+                onPick = { place ->
+                    showPlaceDialog = false
+                    scope.launch { userPrefs.saveWeatherPlace(place) }
+                },
+                onDismiss = { showPlaceDialog = false }
+            )
+        }
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp)) {
             item {
                 Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
@@ -170,6 +186,14 @@ fun ManageZonesScreen(
                     geminiApiKeyStore = geminiApiKeyStore,
                     snackbarHostState = snackbarHostState,
                     scope = scope
+                )
+            }
+            item {
+                PanelSettingsCard(
+                    panelMode = panelMode,
+                    placeName = weatherPlace?.name,
+                    onPanelModeChange = { enabled -> scope.launch { userPrefs.setPanelMode(enabled) } },
+                    onPickPlace = { showPlaceDialog = true }
                 )
             }
             item {

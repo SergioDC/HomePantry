@@ -85,6 +85,7 @@ import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.CardImportViewModel
+import com.homepantry.app.ui.PanelViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.RecipesViewModel
@@ -103,6 +104,7 @@ import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.CardImportScreen
+import com.homepantry.app.ui.screens.PanelScreen
 import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
 import com.homepantry.app.ui.screens.SplitMonthEditScreen
@@ -333,6 +335,21 @@ fun ListaDeLaCasaApp(
         }
     )
 
+    // Panel de la tablet de la cocina: menú de hoy y tiempo (los productos salen de `viewModel`).
+    val panelViewModel: PanelViewModel = viewModel(
+        key = "panel-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return PanelViewModel(MealEntriesRepository(firestore, code), userPrefs) as T
+                }
+            }
+        }
+    )
+    // Hasta leer el modo no se monta el NavHost: el destino inicial depende de él.
+    val panelMode by userPrefs.panelMode.collectAsState(initial = null)
+
     // Importación de cargos de tarjeta a SNcount: a nivel de actividad, como la lectura de tickets.
     val cardImportViewModel: CardImportViewModel = viewModel(
         key = "cardImport-$code",
@@ -491,11 +508,21 @@ fun ListaDeLaCasaApp(
             }
         }
     ) { padding ->
+        val startPanel = panelMode ?: return@Scaffold
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = if (startPanel) "panel" else "home",
             modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         ) {
+            composable("panel") {
+                PanelScreen(
+                    appViewModel = viewModel,
+                    panelViewModel = panelViewModel,
+                    onOpenRestock = { navController.navigate("panelRestock") },
+                    onExitPanel = { navController.navigate("home") { launchSingleTop = true } },
+                    onConfigureWeather = { navController.navigate("manageZones") }
+                )
+            }
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
@@ -577,7 +604,8 @@ fun ListaDeLaCasaApp(
                     userPrefs = userPrefs,
                     geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
-                    onEditName = { showEditName = true }
+                    onEditName = { showEditName = true },
+                    searchPlaces = panelViewModel::searchPlaces
                 )
             }
             composable("purchaseHistory") {
