@@ -231,4 +231,13 @@ class CardChargesImportTest {
         assertTrue(CardReadMode.OCR_GEMINI_TEXT.needsApiKey)
         assertFalse(CardReadMode.OCR_ONLY.needsApiKey)
     }
+
+    @Test
+    fun `modo por defecto del dialogo`() {
+        assertEquals(CardReadMode.OCR_GEMINI_TEXT, defaultCardReadMode(CardReadMode.OCR_GEMINI_TEXT, hasApiKey = true))
+        assertEquals(CardReadMode.OCR_ONLY, defaultCardReadMode(CardReadMode.OCR_GEMINI_TEXT, hasApiKey = false))
+        assertEquals(CardReadMode.OCR_ONLY, defaultCardReadMode(CardReadMode.OCR_ONLY, hasApiKey = true))
+        assertEquals(CardReadMode.GEMINI_IMAGE, defaultCardReadMode(null, hasApiKey = true))
+        assertEquals(CardReadMode.OCR_ONLY, defaultCardReadMode(null, hasApiKey = false))
+    }
 }

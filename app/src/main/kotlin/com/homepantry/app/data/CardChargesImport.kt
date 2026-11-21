@@ -32,6 +32,13 @@ enum class CardReadMode {
 
 val CardReadMode.needsApiKey: Boolean get() = this != CardReadMode.OCR_ONLY
 
+/** Modo marcado al abrir el diálogo: el último usado si se puede usar; si no, Gemini (imagen) con clave o Solo OCR sin ella. */
+fun defaultCardReadMode(last: CardReadMode?, hasApiKey: Boolean): CardReadMode = when {
+    last != null && (hasApiKey || !last.needsApiKey) -> last
+    hasApiKey -> CardReadMode.GEMINI_IMAGE
+    else -> CardReadMode.OCR_ONLY
+}
+
 /** Por qué un cargo sale desmarcado en la revisión. */
 enum class CardRowFlag { NONE, DUPLICATE, OUT_OF_MONTH, NO_DATE }
 

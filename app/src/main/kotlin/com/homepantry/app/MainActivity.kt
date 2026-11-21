@@ -31,7 +31,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,7 +65,6 @@ import com.homepantry.app.data.MenuImportDraftStore
 import com.homepantry.app.data.ReceiptScanDraftStore
 import com.homepantry.app.data.receiptScanDraftFile
 import com.homepantry.app.data.CardImportDraftStore
-import com.homepantry.app.data.CardReadMode
 import com.homepantry.app.data.cardImportDraftFile
 import com.homepantry.app.data.menuImportDraftFile
 import com.homepantry.app.data.NotificationsRepository
@@ -123,6 +124,7 @@ import com.homepantry.app.ui.screens.ZoneDetailScreen
 import com.homepantry.app.ui.screens.ZonesDashboardScreen
 import com.homepantry.app.ui.theme.ListaDeLaCasaTheme
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.time.ZonedDateTime
 
@@ -679,6 +681,10 @@ fun ListaDeLaCasaApp(
                 val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
                 RetainSplitMonth(splitViewModel, backStackEntry, monthId)
                 val noKeyMessage = stringResource(R.string.split_import_no_key)
+                val importScope = rememberCoroutineScope()
+                val lastReadMode by userPrefs.cardReadMode.collectAsState(initial = null)
+                // Se vuelve a mirar cada vez que se entra en el grupo: la clave puede añadirse en Ajustes.
+                val hasApiKey by produceState(false) { value = geminiApiKeyStore.getApiKey() != null }
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
@@ -687,13 +693,16 @@ fun ListaDeLaCasaApp(
                     onOpenImport = {
                         cardImportViewModel.pendingMonthId()?.let { navController.navigate("splitImport/$it") }
                     },
-                    onImport = { uris ->
+                    hasApiKey = hasApiKey,
+                    initialReadMode = lastReadMode,
+                    onImport = { uris, mode ->
+                        importScope.launch { userPrefs.saveCardReadMode(mode) }
                         val splitState = splitViewModel.state.value
                         val month = splitState.months.firstOrNull { it.id == monthId }
                         if (month != null) {
                             cardImportViewModel.read(
                                 context, uris, month, splitState.expenses, splitViewModel.currentUid,
-                                geminiApiKeyStore, noKeyMessage, CardReadMode.GEMINI_IMAGE
+                                geminiApiKeyStore, noKeyMessage, mode
                             )
                             navController.navigate("splitImport/$monthId")
                         }
