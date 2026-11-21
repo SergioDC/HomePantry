@@ -52,10 +52,14 @@ import com.homepantry.app.ui.AppViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun PanelRestockScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
+fun PanelRestockScreen(
+    appViewModel: AppViewModel,
+    /** Abre la hoja de añadir global de la app: así cuenta como hoja abierta para el panel. */
+    onAddNew: () -> Unit,
+    onBack: () -> Unit
+) {
     val state by appViewModel.state.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
-    var showAddSheet by rememberSaveable { mutableStateOf(false) }
     // Lo tocado deja de estar en casa y saldría de la cuadrícula: se guarda aquí para seguir
     // viéndolo marcado «en la lista» mientras no se salga de la pantalla.
     val added = remember { mutableStateListOf<Item>() }
@@ -64,10 +68,6 @@ fun PanelRestockScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
         val inHouseIds = state.items.filter { it.done }.map { it.id }.toSet()
         val shown = state.items + added.filter { it.id !in inHouseIds }.map { it.copy(done = true) }
         restockSections(shown.distinctBy { it.id }, state.zones, query, noZone)
-    }
-
-    if (showAddSheet) {
-        AddItemSheet(viewModel = appViewModel, initialZoneId = null, onDismiss = { showAddSheet = false })
     }
 
     Scaffold(
@@ -80,7 +80,7 @@ fun PanelRestockScreen(appViewModel: AppViewModel, onBack: () -> Unit) {
                     }
                 },
                 actions = {
-                    FilledTonalButton(onClick = { showAddSheet = true }, modifier = Modifier.padding(end = 12.dp)) {
+                    FilledTonalButton(onClick = onAddNew, modifier = Modifier.padding(end = 12.dp)) {
                         Icon(Icons.Filled.Mic, contentDescription = null)
                         Text(stringResource(R.string.panel_restock_new), modifier = Modifier.padding(start = 8.dp))
                     }

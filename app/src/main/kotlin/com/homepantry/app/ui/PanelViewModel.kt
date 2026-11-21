@@ -38,6 +38,12 @@ data class WeatherState(
 /** Cada cuánto se vuelve a pedir el tiempo: más a menudo no aporta nada en una cocina. */
 private const val WEATHER_REFRESH_MILLIS = 30 * 60_000L
 
+/** Tras un fallo (p. ej. la tablet arranca antes que el wifi) se reintenta mucho antes. */
+private const val WEATHER_RETRY_MILLIS = 2 * 60_000L
+
+/** Los flujos se paran poco después de que nadie mire el panel: en los móviles nunca se mira. */
+private const val STOP_TIMEOUT_MILLIS = 5_000L
+
 /**
  * Menú de hoy y tiempo del panel de la cocina. Los productos y las zonas los da [AppViewModel].
  * Todo cuelga de [now], que avanza cada minuto: así a medianoche el menú pasa solo al día
@@ -56,7 +62,7 @@ class PanelViewModel(
             // Hasta el siguiente minuto en punto, para que el reloj no vaya con retraso.
             delay(ChronoUnit.MILLIS.between(current, current.truncatedTo(ChronoUnit.MINUTES).plusMinutes(1)).coerceAtLeast(1))
         }
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, LocalDateTime.now())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), LocalDateTime.now())
 
     val menu: StateFlow<List<MenuSlotSection>> = now
         .map { it.toLocalDate() }
@@ -67,19 +73,23 @@ class PanelViewModel(
                 // Sin red o sin permisos el panel sigue en pie; el menú se queda vacío.
                 .catch { emit(emptyList()) }
         }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), emptyList())
 
     private val _weather = MutableStateFlow(WeatherState())
     val weather: StateFlow<WeatherState> = _weather.asStateFlow()
 
     init {
         viewModelScope.launch {
-            userPrefs.weatherPlace.collectLatest { place ->
-                _weather.value = WeatherState(place = place)
+            // distinctUntilChanged: DataStore reemite con cualquier otra preferencia y no debe
+            // borrar el último dato bueno. Al cambiar de día se pide de nuevo: el de ayer no vale.
+            // Sin pueblo (los móviles) no se mira el reloj ni se pide nada.
+            userPrefs.weatherPlace.distinctUntilChanged().collectLatest { place ->
+                if (place != _weather.value.place) _weather.value = WeatherState(place = place)
                 if (place == null) return@collectLatest
-                while (true) {
-                    fetchWeather(place)
-                    delay(WEATHER_REFRESH_MILLIS)
+                now.map { it.toLocalDate() }.distinctUntilChanged().collectLatest {
+                    while (true) {
+                        delay(if (fetchWeather(place)) WEATHER_REFRESH_MILLIS else WEATHER_RETRY_MILLIS)
+                    }
                 }
             }
         }
@@ -91,7 +101,8 @@ class PanelViewModel(
         viewModelScope.launch { fetchWeather(place) }
     }
 
-    private suspend fun fetchWeather(place: WeatherPlace) {
+    /** Pide el tiempo de [place]; true si se ha podido leer. */
+    private suspend fun fetchWeather(place: WeatherPlace): Boolean {
         val snapshot = try {
             weatherSnapshot(OpenMeteoClient.forecast().forecast(place.latitude, place.longitude), System.currentTimeMillis())
         } catch (e: CancellationException) {
@@ -99,12 +110,15 @@ class PanelViewModel(
         } catch (e: Exception) {
             null
         }
+        // Una respuesta tardía de un pueblo que ya no es el elegido se descarta.
+        if (_weather.value.place != place) return snapshot != null
         // Un fallo deja a la vista el último dato bueno, con su hora.
         _weather.value = if (snapshot != null) {
             WeatherState(place, snapshot, failed = false)
         } else {
             _weather.value.copy(failed = true)
         }
+        return snapshot != null
     }
 
     /** Pueblos que coinciden con [query] en el buscador de Open-Meteo; lanza si no hay red. */

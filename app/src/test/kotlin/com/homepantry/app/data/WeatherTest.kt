@@ -105,4 +105,12 @@ class WeatherTest {
         val parsed = Gson().fromJson(json, OpenMeteoForecast::class.java)
         assertEquals(weatherSnapshot(forecast(), 5L), weatherSnapshot(parsed, 5L))
     }
+
+    @Test
+    fun `la instantanea sabe de que dia es`() {
+        val snapshot = weatherSnapshot(forecast(), 0L)!!
+        assertEquals("2026-11-22", snapshot.date)
+        assertTrue(snapshot.isFor(java.time.LocalDate.of(2026, 11, 22)))
+        assertFalse(snapshot.isFor(java.time.LocalDate.of(2026, 11, 23)))
+    }
 }

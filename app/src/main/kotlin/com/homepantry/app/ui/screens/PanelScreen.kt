@@ -67,6 +67,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -145,9 +146,10 @@ private fun PanelHeader(
                 )
                 Text(now.format(clock), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            WeatherSummary(weather, onConfigureWeather, onRetryWeather)
+            WeatherSummary(weather, now.toLocalDate(), onConfigureWeather, onRetryWeather)
         }
-        val snapshot = weather.snapshot
+        // Pasada la medianoche, la previsión de ayer no se enseña hasta que llegue la de hoy.
+        val snapshot = weather.snapshot?.takeIf { it.isFor(now.toLocalDate()) }
         if (morning && snapshot != null && snapshot.hours.isNotEmpty()) {
             Spacer(Modifier.height(12.dp))
             HourlyStrip(snapshot)
@@ -156,8 +158,8 @@ private fun PanelHeader(
 }
 
 @Composable
-private fun WeatherSummary(weather: WeatherState, onConfigureWeather: () -> Unit, onRetryWeather: () -> Unit) {
-    val snapshot = weather.snapshot
+private fun WeatherSummary(weather: WeatherState, today: LocalDate, onConfigureWeather: () -> Unit, onRetryWeather: () -> Unit) {
+    val snapshot = weather.snapshot?.takeIf { it.isFor(today) }
     when {
         weather.place == null -> Text(
             stringResource(R.string.panel_weather_pick_place),

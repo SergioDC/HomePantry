@@ -28,4 +28,10 @@ class PanelIdleTest {
         assertEquals(IdleAction.RETURN_TO_PANEL, idleAction(true, "manageZones", 120_000L))
         assertEquals(IdleAction.RETURN_TO_PANEL, idleAction(true, null, 120_000L))
     }
+
+    @Test
+    fun `con una hoja abierta no se atenua ni se vuelve`() {
+        assertEquals(IdleAction.NONE, idleAction(true, "panel", 10 * 60_000L, suspended = true))
+        assertEquals(IdleAction.NONE, idleAction(true, "mainList", 10 * 60_000L, suspended = true))
+    }
 }

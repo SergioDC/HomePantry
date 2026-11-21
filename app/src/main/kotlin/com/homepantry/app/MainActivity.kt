@@ -349,8 +349,12 @@ fun ListaDeLaCasaApp(
             }
         }
     )
-    // Hasta leer el modo no se monta el NavHost: el destino inicial depende de él.
+    // Hasta leer el modo no se monta el NavHost: el destino inicial depende de él. Se fija con la
+    // primera lectura: cambiar `startDestination` con el NavHost ya montado rehace el grafo. Si se
+    // activa el modo en Ajustes, la vuelta por inactividad lleva al panel sin reiniciar.
     val panelMode by userPrefs.panelMode.collectAsState(initial = null)
+    var startInPanel by remember { mutableStateOf<Boolean?>(null) }
+    if (startInPanel == null && panelMode != null) startInPanel = panelMode
 
     // Importación de cargos de tarjeta a SNcount: a nivel de actividad, como la lectura de tickets.
     val cardImportViewModel: CardImportViewModel = viewModel(
@@ -510,10 +514,11 @@ fun ListaDeLaCasaApp(
             }
         }
     ) { padding ->
-        val startPanel = panelMode ?: return@Scaffold
+        val startPanel = startInPanel ?: return@Scaffold
         PanelIdleHost(
-            panelMode = startPanel,
+            panelMode = panelMode == true,
             currentRoute = currentRoute,
+            suspended = showAddItem || itemBeingEdited != null || showEditName || showDefaultProducts,
             onReturnToPanel = {
                 navController.navigate("panel") {
                     popUpTo(navController.graph.id) { inclusive = true }
@@ -536,7 +541,14 @@ fun ListaDeLaCasaApp(
                 )
             }
             composable("panelRestock") {
-                PanelRestockScreen(appViewModel = viewModel, onBack = { navController.popBackStack() })
+                PanelRestockScreen(
+                    appViewModel = viewModel,
+                    onAddNew = {
+                        addItemZoneOverride = null
+                        showAddItem = true
+                    },
+                    onBack = { navController.popBackStack() }
+                )
             }
             composable("home") {
                 HomeScreen(
@@ -793,9 +805,11 @@ fun ListaDeLaCasaApp(
 
     // Enlace de SNcount compartido por otro miembro: se navega por Home → SNcount → el grupo
     // para que «atrás» funcione como si se hubiera llegado a mano. Si el grupo no es de esta casa,
-    // SplitMonthScreen vuelve sola a la lista. Va después del NavHost para que el grafo ya exista.
-    LaunchedEffect(pendingSplitMonthId) {
+    // SplitMonthScreen vuelve sola a la lista. Espera a que el NavHost tenga grafo (se monta tras
+    // leer el modo panel), como la notificación de ofertas: navegar antes cerraría la app.
+    LaunchedEffect(pendingSplitMonthId, navReady) {
         val monthId = pendingSplitMonthId ?: return@LaunchedEffect
+        if (!navReady) return@LaunchedEffect
         navController.navigate("splitMonths") {
             popUpTo("home")
             launchSingleTop = true

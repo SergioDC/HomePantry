@@ -38,6 +38,8 @@ private const val IDLE_CHECK_MILLIS = 5_000L
 fun PanelIdleHost(
     panelMode: Boolean,
     currentRoute: String?,
+    /** Hay una hoja o un diálogo de la app abierto: sus toques no llegan aquí, pero alguien lo usa. */
+    suspended: Boolean,
     onReturnToPanel: () -> Unit,
     content: @Composable () -> Unit
 ) {
@@ -45,6 +47,7 @@ fun PanelIdleHost(
     var lastTouch by remember { mutableLongStateOf(SystemClock.uptimeMillis()) }
     var dimmed by remember { mutableStateOf(false) }
     val route by rememberUpdatedState(currentRoute)
+    val isSuspended by rememberUpdatedState(suspended)
     val returnToPanel by rememberUpdatedState(onReturnToPanel)
     val onPanel = panelMode && currentRoute in PANEL_ROUTES
 
@@ -69,7 +72,9 @@ fun PanelIdleHost(
         lastTouch = SystemClock.uptimeMillis()
         while (true) {
             delay(IDLE_CHECK_MILLIS)
-            when (idleAction(panelMode, route, SystemClock.uptimeMillis() - lastTouch)) {
+            // Al cerrar la hoja se empieza a contar de nuevo, no desde el último toque de antes.
+            if (isSuspended) lastTouch = SystemClock.uptimeMillis()
+            when (idleAction(panelMode, route, SystemClock.uptimeMillis() - lastTouch, isSuspended)) {
                 IdleAction.NONE -> Unit
                 IdleAction.DIM -> dimmed = true
                 IdleAction.RETURN_TO_PANEL -> {

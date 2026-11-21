@@ -5,6 +5,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
+import java.time.LocalDate
 import java.time.LocalTime
 import kotlin.math.roundToInt
 
@@ -107,8 +108,12 @@ data class WeatherSnapshot(
     val minTemp: Int = 0,
     val rainProbability: Int = 0,
     val hours: List<HourWeather> = emptyList(),
-    val fetchedAtMillis: Long = 0
-)
+    val fetchedAtMillis: Long = 0,
+    /** Día de la previsión ("yyyy-MM-dd"): pasada la medianoche, la de ayer ya no vale. */
+    val date: String = ""
+) {
+    fun isFor(day: LocalDate): Boolean = date == day.toString()
+}
 
 /** Horas que se dibujan en la fila de la mañana. */
 private val PANEL_HOURS = 8..22
@@ -140,7 +145,8 @@ fun weatherSnapshot(forecast: OpenMeteoForecast, fetchedAtMillis: Long): Weather
         minTemp = min.roundToInt(),
         rainProbability = daily.precipitationProbabilityMax?.firstOrNull() ?: 0,
         hours = hours,
-        fetchedAtMillis = fetchedAtMillis
+        fetchedAtMillis = fetchedAtMillis,
+        date = today
     )
 }
 
