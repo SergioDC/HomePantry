@@ -677,6 +677,7 @@ fun ListaDeLaCasaApp(
             composable("splitMonth/{monthId}") { backStackEntry ->
                 val monthId = backStackEntry.arguments?.getString("monthId") ?: return@composable
                 RetainSplitMonth(splitViewModel, backStackEntry, monthId)
+                val noKeyMessage = stringResource(R.string.split_import_no_key)
                 SplitMonthScreen(
                     viewModel = splitViewModel,
                     monthId = monthId,
@@ -691,7 +692,7 @@ fun ListaDeLaCasaApp(
                         if (month != null) {
                             cardImportViewModel.read(
                                 context, uris, month, splitState.expenses, splitViewModel.currentUid,
-                                geminiApiKeyStore, context.getString(R.string.split_import_no_key)
+                                geminiApiKeyStore, noKeyMessage
                             )
                             navController.navigate("splitImport/$monthId")
                         }

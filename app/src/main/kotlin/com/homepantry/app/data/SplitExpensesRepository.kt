@@ -40,7 +40,12 @@ class SplitExpensesRepository(
     suspend fun addAll(monthId: String, expenses: List<SplitExpense>) {
         expenses.chunked(500).forEach { chunk ->
             val batch = firestore.batch()
-            chunk.forEach { batch.set(collection(monthId).document(), it) }
+            // Con id fijo, reintentar tras un fallo a medias (más de 500 gastos) sobrescribe los ya
+            // escritos en vez de duplicarlos. Firestore no serializa el campo @DocumentId.
+            chunk.forEach { expense ->
+                val doc = if (expense.id.isBlank()) collection(monthId).document() else collection(monthId).document(expense.id)
+                batch.set(doc, expense)
+            }
             batch.commit().await()
         }
     }

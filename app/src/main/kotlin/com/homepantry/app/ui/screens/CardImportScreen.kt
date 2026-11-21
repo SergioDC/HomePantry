@@ -92,6 +92,7 @@ fun CardImportScreen(
     val draft by importViewModel.draft.collectAsState()
     val error by importViewModel.error.collectAsState()
     val saving by importViewModel.saving.collectAsState()
+    val loaded by importViewModel.loaded.collectAsState()
     val month = splitState.months.firstOrNull { it.id == monthId }
     val noKeyMessage = stringResource(R.string.split_import_no_key)
 
@@ -113,8 +114,9 @@ fun CardImportScreen(
     }
 
     // Tras guardar, el borrador desaparece: se vuelve al grupo. También si no queda nada que hacer
-    // (se descartó desde otro sitio o se abrió la ruta sin lectura).
-    val nothingLeft = !reading && ownDraft == null && error == null
+    // (se descartó desde otro sitio o se abrió la ruta sin lectura), pero solo cuando el borrador
+    // del disco ya ha cargado: si no, la ruta restaurada tras matar el proceso saldría sola.
+    val nothingLeft = loaded && !reading && ownDraft == null && error == null
     LaunchedEffect(nothingLeft) {
         if (nothingLeft) leave()
     }

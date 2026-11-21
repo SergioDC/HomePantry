@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToLong
 
@@ -29,7 +30,12 @@ data class CardImportRow(
     /** Día del cargo a medianoche local, en milisegundos; null si no se leyó. */
     val dateMillis: Long? = null,
     val selected: Boolean = true,
-    val flag: CardRowFlag = CardRowFlag.NONE
+    val flag: CardRowFlag = CardRowFlag.NONE,
+    /**
+     * Id del documento del gasto que se creará. Se fija al leer y no al guardar para que reintentar
+     * un guardado que falló a medias sobrescriba lo ya escrito en vez de duplicarlo.
+     */
+    val id: String = ""
 ) {
     fun isValid(): Boolean = title.isNotBlank() && parseCents(amountText) != null && dateMillis != null
 }
@@ -115,7 +121,8 @@ fun cardImportDraft(
             amountText = centsToText(movement.amountCents),
             dateMillis = date?.let { startOfDay(it).time },
             selected = flag == CardRowFlag.NONE,
-            flag = flag
+            flag = flag,
+            id = UUID.randomUUID().toString()
         )
     }
     return CardImportDraft(
@@ -130,6 +137,7 @@ fun cardImportDraft(
 fun CardImportDraft.toExpenses(month: SplitMonth): List<SplitExpense> =
     rows.filter { it.selected && it.isValid() }.map { row ->
         SplitExpense(
+            id = row.id,
             title = row.title.trim(),
             amountCents = parseCents(row.amountText)!!,
             payerId = payerId,
@@ -155,7 +163,8 @@ fun cardImportDraftFromJson(json: String): CardImportDraft? = try {
                     amountText = row.amountText ?: "",
                     dateMillis = row.dateMillis,
                     selected = row.selected,
-                    flag = row.flag ?: CardRowFlag.NONE
+                    flag = row.flag ?: CardRowFlag.NONE,
+                    id = row.id?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
                 )
             }
         )

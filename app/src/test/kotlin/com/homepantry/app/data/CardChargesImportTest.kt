@@ -149,8 +149,8 @@ class CardChargesImportTest {
         val draft = CardImportDraft(
             monthId = "m1", payerId = "a",
             rows = listOf(
-                CardImportRow("A", "1,00", 1000L, true, CardRowFlag.NONE),
-                CardImportRow("B", "2,00", null, false, CardRowFlag.NO_DATE)
+                CardImportRow("A", "1,00", 1000L, true, CardRowFlag.NONE, id = "r1"),
+                CardImportRow("B", "2,00", null, false, CardRowFlag.NO_DATE, id = "r2")
             ),
             imageUris = listOf("content://x/1")
         )
@@ -161,5 +161,32 @@ class CardChargesImportTest {
         assertEquals(emptyList<CardImportRow>(), empty!!.rows)
         assertEquals(emptyList<String>(), empty.imageUris)
         assertEquals("", empty.monthId)
+    }
+
+    @Test
+    fun `cada fila del borrador tiene un id propio`() {
+        val rows = cardImportDraft(
+            listOf(charge("A", 100, day(2026, 11, 2)), charge("B", 200, day(2026, 11, 3))),
+            month, emptyList(), "a", emptyList()
+        ).rows
+        assertTrue(rows.all { it.id.isNotBlank() })
+        assertEquals(2, rows.map { it.id }.toSet().size)
+    }
+
+    @Test
+    fun `toExpenses usa el id de la fila para que reintentar no duplique`() {
+        val draft = CardImportDraft(
+            monthId = "m1", payerId = "a",
+            rows = listOf(CardImportRow("A", "1,00", day(2026, 11, 4).time, true, id = "fila-1"))
+        )
+        assertEquals("fila-1", draft.toExpenses(month).single().id)
+        assertEquals(draft.toExpenses(month), draft.toExpenses(month))
+    }
+
+    @Test
+    fun `un borrador sin ids recibe uno estable al leerlo`() {
+        val json = """{"monthId":"m1","payerId":"a","rows":[{"title":"A","amountText":"1,00","dateMillis":1000,"selected":true,"flag":"NONE"}]}"""
+        val row = cardImportDraftFromJson(json)!!.rows.single()
+        assertTrue(row.id.isNotBlank())
     }
 }

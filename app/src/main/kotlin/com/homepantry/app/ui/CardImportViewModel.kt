@@ -39,6 +39,14 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    /**
+     * True cuando ya se ha leído el borrador del disco. Hasta entonces la pantalla no debe dar
+     * por hecho que no hay nada que revisar: tras la muerte del proceso se restaura la ruta antes
+     * de que el borrador haya cargado.
+     */
+    private val _loaded = MutableStateFlow(false)
+    val loaded: StateFlow<Boolean> = _loaded.asStateFlow()
+
     private val _saving = MutableStateFlow(false)
     val saving: StateFlow<Boolean> = _saving.asStateFlow()
 
@@ -53,6 +61,7 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
             // null inicial no lo borra.
             val saved = draftStore.load()
             if (saved != null && _draft.value == null && !_reading.value) _draft.value = saved
+            _loaded.value = true
             _draft.debounce(300).collectLatest { draft ->
                 try {
                     draftStore.save(draft)
@@ -150,6 +159,15 @@ class CardImportViewModel(private val draftStore: CardImportDraftStore) : ViewMo
             try {
                 write(expenses)
                 _draft.value = null
+                // Directo y no con el debounce: si la app muere justo después, el borrador del
+                // disco volvería a ofrecer los cargos ya guardados.
+                try {
+                    draftStore.save(null)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    // Los ids fijos de las filas evitan duplicar si se volviera a guardar.
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
