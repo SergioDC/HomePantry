@@ -1,6 +1,8 @@
 package com.homepantry.app.data
 
 import android.content.Context
+import com.google.gson.Gson
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -22,6 +24,8 @@ class UserPrefs(private val context: Context) {
     private val notifiedOfferIdsKey = stringPreferencesKey("notified_offer_ids")
     private val comedorFingerprintKey = stringPreferencesKey("comedor_pdf_fingerprint")
     private val cardReadModeKey = stringPreferencesKey("card_read_mode")
+    private val panelModeKey = booleanPreferencesKey("panel_mode")
+    private val weatherPlaceKey = stringPreferencesKey("weather_place")
 
     val householdCode: Flow<String?> = context.dataStore.data.map { it[householdCodeKey] }
     val userName: Flow<String?> = context.dataStore.data.map { it[userNameKey] }
@@ -61,6 +65,28 @@ class UserPrefs(private val context: Context) {
 
     suspend fun saveCardReadMode(mode: CardReadMode) {
         context.dataStore.edit { it[cardReadModeKey] = mode.name }
+    }
+
+    /** Este dispositivo es el panel de la cocina: la app arranca en el panel (solo en este dispositivo). */
+    val panelMode: Flow<Boolean> = context.dataStore.data.map { it[panelModeKey] ?: false }
+
+    suspend fun setPanelMode(enabled: Boolean) {
+        context.dataStore.edit { it[panelModeKey] = enabled }
+    }
+
+    /** Pueblo del tiempo del panel; null si no se ha elegido o el JSON guardado no se puede leer. */
+    val weatherPlace: Flow<WeatherPlace?> = context.dataStore.data.map { prefs ->
+        prefs[weatherPlaceKey]?.let { json ->
+            try {
+                Gson().fromJson(json, WeatherPlace::class.java)
+            } catch (e: Exception) {
+                null
+            }
+        }
+    }
+
+    suspend fun saveWeatherPlace(place: WeatherPlace) {
+        context.dataStore.edit { it[weatherPlaceKey] = Gson().toJson(place) }
     }
 
     /** Borra el código de casa guardado -- MainActivity reacciona mostrando JoinHouseholdScreen. */
