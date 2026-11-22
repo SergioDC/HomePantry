@@ -85,6 +85,8 @@ import com.homepantry.app.ui.MenuViewModel
 import com.homepantry.app.ui.ProductNormalizationViewModel
 import com.homepantry.app.ui.ReceiptScanViewModel
 import com.homepantry.app.ui.CardImportViewModel
+import com.homepantry.app.ui.PanelIdleHost
+import com.homepantry.app.ui.PanelViewModel
 import com.homepantry.app.ui.NotificationsViewModel
 import com.homepantry.app.ui.SplitViewModel
 import com.homepantry.app.ui.RecipesViewModel
@@ -103,6 +105,8 @@ import com.homepantry.app.ui.screens.PurchaseStatsScreen
 import com.homepantry.app.ui.screens.HomeScreen
 import com.homepantry.app.ui.screens.JoinHouseholdScreen
 import com.homepantry.app.ui.screens.CardImportScreen
+import com.homepantry.app.ui.screens.PanelRestockScreen
+import com.homepantry.app.ui.screens.PanelScreen
 import com.homepantry.app.ui.screens.SplitArchivedScreen
 import com.homepantry.app.ui.screens.SplitExpenseScreen
 import com.homepantry.app.ui.screens.SplitMonthEditScreen
@@ -333,6 +337,25 @@ fun ListaDeLaCasaApp(
         }
     )
 
+    // Panel de la tablet de la cocina: menú de hoy y tiempo (los productos salen de `viewModel`).
+    val panelViewModel: PanelViewModel = viewModel(
+        key = "panel-$code",
+        factory = remember(code) {
+            object : ViewModelProvider.Factory {
+                @Suppress("UNCHECKED_CAST")
+                override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                    return PanelViewModel(MealEntriesRepository(firestore, code), userPrefs) as T
+                }
+            }
+        }
+    )
+    // Hasta leer el modo no se monta el NavHost: el destino inicial depende de él. Se fija con la
+    // primera lectura: cambiar `startDestination` con el NavHost ya montado rehace el grafo. Si se
+    // activa el modo en Ajustes, la vuelta por inactividad lleva al panel sin reiniciar.
+    val panelMode by userPrefs.panelMode.collectAsState(initial = null)
+    var startInPanel by remember { mutableStateOf<Boolean?>(null) }
+    if (startInPanel == null && panelMode != null) startInPanel = panelMode
+
     // Importación de cargos de tarjeta a SNcount: a nivel de actividad, como la lectura de tickets.
     val cardImportViewModel: CardImportViewModel = viewModel(
         key = "cardImport-$code",
@@ -491,11 +514,42 @@ fun ListaDeLaCasaApp(
             }
         }
     ) { padding ->
+        val startPanel = startInPanel ?: return@Scaffold
+        PanelIdleHost(
+            panelMode = panelMode == true,
+            currentRoute = currentRoute,
+            suspended = showAddItem || itemBeingEdited != null || showEditName || showDefaultProducts,
+            onReturnToPanel = {
+                navController.navigate("panel") {
+                    popUpTo(navController.graph.id) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
+        ) {
         NavHost(
             navController = navController,
-            startDestination = "home",
+            startDestination = if (startPanel) "panel" else "home",
             modifier = Modifier.padding(padding).consumeWindowInsets(padding)
         ) {
+            composable("panel") {
+                PanelScreen(
+                    appViewModel = viewModel,
+                    panelViewModel = panelViewModel,
+                    onOpenRestock = { navController.navigate("panelRestock") },
+                    onExitPanel = { navController.navigate("home") { launchSingleTop = true } },
+                    onConfigureWeather = { navController.navigate("manageZones") }
+                )
+            }
+            composable("panelRestock") {
+                PanelRestockScreen(
+                    appViewModel = viewModel,
+                    onAddNew = {
+                        addItemZoneOverride = null
+                        showAddItem = true
+                    },
+                    onBack = { navController.popBackStack() }
+                )
+            }
             composable("home") {
                 HomeScreen(
                     viewModel = viewModel,
@@ -577,7 +631,8 @@ fun ListaDeLaCasaApp(
                     userPrefs = userPrefs,
                     geminiApiKeyStore = geminiApiKeyStore,
                     onBack = { navController.popBackStack() },
-                    onEditName = { showEditName = true }
+                    onEditName = { showEditName = true },
+                    searchPlaces = panelViewModel::searchPlaces
                 )
             }
             composable("purchaseHistory") {
@@ -745,13 +800,16 @@ fun ListaDeLaCasaApp(
                 )
             }
         }
+        }
     }
 
     // Enlace de SNcount compartido por otro miembro: se navega por Home → SNcount → el grupo
     // para que «atrás» funcione como si se hubiera llegado a mano. Si el grupo no es de esta casa,
-    // SplitMonthScreen vuelve sola a la lista. Va después del NavHost para que el grafo ya exista.
-    LaunchedEffect(pendingSplitMonthId) {
+    // SplitMonthScreen vuelve sola a la lista. Espera a que el NavHost tenga grafo (se monta tras
+    // leer el modo panel), como la notificación de ofertas: navegar antes cerraría la app.
+    LaunchedEffect(pendingSplitMonthId, navReady) {
         val monthId = pendingSplitMonthId ?: return@LaunchedEffect
+        if (!navReady) return@LaunchedEffect
         navController.navigate("splitMonths") {
             popUpTo("home")
             launchSingleTop = true
