@@ -29,7 +29,9 @@ data class OpenMeteoDaily(
     val time: List<String?>? = null,
     @SerializedName("temperature_2m_max") val temperature2mMax: List<Double?>? = null,
     @SerializedName("temperature_2m_min") val temperature2mMin: List<Double?>? = null,
-    @SerializedName("precipitation_probability_max") val precipitationProbabilityMax: List<Int?>? = null
+    @SerializedName("precipitation_probability_max") val precipitationProbabilityMax: List<Int?>? = null,
+    val sunrise: List<String?>? = null,
+    val sunset: List<String?>? = null
 )
 
 data class OpenMeteoForecast(
@@ -55,7 +57,7 @@ interface OpenMeteoApi {
         @Query("longitude") longitude: Double,
         @Query("current") current: String = "temperature_2m,weather_code",
         @Query("hourly") hourly: String = "temperature_2m,weather_code,precipitation_probability",
-        @Query("daily") daily: String = "temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+        @Query("daily") daily: String = "temperature_2m_max,temperature_2m_min,precipitation_probability_max,sunrise,sunset",
         @Query("timezone") timezone: String = "auto",
         @Query("forecast_days") forecastDays: Int = 1
     ): OpenMeteoForecast
@@ -110,7 +112,10 @@ data class WeatherSnapshot(
     val hours: List<HourWeather> = emptyList(),
     val fetchedAtMillis: Long = 0,
     /** Día de la previsión ("yyyy-MM-dd"): pasada la medianoche, la de ayer ya no vale. */
-    val date: String = ""
+    val date: String = "",
+    /** Amanecer y ocaso en minutos desde medianoche (hora local); null si no vienen. */
+    val sunriseMinute: Int? = null,
+    val sunsetMinute: Int? = null
 ) {
     fun isFor(day: LocalDate): Boolean = date == day.toString()
 }
@@ -146,8 +151,18 @@ fun weatherSnapshot(forecast: OpenMeteoForecast, fetchedAtMillis: Long): Weather
         rainProbability = daily.precipitationProbabilityMax?.firstOrNull() ?: 0,
         hours = hours,
         fetchedAtMillis = fetchedAtMillis,
-        date = today
+        date = today,
+        sunriseMinute = minuteOfDay(daily.sunrise?.firstOrNull()),
+        sunsetMinute = minuteOfDay(daily.sunset?.firstOrNull())
     )
+}
+
+/** "2026-11-22T08:10" → 490; null si falta o no se entiende. */
+private fun minuteOfDay(dateTime: String?): Int? {
+    val parts = dateTime?.substringAfter('T', "")?.split(':') ?: return null
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: return null
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: return null
+    return hour * 60 + minute
 }
 
 /** Por la mañana el tiempo va en grande, con las horas: es cuando se decide qué ponerse. */

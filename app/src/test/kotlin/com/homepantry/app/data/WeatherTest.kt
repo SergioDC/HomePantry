@@ -87,6 +87,20 @@ class WeatherTest {
     }
 
     @Test
+    fun `amanecer y ocaso`() {
+        val daily = OpenMeteoDaily(
+            listOf("2026-11-22"), listOf(18.4), listOf(6.5), listOf(30),
+            sunrise = listOf("2026-11-22T08:10"), sunset = listOf("2026-11-22T17:50")
+        )
+        val snapshot = weatherSnapshot(forecast(daily = daily), 0L)!!
+        assertEquals(490, snapshot.sunriseMinute)
+        assertEquals(1070, snapshot.sunsetMinute)
+        val without = weatherSnapshot(forecast(), 0L)!!
+        assertNull(without.sunriseMinute)
+        assertNull(without.sunsetMinute)
+    }
+
+    @Test
     fun `manana hasta las 12`() {
         assertTrue(isMorning(LocalTime.of(11, 59)))
         assertFalse(isMorning(LocalTime.of(12, 0)))
