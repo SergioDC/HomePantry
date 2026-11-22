@@ -117,3 +117,13 @@ fun greeting(time: LocalTime): Greeting = when (time.hour) {
     in 14..20 -> Greeting.AFTERNOON
     else -> Greeting.NIGHT
 }
+
+/**
+ * Posición (0–1) en un ciclo de [periodMillis] tras [timeMillis] de animación, desfasada en
+ * [phase]. Se calcula con Long/Double: el panel anima días seguidos y con Float el reloj perdería
+ * precisión (pasos de ~32 ms a los 4 días) y la lluvia iría a saltos.
+ */
+fun cycleProgress(timeMillis: Long, periodMillis: Float, phase: Float): Float {
+    val period = periodMillis.toDouble()
+    return (((timeMillis % (period * 1_000)) / period + phase) % 1.0).toFloat()
+}

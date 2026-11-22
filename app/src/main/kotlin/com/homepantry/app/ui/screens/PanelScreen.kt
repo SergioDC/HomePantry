@@ -120,9 +120,12 @@ private val clock = DateTimeFormatter.ofPattern("HH:mm", spanish)
 private val OnSky = TextStyle(color = Color.White, shadow = Shadow(Color(0x59000000), blurRadius = 12f))
 private val OnSkySoft = Color.White.copy(alpha = 0.85f)
 
-/** Lila más claro que el primario: sobre la tarjeta translúcida el primario se queda corto de contraste. */
-private val SectionLabel = Color(0xFFB3A9F0)
-private val CardFill = NocturneSurface.copy(alpha = 0.55f)
+/**
+ * Tarjeta oscura al 80 % y lila claro en los títulos: con menos opacidad, sobre el cielo claro
+ * de la nieve o la niebla los títulos de franja no se leían.
+ */
+private val SectionLabel = Color(0xFFC9C2F7)
+private val CardFill = NocturneSurface.copy(alpha = 0.8f)
 private val CardBorder = Color.White.copy(alpha = 0.12f)
 
 /**

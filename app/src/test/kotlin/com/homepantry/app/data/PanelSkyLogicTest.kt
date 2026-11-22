@@ -90,4 +90,13 @@ class PanelSkyLogicTest {
         assertEquals(Greeting.NIGHT, greeting(at(5)))
         assertEquals(Greeting.MORNING, greeting(at(6)))
     }
+
+    @Test
+    fun `progreso del ciclo preciso tras dias encendido`() {
+        // Unos 4 días en ciclos exactos de 550 ms: con Float el paso ya sería de ~32 ms.
+        val fourDays = 550L * 630_000
+        assertEquals(0.5f, cycleProgress(fourDays + 275, 550f, 0f), 0.001f)
+        assertEquals(0.75f, cycleProgress(fourDays + 275, 550f, 0.25f), 0.001f)
+        assertEquals(0f, cycleProgress(0L, 1_000f, 0f), 0f)
+    }
 }
