@@ -5,6 +5,8 @@ import android.view.WindowManager
 import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,6 +26,9 @@ import kotlinx.coroutines.delay
 
 /** Brillo de la ventana con el panel atenuado: se ve que está encendido sin deslumbrar de noche. */
 private const val DIMMED_BRIGHTNESS = 0.05f
+
+/** Si el panel está atenuado: la escena del cielo se congela para no animar con nadie mirando. */
+val LocalPanelDimmed = compositionLocalOf { false }
 
 /** Cada cuánto se comprueba la inactividad; basta con que el panel reaccione en unos segundos. */
 private const val IDLE_CHECK_MILLIS = 5_000L
@@ -107,6 +112,6 @@ fun PanelIdleHost(
             }
         }
     ) {
-        content()
+        CompositionLocalProvider(LocalPanelDimmed provides dimmed) { content() }
     }
 }
