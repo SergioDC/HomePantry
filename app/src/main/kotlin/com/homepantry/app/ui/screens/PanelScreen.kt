@@ -43,6 +43,8 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dehaze
 import androidx.compose.material.icons.filled.FilterDrama
 import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.Umbrella
 import androidx.compose.material.icons.filled.WbSunny
@@ -168,7 +170,12 @@ fun PanelScreen(
                 BoxWithConstraints(Modifier.fillMaxSize()) {
                     if (maxWidth >= maxHeight) {
                         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                            PanelCard(Modifier.weight(1f).fillMaxHeight(), delayMillis = 0) { MenuColumn(menu) }
+                            // El menú suele ser corto: comparte columna con los dispositivos y la
+                            // lista de la compra, que crece más, conserva toda la altura.
+                            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                                PanelCard(Modifier.fillMaxWidth().weight(1f), delayMillis = 0) { MenuColumn(menu) }
+                                PanelCard(Modifier.fillMaxWidth(), delayMillis = 60) { DevicesColumn() }
+                            }
                             PanelCard(Modifier.weight(1f).fillMaxHeight(), delayMillis = 120) {
                                 ShoppingColumn(appViewModel, pending, onOpenRestock)
                             }
@@ -176,6 +183,7 @@ fun PanelScreen(
                     } else {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             PanelCard(Modifier.fillMaxWidth(), delayMillis = 0) { MenuColumn(menu) }
+                            PanelCard(Modifier.fillMaxWidth(), delayMillis = 60) { DevicesColumn() }
                             PanelCard(Modifier.fillMaxWidth().weight(1f), delayMillis = 120) {
                                 ShoppingColumn(appViewModel, pending, onOpenRestock)
                             }
@@ -228,11 +236,11 @@ private fun PanelHeader(
                     .weight(1f)
                     .combinedClickable(onClick = {}, onLongClick = onExitPanel)
             ) {
-                Text(stringResource(greetingText(greeting(now.toLocalTime()))), style = OnSky.copy(color = OnSkySoft), fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(greetingText(greeting(now.toLocalTime()))), style = OnSky.copy(color = OnSkySoft), fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 Text(
                     now.format(headerDate).replaceFirstChar { it.titlecase(spanish) },
                     style = OnSky,
-                    fontSize = 30.sp,
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold
                 )
                 Clock(now, animate)
@@ -278,7 +286,7 @@ private fun Clock(now: LocalDateTime, animate: Boolean) {
             append(text.substringAfter(':'))
         },
         style = OnSky,
-        fontSize = 64.sp,
+        fontSize = 58.sp,
         fontWeight = FontWeight.Light
     )
 }
@@ -289,31 +297,31 @@ private fun WeatherSummary(weather: WeatherState, snapshot: WeatherSnapshot?, on
         weather.place == null -> Text(
             stringResource(R.string.panel_weather_pick_place),
             style = OnSky,
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             modifier = Modifier.clickable(onClick = onConfigureWeather).padding(8.dp)
         )
         snapshot == null -> Text(
             stringResource(if (weather.failed) R.string.panel_weather_unavailable else R.string.panel_weather_loading),
             style = OnSky.copy(color = OnSkySoft),
-            fontSize = 18.sp,
+            fontSize = 16.sp,
             modifier = Modifier.clickable(onClick = onRetryWeather).padding(8.dp)
         )
         else -> Column(horizontalAlignment = Alignment.End) {
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(stringResource(weatherKindText(snapshot.kind)), style = OnSky, fontSize = 22.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp))
+                Text(stringResource(weatherKindText(snapshot.kind)), style = OnSky, fontSize = 20.sp, fontWeight = FontWeight.Medium, modifier = Modifier.padding(bottom = 12.dp))
                 Spacer(Modifier.width(14.dp))
-                Text(stringResource(R.string.panel_weather_temp, snapshot.currentTemp), style = OnSky, fontSize = 76.sp, fontWeight = FontWeight.Light)
+                Text(stringResource(R.string.panel_weather_temp, snapshot.currentTemp), style = OnSky, fontSize = 70.sp, fontWeight = FontWeight.Light)
             }
             Text(
                 stringResource(R.string.panel_weather_range, snapshot.maxTemp, snapshot.minTemp, snapshot.rainProbability),
                 style = OnSky,
-                fontSize = 18.sp
+                fontSize = 16.sp
             )
             Text(
                 listOf(weather.place.name, weather.place.admin1).filter { it.isNotBlank() }.joinToString(", ") +
                     if (weather.failed) " · " + stringResource(R.string.panel_weather_updated_at, fetchedTime(snapshot)) else "",
                 style = OnSky.copy(color = OnSkySoft),
-                fontSize = 14.sp
+                fontSize = 13.sp
             )
         }
     }
@@ -330,9 +338,9 @@ private fun HourlyStrip(snapshot: WeatherSnapshot) {
                     .padding(horizontal = 14.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.panel_weather_hour, hour.hour), color = OnSkySoft, fontSize = 14.sp)
+                Text(stringResource(R.string.panel_weather_hour, hour.hour), color = OnSkySoft, fontSize = 13.sp)
                 Icon(weatherIcon(hour.kind), contentDescription = null, tint = iconTint(hour.kind), modifier = Modifier.size(26.dp))
-                Text(stringResource(R.string.panel_weather_temp, hour.temp), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Medium)
+                Text(stringResource(R.string.panel_weather_temp, hour.temp), color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
@@ -377,7 +385,7 @@ private fun iconTint(kind: WeatherKind): Color = when (kind) {
 
 @Composable
 private fun ColumnScope.MenuColumn(menu: List<MenuSlotSection>) {
-    Text(stringResource(R.string.panel_menu_title), fontSize = 24.sp, fontWeight = FontWeight.Bold)
+    Text(stringResource(R.string.panel_menu_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(16.dp))
     if (menu.isEmpty()) {
         Text(stringResource(R.string.panel_menu_empty), style = MaterialTheme.typography.titleMedium, color = OnSkySoft)
@@ -386,7 +394,7 @@ private fun ColumnScope.MenuColumn(menu: List<MenuSlotSection>) {
     menu.forEach { section ->
         Text(
             section.slot.label.uppercase(spanish),
-            fontSize = 16.sp,
+            fontSize = 14.sp,
             fontWeight = FontWeight.Medium,
             letterSpacing = 0.5.sp,
             color = SectionLabel
@@ -394,11 +402,61 @@ private fun ColumnScope.MenuColumn(menu: List<MenuSlotSection>) {
         section.lines.forEach { line ->
             Text(
                 if (line.person == null) line.name else stringResource(R.string.panel_menu_person_line, line.person, line.name),
-                fontSize = 22.sp,
+                fontSize = 20.sp,
                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
             )
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+/** Dispositivo de ejemplo de la tarjeta de muestra. */
+private data class SampleDevice(val name: Int, val icon: ImageVector)
+
+private val sampleDevices = listOf(
+    SampleDevice(R.string.panel_devices_sample_lamp_living, Icons.Filled.Lightbulb),
+    SampleDevice(R.string.panel_devices_sample_lamp_kitchen, Icons.Filled.Lightbulb),
+    SampleDevice(R.string.panel_devices_sample_plug_coffee, Icons.Filled.Power),
+    SampleDevice(R.string.panel_devices_sample_plug_heater, Icons.Filled.Power)
+)
+
+/**
+ * Hueco de los enchufes y lámparas (#4). De momento es una muestra para ver el sitio en la
+ * tablet: los botones solo cambian de aspecto, no hablan con Home Assistant ni guardan nada.
+ */
+@Composable
+private fun ColumnScope.DevicesColumn() {
+    val on = remember { mutableStateMapOf<Int, Boolean>() }
+    Row(verticalAlignment = Alignment.Bottom) {
+        Text(stringResource(R.string.panel_devices_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.width(10.dp))
+        Text(stringResource(R.string.panel_devices_sample), fontSize = 14.sp, color = SectionLabel, modifier = Modifier.padding(bottom = 3.dp))
+    }
+    Spacer(Modifier.height(12.dp))
+    sampleDevices.chunked(2).forEach { pair ->
+        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            pair.forEach { device ->
+                val active = on[device.name] == true
+                val fill by animateColorAsState(
+                    if (active) NocturnePrimary else Color.White.copy(alpha = 0.10f),
+                    label = "dispositivo"
+                )
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(fill)
+                        .clickable { on[device.name] = !active }
+                        .padding(horizontal = 14.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val tint = if (active) NocturneOnPrimary else Color.White
+                    Icon(device.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(stringResource(device.name), fontSize = 18.sp, color = tint, maxLines = 1)
+                }
+            }
+        }
     }
 }
 
@@ -410,7 +468,7 @@ private fun ColumnScope.ShoppingColumn(appViewModel: AppViewModel, pending: List
     val striking = remember { mutableStateMapOf<String, Job>() }
     Text(
         pluralStringResource(R.plurals.panel_list_title, pending.size, pending.size),
-        fontSize = 24.sp,
+        fontSize = 22.sp,
         fontWeight = FontWeight.Bold
     )
     Spacer(Modifier.height(8.dp))
@@ -446,7 +504,7 @@ private fun ColumnScope.ShoppingColumn(appViewModel: AppViewModel, pending: List
                 Spacer(Modifier.width(16.dp))
                 Text(
                     item.name,
-                    fontSize = 24.sp,
+                    fontSize = 22.sp,
                     textDecoration = if (struck) TextDecoration.LineThrough else null
                 )
             }
@@ -460,7 +518,7 @@ private fun ColumnScope.ShoppingColumn(appViewModel: AppViewModel, pending: List
     ) {
         Icon(Icons.Filled.Add, contentDescription = null)
         Spacer(Modifier.width(8.dp))
-        Text(stringResource(R.string.panel_restock_button), fontSize = 20.sp)
+        Text(stringResource(R.string.panel_restock_button), fontSize = 18.sp)
     }
 }
 

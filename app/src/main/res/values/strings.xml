@@ -689,6 +689,12 @@
         <item quantity="other">Lista de la compra (%d)</item>
     </plurals>
     <string name="panel_list_empty">No falta nada</string>
+    <string name="panel_devices_title">Dispositivos</string>
+    <string name="panel_devices_sample">MUESTRA</string>
+    <string name="panel_devices_sample_lamp_living">Salón</string>
+    <string name="panel_devices_sample_lamp_kitchen">Cocina</string>
+    <string name="panel_devices_sample_plug_coffee">Cafetera</string>
+    <string name="panel_devices_sample_plug_heater">Calefactor</string>
     <string name="panel_restock_button">Se ha acabado…</string>
     <string name="panel_restock_title">Se ha acabado…</string>
     <string name="panel_restock_new">Nuevo</string>
