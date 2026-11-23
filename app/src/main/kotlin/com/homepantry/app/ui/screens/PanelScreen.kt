@@ -43,8 +43,6 @@ import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Dehaze
 import androidx.compose.material.icons.filled.FilterDrama
 import androidx.compose.material.icons.filled.Grain
-import androidx.compose.material.icons.filled.Lightbulb
-import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Thunderstorm
 import androidx.compose.material.icons.filled.Umbrella
 import androidx.compose.material.icons.filled.WbSunny
@@ -119,14 +117,14 @@ private val headerDate = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", spanish
 private val clock = DateTimeFormatter.ofPattern("HH:mm", spanish)
 
 /** Sombra suave del texto blanco: se lee sobre cualquier cielo, también el claro de la nieve. */
-private val OnSky = TextStyle(color = Color.White, shadow = Shadow(Color(0x59000000), blurRadius = 12f))
-private val OnSkySoft = Color.White.copy(alpha = 0.85f)
+internal val OnSky = TextStyle(color = Color.White, shadow = Shadow(Color(0x59000000), blurRadius = 12f))
+internal val OnSkySoft = Color.White.copy(alpha = 0.85f)
 
 /**
  * Tarjeta oscura al 80 % y lila claro en los títulos: con menos opacidad, sobre el cielo claro
  * de la nieve o la niebla los títulos de franja no se leían.
  */
-private val SectionLabel = Color(0xFFC9C2F7)
+internal val SectionLabel = Color(0xFFC9C2F7)
 private val CardFill = NocturneSurface.copy(alpha = 0.8f)
 private val CardBorder = Color.White.copy(alpha = 0.12f)
 
@@ -155,6 +153,7 @@ fun PanelScreen(
     val snapshot = weather.snapshot?.takeIf { it.isFor(now.toLocalDate()) }
     val lifecycle by LocalLifecycleOwner.current.lifecycle.currentStateAsState()
     val animate = !LocalPanelDimmed.current && lifecycle.isAtLeast(Lifecycle.State.RESUMED)
+    val devicesState = rememberPanelDevicesState()
 
     Box(Modifier.fillMaxSize()) {
         // Sin pueblo o sin datos, cielo nublado: el panel nunca se queda sin fondo.
@@ -170,20 +169,19 @@ fun PanelScreen(
                 BoxWithConstraints(Modifier.fillMaxSize()) {
                     if (maxWidth >= maxHeight) {
                         Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                            // El menú suele ser corto: comparte columna con los dispositivos y la
-                            // lista de la compra, que crece más, conserva toda la altura.
+                            // Menú y lista a la izquierda; los dispositivos, en su propia columna (#4).
                             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                                PanelCard(Modifier.fillMaxWidth().weight(1f), delayMillis = 0) { MenuColumn(menu) }
-                                PanelCard(Modifier.fillMaxWidth(), delayMillis = 60) { DevicesColumn() }
+                                PanelCard(Modifier.fillMaxWidth(), delayMillis = 0) { MenuColumn(menu) }
+                                PanelCard(Modifier.fillMaxWidth().weight(1f), delayMillis = 60) {
+                                    ShoppingColumn(appViewModel, pending, onOpenRestock)
+                                }
                             }
-                            PanelCard(Modifier.weight(1f).fillMaxHeight(), delayMillis = 120) {
-                                ShoppingColumn(appViewModel, pending, onOpenRestock)
-                            }
+                            PanelDevicesSection(devicesState, Modifier.weight(1f).fillMaxHeight(), fill = true)
                         }
                     } else {
                         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
                             PanelCard(Modifier.fillMaxWidth(), delayMillis = 0) { MenuColumn(menu) }
-                            PanelCard(Modifier.fillMaxWidth(), delayMillis = 60) { DevicesColumn() }
+                            PanelDevicesSection(devicesState, Modifier.fillMaxWidth(), fill = false)
                             PanelCard(Modifier.fillMaxWidth().weight(1f), delayMillis = 120) {
                                 ShoppingColumn(appViewModel, pending, onOpenRestock)
                             }
@@ -192,6 +190,7 @@ fun PanelScreen(
                 }
             }
         }
+        PanelDeviceDetailLayer(devicesState)
     }
 }
 
@@ -407,56 +406,6 @@ private fun ColumnScope.MenuColumn(menu: List<MenuSlotSection>) {
             )
         }
         Spacer(Modifier.height(16.dp))
-    }
-}
-
-/** Dispositivo de ejemplo de la tarjeta de muestra. */
-private data class SampleDevice(val name: Int, val icon: ImageVector)
-
-private val sampleDevices = listOf(
-    SampleDevice(R.string.panel_devices_sample_lamp_living, Icons.Filled.Lightbulb),
-    SampleDevice(R.string.panel_devices_sample_lamp_kitchen, Icons.Filled.Lightbulb),
-    SampleDevice(R.string.panel_devices_sample_plug_coffee, Icons.Filled.Power),
-    SampleDevice(R.string.panel_devices_sample_plug_heater, Icons.Filled.Power)
-)
-
-/**
- * Hueco de los enchufes y lámparas (#4). De momento es una muestra para ver el sitio en la
- * tablet: los botones solo cambian de aspecto, no hablan con Home Assistant ni guardan nada.
- */
-@Composable
-private fun ColumnScope.DevicesColumn() {
-    val on = remember { mutableStateMapOf<Int, Boolean>() }
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(stringResource(R.string.panel_devices_title), fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.width(10.dp))
-        Text(stringResource(R.string.panel_devices_sample), fontSize = 14.sp, color = SectionLabel, modifier = Modifier.padding(bottom = 3.dp))
-    }
-    Spacer(Modifier.height(12.dp))
-    sampleDevices.chunked(2).forEach { pair ->
-        Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            pair.forEach { device ->
-                val active = on[device.name] == true
-                val fill by animateColorAsState(
-                    if (active) NocturnePrimary else Color.White.copy(alpha = 0.10f),
-                    label = "dispositivo"
-                )
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(fill)
-                        .clickable { on[device.name] = !active }
-                        .padding(horizontal = 14.dp, vertical = 14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val tint = if (active) NocturneOnPrimary else Color.White
-                    Icon(device.icon, contentDescription = null, tint = tint, modifier = Modifier.size(24.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Text(stringResource(device.name), fontSize = 18.sp, color = tint, maxLines = 1)
-                }
-            }
-        }
     }
 }
 
